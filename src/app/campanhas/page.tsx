@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users } from 'lucide-react'; // Lucide
 import { Campanha } from '@/types/campanha'; // Importe o tipo
 import { Navbar } from '@/components/navbar';
+import { LoadingSpinner } from "@/components/loadingSpinner";
 
 export default function CampanhasPage() {
     const [campanhas, setCampanhas] = useState<Campanha[]>([]);
@@ -29,7 +30,7 @@ export default function CampanhasPage() {
         fetchCampanhas();
     }, []);
 
-    if (loading) return <div className="text-center mt-10">Carregando campanhas...</div>;
+    if (loading) return <LoadingSpinner/>;
     if (error) return <div className="text-center mt-10 text-red-500">Erro: {error}</div>;
 
     return (
@@ -40,7 +41,7 @@ export default function CampanhasPage() {
                     <h1 className="text-3xl font-bold mb-6 text-center">Campanhas Ativas</h1>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {campanhas.map((campanha, index) => (
-                            <Link key={index} href={`/personagens/${campanha._id}`}>
+                            <Link key={index} href={`/personagens/campanha/${campanha._id}`}>
                             <Card key={index} className="shadow-lg hover:shadow-xl transition-shadow">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
