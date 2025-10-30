@@ -4,12 +4,12 @@ import Link from "next/link"
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Shadcn
 import { Users } from 'lucide-react'; // Lucide
-import { Campanha } from '@/types/campanha'; // Importe o tipo
+import { CampanhaInterface } from '@/types'; // Importe o tipo
 import { Navbar } from '@/components/navbar';
 import { LoadingSpinner } from "@/components/loadingSpinner";
 
 export default function CampanhasPage() {
-    const [campanhas, setCampanhas] = useState<Campanha[]>([]);
+    const [campanhas, setCampanhas] = useState<CampanhaInterface[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -18,7 +18,7 @@ export default function CampanhasPage() {
             try {
                 const response = await fetch('/api/campanhas/all');
                 if (!response.ok) throw new Error('Erro ao carregar campanhas');
-                const data: Campanha[] = await response.json();
+                const data: CampanhaInterface[] = await response.json();
                 setCampanhas(data);
             } catch (err) {
                 setError((err as Error).message);

@@ -1,6 +1,6 @@
 import redis from '@/lib/redis';
 import { NextResponse } from 'next/server';
-import { Personagem } from '@/types/personagem';
+import { PersonagemInterface } from '@/types';
 
 export async function GET(
   request: Request,
@@ -16,9 +16,9 @@ export async function GET(
     const key = 'personagens';
 
     // Recupere o JSON da chave 'personagens'
-    const data: Array<Personagem> = await redis.json.get(key) || [];
+    const data: Array<PersonagemInterface> = await redis.json.get(key) || [];
 
-    let personagens: Personagem[] = [];
+    let personagens: PersonagemInterface[] = [];
     personagens = data;
     if (personagens.length == 0) {
       return NextResponse.json({ error: 'Não foi possivel encontrar os personagens' }, { status: 400 });

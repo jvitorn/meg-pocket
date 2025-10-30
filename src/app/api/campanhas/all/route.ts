@@ -1,9 +1,9 @@
 import redis from '@/lib/redis';
 import { NextResponse } from 'next/server';
-import { Campanha } from '@/types/campanha';
+import { CampanhaInterface } from '@/types';
 
 // Helper function para salvar com tipo correto
-async function saveCampanhas(key: string, campanhas: Campanha[]) {
+async function saveCampanhas(key: string, campanhas: CampanhaInterface[]) {
   await redis.json.set(key, '$', campanhas as any);
 }
 
@@ -12,7 +12,7 @@ export async function GET() {
     const key = 'campanhas';
     const data = await redis.json.get(key);
     
-    let campanhas: Campanha[] = [];
+    let campanhas: CampanhaInterface[] = [];
 
     switch (true) {
       case data === null:
@@ -24,11 +24,11 @@ export async function GET() {
         break;
 
       case Array.isArray(data) && data.length > 0:
-        campanhas = data as Campanha[];
+        campanhas = data as CampanhaInterface[];
         break;
 
       case typeof data === 'object' && data !== null:
-        campanhas = [data as Campanha];
+        campanhas = [data as CampanhaInterface];
         break;
 
       default:
