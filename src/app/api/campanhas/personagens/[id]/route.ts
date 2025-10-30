@@ -4,12 +4,12 @@ import { Personagem } from '@/types/personagem';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: number } }
+   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
    
-    if (isNaN(id)) {
+    if (!id) {
       return NextResponse.json({ error: 'ID da campanha inválido' }, { status: 400 });
     }
 
@@ -19,14 +19,8 @@ export async function GET(
     const data: Array<Personagem> = await redis.json.get(key) || [];
 
     let personagens: Personagem[] = [];
-    if (data) {
-      personagens = data;
-    } else {
-      // Insira dados de exemplo se não existir
-      personagens = [
-        { _id:0, "id_raca": 1, campanha_id: 1, nome: 'Aragorn' },
-      ];
-      await redis.set(key, JSON.stringify(personagens));
+    if (personagens.length == 0) {
+      return NextResponse.json({ error: 'Não foi possivel encontrar os personagens' }, { status: 400 });
     }
 
     // Filtre pelos personagens da campanha específica
