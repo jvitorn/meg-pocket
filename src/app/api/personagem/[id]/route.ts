@@ -4,15 +4,17 @@ import { Personagem } from '@/types/personagem';
 import { Raca } from '@/types/raca';
 import { Classe } from '@/types/classe';
 
-
 export async function GET(
   request: Request,
-  { params }: { params: { id: number } }
+  { params }: { params: Promise<{ id: string }> } // Mudança aqui: Promise e string
 ) {
   try {
-    const { id } = await params;
+    const { id } = await params; // Aguardar a Promise e pegar como string
 
-    if (isNaN(id)) {
+    // Converter para número e validar
+    const personagemId = Number(id);
+    
+    if (isNaN(personagemId)) {
       return NextResponse.json({ error: 'ID do personagem inválido' }, { status: 400 });
     }
 
@@ -67,7 +69,7 @@ export async function GET(
     }
 
     // Filtre pelos personagens da campanha específica
-    const personagemLocalizado: Personagem | undefined = personagens.find(p => p._id === Number(id));
+    const personagemLocalizado: Personagem | undefined = personagens.find(p => p._id === personagemId);
 
     // Valide se o personagem foi encontrado
     if (!personagemLocalizado) {
@@ -83,6 +85,7 @@ export async function GET(
         error: 'Raça ou classe do personagem não encontrada'
       }, { status: 404 });
     }
+
     // Valide se as propriedades existem antes de somar
     const hpRaca = racaEncontrada.hp ?? 0;
     const hpClasse = classeEncontrada.hp ?? 0;
