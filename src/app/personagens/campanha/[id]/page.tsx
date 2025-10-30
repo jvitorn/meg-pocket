@@ -40,9 +40,9 @@ export default function PersonagemCampanhaPage() {
   return (
     <>
     <Navbar/>
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center">Personagens dessa Campanha</h1>
+        <h1 className="text-3xl font-bold mb-6 text-center text-">Personagens dessa Campanha</h1>
         {personagens.length === 0 ? (
           <p className="text-center text-gray-500">Nenhum personagem encontrado para esta campanha.</p>
         ) : (
