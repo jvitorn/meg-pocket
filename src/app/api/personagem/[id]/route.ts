@@ -1,8 +1,6 @@
 import redis from '@/lib/redis';
 import { NextRequest, NextResponse } from 'next/server';
-import { Personagem } from '@/types/personagem';
-import { Raca } from '@/types/raca';
-import { Classe } from '@/types/classe';
+import { PersonagemInterface, ClasseInterface, RacaInterface } from '@/types';
 
 export async function GET(
   request: NextRequest,
@@ -17,9 +15,9 @@ export async function GET(
     }
 
     const key = 'personagens';
-    const dataPersonagem: Personagem[] = (await redis.json.get(key)) || [];
-    const dataRaca: Raca[] = (await redis.json.get('racas')) || [];
-    const dataClasse: Classe[] = (await redis.json.get('classes')) || [];
+    const dataPersonagem: PersonagemInterface[] = (await redis.json.get(key)) || [];
+    const dataRaca: RacaInterface[] = (await redis.json.get('racas')) || [];
+    const dataClasse: ClasseInterface[] = (await redis.json.get('classes')) || [];
 
     const personagemLocalizado = dataPersonagem.find(p => p._id === personagemId);
     if (!personagemLocalizado) {

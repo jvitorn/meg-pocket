@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { Navbar } from "@/components/navbar";
-import { Personagem } from "@/types/personagem";
+import { PersonagemInterface } from "@/types/personagem";
 import { LoadingSpinner } from "@/components/loadingSpinner";
 import { Card } from "@/components/ui/card";
 
@@ -59,7 +59,7 @@ export default function PersonagemUnicoPage() {
 
 
   const { id } = useParams<{ id: string }>();
-  const [personagem, setPersonagem] = useState<Personagem | null>(null);
+  const [personagem, setPersonagem] = useState<PersonagemInterface | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,7 +70,7 @@ export default function PersonagemUnicoPage() {
       try {
         const response = await fetch(`/api/personagem/${id}`);
         if (!response.ok) throw new Error("Erro ao carregar personagens");
-        const data: Personagem = await response.json();
+        const data: PersonagemInterface = await response.json();
         setPersonagem(data);
       } catch (err) {
         setError((err as Error).message);

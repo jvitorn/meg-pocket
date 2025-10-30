@@ -1,6 +1,4 @@
-export interface Raca {
-  _id: number;
-  mana: number;
-  hp: number;
-  nome: string;
+import { BaseInterface } from "@/types";
+
+export interface RacaInterface extends BaseInterface {
 }

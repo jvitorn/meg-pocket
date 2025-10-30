@@ -2,28 +2,35 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User } from 'lucide-react';
-import { Personagem } from '@/types/personagem';
+import { PersonagemInterface } from '@/types';
 import { Navbar } from '@/components/navbar';
-import { LoadingSpinner } from '@/components/loadingSpinner';
-import Link from 'next/link';
+import { getPersonagensNaCampanha } from '@/services/personagemService';
+import { MultiCardItem } from "@/components/multi-card-item";
+import { Button } from "@/components/ui/button";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronsDown, ChevronsUp } from "lucide-react";
+import SelectedCardSkeleton from '@/components/skeletons/selected-card.skeleton';
+import SelecionadoCard from '@/components/selecionado-card';
+import { Footer } from '@/components/footer';
+import { MultiCardItemSkeleton } from '@/components/skeletons/multi-card-item.skeleton';
 
 export default function PersonagemCampanhaPage() {
   const { id } = useParams<{ id: string }>();
-  const [personagens, setPersonagens] = useState<Personagem[]>([]);
+  const [personagens, setPersonagens] = useState<PersonagemInterface[]>([]);
+  const [personagemSelecionado, setPersonagemSelecionado] = useState<PersonagemInterface | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCarousel, setShowCarousel] = useState(true);
+  const [compactMode, setCompactMode] = useState(false);
 
   useEffect(() => {
     if (!id) return;
 
-    const fetchPersonagens = async () => {
+    const loadPersonagensCampanha = async () => {
       try {
-        const response = await fetch(`/api/campanhas/personagens/${id}`);
-        if (!response.ok) throw new Error('Erro ao carregar personagens');
-        const data: Personagem[] = await response.json();
-        setPersonagens(data);
+        const dataPersonagensCampanha : PersonagemInterface [] = await getPersonagensNaCampanha(id);
+        setPersonagens(dataPersonagensCampanha);
+        setPersonagemSelecionado(dataPersonagensCampanha[0])
       } catch (err) {
         setError((err as Error).message);
       } finally {
@@ -31,42 +38,87 @@ export default function PersonagemCampanhaPage() {
       }
     };
 
-    fetchPersonagens();
+    loadPersonagensCampanha();
   }, [id]);
 
-  if (loading) return <LoadingSpinner/>;
+  // if (loading) return <LoadingSpinner/>;
   if (error) return <div className="text-center mt-10 text-red-500">Erro: {error}</div>;
 
   return (
     <>
-    <Navbar/>
-    <div className="min-h-screen p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center text-">Personagens dessa Campanha</h1>
-        {personagens.length === 0 ? (
-          <p className="text-center text-gray-500">Nenhum personagem encontrado para esta campanha.</p>
+      <Navbar />
+      <motion.div
+        layout
+        className={`min-h-screen px-6 py-10 ${
+          compactMode
+            ? "flex flex-col justify-center items-center space-y-8"
+            : "space-y-10"
+        }`}
+        transition={{ duration: 0.5, ease: [0.4, 0.0, 0.2, 1] }}
+      >
+        <h1 className={`text-3xl font-bold uppercase text-center`}>
+          Escolha um Personagem
+        </h1>
+
+        {loading ? (
+          <SelectedCardSkeleton />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {personagens.map((personagem, index) => (
-              <Link key={index} href={`/personagens/${personagem._id}`}>
-              <Card key={index} className="shadow-lg hover:shadow-xl transition-shadow">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    {personagem.nome}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">Campanha ID: {personagem.campanha_id}</p>
-                  {/* Adicione mais campos aqui, ex: <p>Classe: {personagem.classe}</p> */}
-                </CardContent>
-              </Card>
-              </Link>
-            ))}
-          </div>
+          personagemSelecionado && (
+            <SelecionadoCard selectedRace={personagemSelecionado} url={`/personagens/${personagemSelecionado._id}`} />
+          )
         )}
-      </div>
-    </div>
+
+        <div className="flex justify-center">
+          <Button
+            onClick={() => {
+              if (showCarousel) {
+                setShowCarousel(false);
+                setTimeout(() => setCompactMode(true), 400);
+              } else {
+                setCompactMode(false);
+                setTimeout(() => setShowCarousel(true), 10);
+              }
+            }}
+            variant="ghost"
+            className="flex items-center gap-2 text-sm text-zinc-400 hover:text-foreground"
+          >
+            {showCarousel ? (
+              <>
+                <ChevronsDown className="w-5 h-5" /> Ocultar Raças
+              </>
+            ) : (
+              <>
+                <ChevronsUp className="w-5 h-5" /> Mostrar Raças
+              </>
+            )}
+          </Button>
+        </div>
+
+        <AnimatePresence initial={false}>
+          {showCarousel && (
+            <motion.div
+              key="carousel"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.4 }}
+            >
+              {loading ? (
+                <MultiCardItemSkeleton.Carousel />
+              ) : (
+                <MultiCardItem.Carousel
+                  items={personagens}
+                  selectedId={personagemSelecionado?._id || 1}
+                  onSelect={setPersonagemSelecionado}
+                  onButtonClick={(item) => console.log("ver mais:", item)}
+                />
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      <Footer />
     </>
   );
 }
