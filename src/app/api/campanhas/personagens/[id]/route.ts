@@ -19,10 +19,10 @@ export async function GET(
     const data: Array<Personagem> = await redis.json.get(key) || [];
 
     let personagens: Personagem[] = [];
+    personagens = data;
     if (personagens.length == 0) {
       return NextResponse.json({ error: 'Não foi possivel encontrar os personagens' }, { status: 400 });
     }
-
     // Filtre pelos personagens da campanha específica
     const personagensFiltrados = personagens.filter(p => p.campanha_id === Number(id));
 
