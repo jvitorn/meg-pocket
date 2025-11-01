@@ -1,28 +1,46 @@
 import Image from "next/image";
 import Link from "next/link";
+import { BackgroundHome } from "@/components/background-home";
+import { Navbar } from "@/components/navbar";
+import { OverviewFeatures } from "@/components/overview-features";
 
 export default function Home() {
   return (
-    <div className="flex items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-full gap-6 flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <div className="flex flex-col items-center gap-4 text-center sm:items-start sm:text-left">
-          <h1 className="text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            Vamos iniciar a aventura do rpg
-          </h1>
-          <p className="text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Selecione a &nbsp;
-            <span className="font-medium text-zinc-950 dark:text-zinc-50">
-               campanha
-            </span>
-             &nbsp; na qual voce está no momento.
-          </p>
-        </div>
-        <div className="flex mt-4 flex-col text-base font-medium sm:flex-row">
-          <Link className="flex h-12 w-full items-center justify-center gap-6 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]" href={`/campanhas`}>
-          Campanhas
-          </Link>
-        </div>
-      </main>
-    </div>
+    <>
+     <Navbar/>
+     <BackgroundHome
+            title="TORNE-SE A LENDA QUE VALTHERA ESPERA"
+            subtitle="Desperte seu grimório, domine magias únicas e enfrente os desafios de Valthera — um mundo à beira do colapso."
+            buttonText="Ver campanhas"
+          />
+      <OverviewFeatures
+            title="Sobre o Magos & Grimórios"
+            subtitle="Explore um sistema único e criativo, crie magias poderosas e desvende os segredos do mundo mágico de Valthera."
+            cards={[
+              {
+                icon: "WandSparkles",
+                title: "Magias Assinaturas",
+                description: "Crie magias únicas que evoluem com você.",
+              },
+              {
+                icon: "Users",
+                title: "Raças e Classes",
+                description: "Personalize o seu mago e crie um herói único.",
+              },
+              {
+                icon: "BookMarked",
+                title: "Ficha Online e Interativa",
+                description:
+                  "Gerencie todos os detalhes do seu personagem em tempo real.",
+              },
+              {
+                icon: "Shield",
+                title: "Invocações",
+                description: "Crie e invoque criaturas poderosas.",
+              },
+            ]}
+          />
+    </>
+   
   );
 }
