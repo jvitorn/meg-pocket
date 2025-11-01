@@ -20,6 +20,7 @@ export async function GET(
     const dataClasse: ClasseInterface[] = (await redis.json.get('classes')) || [];
 
     const personagemLocalizado = dataPersonagem.find(p => p._id === personagemId);
+    const indexPersonagemLocalizado = dataPersonagem.findIndex(p => p._id === personagemId);
     if (!personagemLocalizado) {
       return NextResponse.json({ error: 'Personagem não encontrado' }, { status: 404 });
     }
@@ -35,6 +36,7 @@ export async function GET(
     personagemLocalizado.mana = (racaEncontrada.mana ?? 0) + (classeEncontrada.mana ?? 0);
     personagemLocalizado.raca_nome = racaEncontrada.nome;
     personagemLocalizado.classe_nome = classeEncontrada.nome;
+    personagemLocalizado.index = indexPersonagemLocalizado;
 
     return NextResponse.json(personagemLocalizado);
   } catch (error) {

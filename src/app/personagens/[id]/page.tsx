@@ -1,11 +1,12 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo,useCallback } from "react";
 import { Navbar } from "@/components/navbar";
 import { PersonagemInterface } from "@/types/personagem";
 import { LoadingSpinner } from "@/components/loadingSpinner";
 import { Card } from "@/components/ui/card";
+import { setPersonagemValores } from "@/services/personagemService";
 
 import {
   Leaf,
@@ -69,14 +70,6 @@ const elements: Record<ElementType, Element> = {
 
 export default function PersonagemUnicoPage() {
   const [goal, setGoal] = useState(0)
-
-  function onClick(adjustment: number) {
-    console.log('está disparando a função')
-    setGoal(Math.max(0, Math.min((personagem?.hp || 30), goal + adjustment)))
-  }
-  // Dados do personagem (você pode passar via props depois)
-
-
   const { id } = useParams<{ id: string }>();
   const [personagem, setPersonagem] = useState<PersonagemInterface | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,6 +94,26 @@ export default function PersonagemUnicoPage() {
 
     fetchPersonagens();
   }, [id]);
+
+  const handleAtualizarHP = useCallback(async (valorNovo:number) => {
+  if (!personagem) return;
+
+  try {
+    // Calcula o novo HP com base no valor atual
+    const novoHP = Math.max(0, Math.min(personagem?.hp || 30, goal + valorNovo));
+    // Atualiza o estado local imediatamente
+    setGoal(novoHP);
+    // Envia o novo valor para o backend
+    const resp = await setPersonagemValores(personagem.index, "hp_atual", novoHP);
+    // Atualiza o personagem localmente também
+    setPersonagem(prev => (prev ? { ...prev, hp_atual: novoHP } : prev));
+    // opcional: feedback ao usuário (console por enquanto)
+    console.log("Atualização bem-sucedida:", resp);
+  } catch (error) {
+    console.error("Erro ao atualizar HP:", error);
+    // aqui você pode disparar um toast ou setar um estado de erro
+  }
+}, [personagem, goal]);
 
   const characterElement: ElementType = useMemo(() => {
     const validElements: ElementType[] = ["natureza", "agua", "fogo", "vento"];
@@ -174,7 +187,7 @@ export default function PersonagemUnicoPage() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8 shrink-0 rounded-full"
-                        onClick={() => onClick(-1)}
+                        onClick={() => handleAtualizarHP(-1)}
                         disabled={goal <= 0}
                       >
                         <Minus />
@@ -192,7 +205,7 @@ export default function PersonagemUnicoPage() {
                         variant="outline"
                         size="icon"
                         className="h-8 w-8 shrink-0 rounded-full"
-                        onClick={() => onClick(1)}
+                        onClick={() => handleAtualizarHP(1)}
                         disabled={goal >= (personagem?.hp || 30)}
                       >
                         <Plus />
@@ -201,7 +214,6 @@ export default function PersonagemUnicoPage() {
                     </div>
                   </div>
                   <DrawerFooter>
-                    <Button>Atualizar</Button>
                     <DrawerClose asChild>
                       <Button variant="outline">Cancelar</Button>
                     </DrawerClose>
