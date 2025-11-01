@@ -16,6 +16,19 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Footer } from "@/components/footer";
+import { Button } from "@/components/ui/button";
+import { Minus, Plus } from "lucide-react"
+
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer"
 
 // Tipo para elementos
 type ElementType = "natureza" | "agua" | "fogo" | "vento";
@@ -55,6 +68,12 @@ const elements: Record<ElementType, Element> = {
 };
 
 export default function PersonagemUnicoPage() {
+  const [goal, setGoal] = useState(0)
+
+  function onClick(adjustment: number) {
+    console.log('está disparando a função')
+    setGoal(Math.max(0, Math.min((personagem?.hp || 30), goal + adjustment)))
+  }
   // Dados do personagem (você pode passar via props depois)
 
 
@@ -72,6 +91,7 @@ export default function PersonagemUnicoPage() {
         if (!response.ok) throw new Error("Erro ao carregar personagens");
         const data: PersonagemInterface = await response.json();
         setPersonagem(data);
+        setGoal(data.hp_atual || 0);
       } catch (err) {
         setError((err as Error).message);
       } finally {
@@ -99,6 +119,7 @@ export default function PersonagemUnicoPage() {
   return (
     <>
       <Navbar />
+
       <Card className="bg-accent text-accent-foreground border-0 overflow-hidden shadow-2xl">
         {/* Conteúdo */}
         <div className="p-6 space-y-4">
@@ -108,6 +129,7 @@ export default function PersonagemUnicoPage() {
               <AvatarImage
                 src={personagem?.url_imagem}
                 alt={personagem?.nome}
+                className="object-cover"
               />
               <AvatarFallback className="text-3xl font-bold">MN</AvatarFallback>
             </Avatar>
@@ -132,10 +154,63 @@ export default function PersonagemUnicoPage() {
               <div className="text-2xl font-bold">{personagem?.mana_atual}/{personagem?.mana}</div>
               <div className="text-xs uppercase tracking-wider">Mana</div>
             </div>
-            <div className="bg-accent-foreground/10 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold">{personagem?.hp_atual}/{personagem?.hp}</div>
-              <div className="text-xs uppercase tracking-wider">Vida</div>
-            </div>
+            {/* Para atualizar a vida */}
+            <Drawer>
+              <DrawerTrigger asChild>
+                <div className="bg-accent-foreground/10 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold">{personagem?.hp_atual}/{personagem?.hp}</div>
+                  <div className="text-xs uppercase tracking-wider">Vida</div>
+                </div>
+              </DrawerTrigger>
+              <DrawerContent>
+                <div className="mx-auto w-full max-w-sm">
+                  <DrawerHeader>
+                    <DrawerTitle>Atualizar Vida</DrawerTitle>
+                    <DrawerDescription>Informe a quantidade de vida atual.</DrawerDescription>
+                  </DrawerHeader>
+                  <div className="p-4 pb-0">
+                    <div className="flex items-center justify-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 rounded-full"
+                        onClick={() => onClick(-1)}
+                        disabled={goal <= 0}
+                      >
+                        <Minus />
+                        <span className="sr-only">Decrease</span>
+                      </Button>
+                      <div className="flex-1 text-center">
+                        <div className="text-7xl font-bold tracking-tighter">
+                          {goal}
+                        </div>
+                        <div className="text-muted-foreground text-[0.70rem] uppercase">
+                          HP
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 rounded-full"
+                        onClick={() => onClick(1)}
+                        disabled={goal >= (personagem?.hp || 30)}
+                      >
+                        <Plus />
+                        <span className="sr-only">Increase</span>
+                      </Button>
+                    </div>
+                  </div>
+                  <DrawerFooter>
+                    <Button>Atualizar</Button>
+                    <DrawerClose asChild>
+                      <Button variant="outline">Cancelar</Button>
+                    </DrawerClose>
+                  </DrawerFooter>
+                </div>
+              </DrawerContent>
+
+            </Drawer>
+
           </div>
           {/* Card de Elemento */}
           <div className="space-y-2">
