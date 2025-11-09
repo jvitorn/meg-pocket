@@ -18,7 +18,7 @@ export async function GET() {
       case data === null:
       case data === undefined:
         campanhas = [
-          { nome: 'Conservatório de Mana Cooper', count_jogadores: 5, _id: "1" },
+          { nome: 'Conservatório de Mana Cooper', mestre:"jvitorn",count_jogadores: 5, _id: "1" },
         ];
         await saveCampanhas(key, campanhas);
         break;
@@ -34,7 +34,10 @@ export async function GET() {
       default:
         console.warn('Formato de dados inesperado, usando padrão');
         campanhas = [
-          { nome: 'Conservatório de Mana Cooper', count_jogadores: 5,  _id: "1" },
+          {
+            nome: 'Conservatório de Mana Cooper', count_jogadores: 5, _id: "1",
+            mestre: ''
+          },
         ];
         await saveCampanhas(key, campanhas);
     }
