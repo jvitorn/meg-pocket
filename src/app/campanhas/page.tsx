@@ -76,7 +76,7 @@ export default function CampanhasPage() {
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
               Explore as campanhas e mergulhe nas histórias — clique em qualquer
-              card para ver mais detalhes.
+              lugar para ver mais detalhes.
             </p>
           </header>
 
@@ -118,7 +118,7 @@ export default function CampanhasPage() {
                       Sem capa
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/35 to-transparent" />
                   <div className="absolute left-4 right-4 bottom-4 rounded-md bg-black/40 backdrop-blur-sm px-4 py-3 border border-white/5">
                     <h2
                       id={`camp-${campanha._id}-title`}
@@ -134,7 +134,7 @@ export default function CampanhasPage() {
                 </div>
 
                 {/* Conteúdo inferior */}
-                <div className="p-4 flex flex-col justify-between h-[170px] bg-gradient-to-b from-transparent to-black/5">
+                <div className="p-4 flex flex-col justify-between h-[170px] bg-linear-to-b from-transparent to-black/5">
                   {campanha.sinopse ? (
                     <p className="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed">
                       {campanha.sinopse}
@@ -180,7 +180,7 @@ export default function CampanhasPage() {
                 </div>
 
                 {/* brilho suave no hover */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-gradient-to-t from-purple-600/6 via-transparent to-transparent" />
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-linear-to-t from-purple-600/6 via-transparent to-transparent" />
               </motion.div>
             ))}
           </motion.section>
@@ -208,7 +208,7 @@ export default function CampanhasPage() {
                 className="w-full flex flex-col max-h-[90vh]"
               >
                 {/* Capa */}
-                <div className="relative w-full flex-shrink-0 h-60 md:h-72 overflow-hidden">
+                <div className="relative w-full shrink-0 h-60 md:h-72 overflow-hidden">
                   {campanhaSelecionada.capa ? (
                     <img
                       src={campanhaSelecionada.capa}
@@ -220,7 +220,7 @@ export default function CampanhasPage() {
                       Sem imagem de capa
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/30 to-transparent" />
                   <div className="absolute bottom-4 left-6 text-white drop-shadow-lg">
                     <motion.h2
                       layoutId={`title-${campanhaSelecionada._id}`}

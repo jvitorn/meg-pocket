@@ -8,7 +8,7 @@ const cormorant = Cormorant_Garamond({ subsets: ["latin"], weight: ["700"] });
 
 export function Footer() {
     return (
-        <footer className="bg-accent text-foreground border-t border-border py-10 px-6">
+        <footer className="text-foreground border-t border-border py-10 px-6">
             <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
                 {/* Coluna esquerda: Logo */}
                 <div className={`${cormorant.className} text-xl md:text-2xl font-bold`}>

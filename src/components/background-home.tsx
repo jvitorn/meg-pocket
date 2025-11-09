@@ -30,7 +30,7 @@ export function BackgroundHome({
       <div className="absolute inset-0 bg-black/60 z-10" />
 
       {/* Gradiente mágico roxo→dourado */}
-      <div className="absolute inset-0 z-10 bg-gradient-to-r from-purple-900/30 via-transparent to-yellow-600/20 mix-blend-soft-light" />
+      <div className="absolute inset-0 z-10 bg-linear-to-r from-purple-900/30 via-transparent to-yellow-600/20 mix-blend-soft-light" />
 
       {/* Conteúdo */}
       <div className="relative z-20 w-full max-w-4xl text-white pt-32 md:pt-56 px-4 mx-auto">
