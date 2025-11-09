@@ -46,20 +46,14 @@ export function MultiCardItem({
       <div className="absolute bottom-0 left-0 right-0 h-20 bg-linear-to-t dark:from-black/80 from-white/80 to-transparent z-10 pointer-events-none" />
 
       {/* Cabeçalho com nome e título da classe */}
-      <CardHeader className="relative z-20 flex flex-col items-center justify-center gap-1 transition-all duration-200 ease-in-out group-hover:-translate-y-2">
-        <CardTitle className="text-2xl text-center tracking-wide uppercase leading-tight">
+      <CardHeader className="relative flex flex-col items-center justify-center gap-4 transition-all duration-200 ease-in-out group-hover:-translate-y-1">
+        <CardTitle className="text-xl text-center uppercase">
           {data.nome}
         </CardTitle>
-        {data.descricao && (
-          <CardDescription className={cn("text-xs uppercase tracking-wider", getColorClasses(data.corTema ?? "red").text)}>
-            {data.descricao}
-          </CardDescription>
-        )}
       </CardHeader>
-
       {/* Imagem central da classe */}
-      <CardContent className="relative z-20 flex justify-center -mt-2 overflow-visible">
-        <div className="relative w-[90px] h-[90px] z-30 transition-transform duration-200 ease-in-out group-hover:scale-[1.3] will-change-transform">
+      <CardContent className="relative z-20 flex justify-center -mt-1 overflow-visible">
+        <div className="relative w-[100px] h-[100px] z-30 transition-transform duration-200 ease-in-out group-hover:scale-[1.5] will-change-transform">
           <Image
             src={data.imagem_pixel || ""}
             alt={data.nome}

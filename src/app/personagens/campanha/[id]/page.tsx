@@ -1,36 +1,40 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { PersonagemInterface } from '@/types';
-import { Navbar } from '@/components/navbar';
-import { getPersonagensNaCampanha } from '@/services/personagemService';
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { PersonagemInterface } from "@/types";
+import { Navbar } from "@/components/navbar";
+import { getPersonagensNaCampanha } from "@/services/personagemService";
 import { MultiCardItem } from "@/components/multi-card-item";
 import { Button } from "@/components/ui/button";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronsDown, ChevronsUp } from "lucide-react";
-import SelectedCardSkeleton from '@/components/skeletons/selected-card.skeleton';
-import SelecionadoCard from '@/components/selecionado-card';
-import { Footer } from '@/components/footer';
-import { MultiCardItemSkeleton } from '@/components/skeletons/multi-card-item.skeleton';
+import SelectedCardSkeleton from "@/components/skeletons/selected-card.skeleton";
+import SelecionadoCard from "@/components/selecionado-card";
+import { Footer } from "@/components/footer";
+import { MultiCardItemSkeleton } from "@/components/skeletons/multi-card-item.skeleton";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function PersonagemCampanhaPage() {
   const { id } = useParams<{ id: string }>();
   const [personagens, setPersonagens] = useState<PersonagemInterface[]>([]);
-  const [personagemSelecionado, setPersonagemSelecionado] = useState<PersonagemInterface | null>(null);
+  const [personagemSelecionado, setPersonagemSelecionado] =
+    useState<PersonagemInterface | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCarousel, setShowCarousel] = useState(true);
   const [compactMode, setCompactMode] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!id) return;
 
     const loadPersonagensCampanha = async () => {
       try {
-        const dataPersonagensCampanha : PersonagemInterface [] = await getPersonagensNaCampanha(id);
+        const dataPersonagensCampanha: PersonagemInterface[] =
+          await getPersonagensNaCampanha(id);
         setPersonagens(dataPersonagensCampanha);
-        setPersonagemSelecionado(dataPersonagensCampanha[0])
+        setPersonagemSelecionado(dataPersonagensCampanha[0]);
       } catch (err) {
         setError((err as Error).message);
       } finally {
@@ -42,7 +46,8 @@ export default function PersonagemCampanhaPage() {
   }, [id]);
 
   // if (loading) return <LoadingSpinner/>;
-  if (error) return <div className="text-center mt-10 text-red-500">Erro: {error}</div>;
+  if (error)
+    return <div className="text-center mt-10 text-red-500">Erro: {error}</div>;
 
   return (
     <>
@@ -64,7 +69,10 @@ export default function PersonagemCampanhaPage() {
           <SelectedCardSkeleton />
         ) : (
           personagemSelecionado && (
-            <SelecionadoCard selectedRace={personagemSelecionado} url={`/personagens/${personagemSelecionado._id}`} />
+            <SelecionadoCard
+              selectedRace={personagemSelecionado}
+              url={`/personagens/${personagemSelecionado._id}`}
+            />
           )
         )}
 
@@ -109,7 +117,12 @@ export default function PersonagemCampanhaPage() {
                 <MultiCardItem.Carousel
                   items={personagens}
                   selectedId={personagemSelecionado?._id || 1}
-                  onSelect={setPersonagemSelecionado}
+                  onSelect={(item) => {
+                    setPersonagemSelecionado(item);
+                    if (isMobile) {
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }
+                  }}
                   onButtonClick={(item) => console.log("ver mais:", item)}
                 />
               )}
