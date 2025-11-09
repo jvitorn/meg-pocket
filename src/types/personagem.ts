@@ -13,6 +13,7 @@ export interface PersonagemInterface extends BaseInterface {
   url_imagem?: string;
   magias?: MagiaPersonagem[];
   index: number;
+  pericias?: PericiaPersonagem [];
 }
 
 export interface MagiaPersonagem {
@@ -20,4 +21,11 @@ export interface MagiaPersonagem {
   alcance : string;
   descricao: string;
   custo_nivel: number;
+}
+
+export interface PericiaPersonagem {
+  nome: string;
+  tipo: string; 
+  pontuacao: number;
+  descricao?: string; // opcional, aparece no dialog
 }
