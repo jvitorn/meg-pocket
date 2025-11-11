@@ -14,8 +14,11 @@ export interface PersonagemInterface extends BaseInterface {
   magias?: MagiaPersonagem[];
   index: number;
   pericias?: PericiaPersonagem [];
+  status_baile?: StatusBaile;
+  actions?: { nome: string; descricao: string; custo_mana: number; }[];
 }
 
+type StatusBaile = 'vivo' | 'morto' | 'killer';
 export interface MagiaPersonagem {
   nome: string;
   alcance : string;
