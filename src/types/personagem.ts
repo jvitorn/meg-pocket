@@ -16,6 +16,7 @@ export interface PersonagemInterface extends BaseInterface {
   pericias?: PericiaPersonagem [];
   status_baile?: StatusBaile;
   actions?: { nome: string; descricao: string; custo_mana: number; }[];
+  apelido?: string;
 }
 
 type StatusBaile = 'vivo' | 'morto' | 'killer';

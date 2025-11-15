@@ -38,6 +38,11 @@ export async function GET(
     personagemLocalizado.classe_nome = classeEncontrada.nome;
     personagemLocalizado.index = indexPersonagemLocalizado;
 
+    // Se tiver apelido, substituir o nome
+    if (personagemLocalizado.apelido && personagemLocalizado.apelido.trim() !== "") {
+      personagemLocalizado.nome = personagemLocalizado.apelido;
+    }
+
     return NextResponse.json(personagemLocalizado);
   } catch (error) {
     console.error('Erro ao buscar personagens:', error);
