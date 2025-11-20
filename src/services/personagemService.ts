@@ -1,6 +1,6 @@
 import { CAMPANHAPERSONAGEMROUTE,PERSONAGEMROUTE } from "@/services/baseUrl";
 
-export async function getPersonagensNaCampanha(id : string) {
+export async function getPersonagensNaCampanha(id : number) {
   const res = await fetch(`${CAMPANHAPERSONAGEMROUTE}/${id}`);
   if (!res.ok) throw new Error("Erro ao buscar os personagens dessa campanha");
   return res.json();

@@ -20,7 +20,7 @@ interface Props {
 
 // Objeto padrão para a raça
 const defaultRace: SelecionadoCardProps = {
-  _id: 0,
+  id: 0,
   nome: "Nome não informado",
   descricao: "Selecione uma opção para visualizar suas características e informações.",
   mana: 0,
@@ -83,7 +83,7 @@ export default function SelecionadoCard({
 
             {/* Botões de ação (mantive seu Ver detalhes, estilizei botão "Ver Ficha" roxo) */}
             <div className="mt-2 flex flex-col sm:flex-row gap-3">
-              {race._id !== 0 ? (
+              {race.id !== 0 ? (
                 <>
                   <Button
                     asChild

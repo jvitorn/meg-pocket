@@ -1,51 +1,98 @@
-import redis from '@/lib/redis';
+// app/personagens/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { PersonagemInterface, ClasseInterface, RacaInterface } from '@/types';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+     const { id } = await params;
     const personagemId = Number(id);
 
     if (isNaN(personagemId)) {
       return NextResponse.json({ error: 'ID do personagem inválido' }, { status: 400 });
     }
 
-    const key = 'personagens';
-    const dataPersonagem: PersonagemInterface[] = (await redis.json.get(key)) || [];
-    const dataRaca: RacaInterface[] = (await redis.json.get('racas')) || [];
-    const dataClasse: ClasseInterface[] = (await redis.json.get('classes')) || [];
+    // Busca personagem com raca e classe; vínculos serão consultados separadamente
+    const personagem = await prisma.personagem.findUnique({
+      where: { id: personagemId },
+      include: {
+        raca: true,
+        classe: true,
+      },
+    });
 
-    const personagemLocalizado = dataPersonagem.find(p => p._id === personagemId);
-    const indexPersonagemLocalizado = dataPersonagem.findIndex(p => p._id === personagemId);
-    if (!personagemLocalizado) {
+    if (!personagem) {
       return NextResponse.json({ error: 'Personagem não encontrado' }, { status: 404 });
     }
 
-    const racaEncontrada = dataRaca.find(r => r._id === Number(personagemLocalizado.raca_id));
-    const classeEncontrada = dataClasse.find(c => c._id === Number(personagemLocalizado.classe_id));
+    // Busca vínculos separadamente (evita usar nomes de relações que não existem no include do client)
+    const magiaPersonagem = await prisma.magiaPersonagem.findMany({
+      where: { personagemId: personagemId },
+      include: { magia: true },
+    });
 
-    if (!racaEncontrada || !classeEncontrada) {
-      return NextResponse.json({ error: 'Raça ou classe do personagem não encontrada' }, { status: 404 });
-    }
+    const periciaPersonagem = await prisma.periciaPersonagem.findMany({
+      where: { personagemId: personagemId },
+      include: { pericia: true },
+    });
+    console.log('personagem raca->',personagem.raca);
 
-    personagemLocalizado.hp = (racaEncontrada.hp ?? 0) + (classeEncontrada.hp ?? 0);
-    personagemLocalizado.mana = (racaEncontrada.mana ?? 0) + (classeEncontrada.mana ?? 0);
-    personagemLocalizado.raca_nome = racaEncontrada.nome;
-    personagemLocalizado.classe_nome = classeEncontrada.nome;
-    personagemLocalizado.index = indexPersonagemLocalizado;
+    // Calcula hp/mana finais (se não houver hp_base, recalcula a partir de raca/classe)
+    const hpBase = ((personagem.raca?.hp ?? 0) + (personagem.classe?.hp ?? 0));
 
-    // Se tiver apelido, substituir o nome
-    if (personagemLocalizado.apelido && personagemLocalizado.apelido.trim() !== "") {
-      personagemLocalizado.nome = personagemLocalizado.apelido;
-    }
+   
+    const manaBase = ((personagem.raca?.mana ?? 0) + (personagem.classe?.mana ?? 0));
+    // Map magias: prioriza overrides do vínculo (MagiaPersonagem), senão usa MagiaCatalog
+    const magias = (magiaPersonagem ?? []).map(mp => {
+      const catalog = mp.magia;
+      return {
+        nome: catalog?.nome ?? null,
+        alcance: mp.descricao && !catalog?.alcance ? null : (mp.descricao ? (catalog?.alcance ?? null) : (catalog?.alcance ?? null)),
+        // Prioriza descricao do vínculo se houver, senão do catalog
+        descricao: mp.descricao ?? catalog?.descricao ?? '',
+        // Prioriza custo_nivel do vínculo, senão do catalog
+        custo_nivel: mp.custo_nivel ?? catalog?.custo_nivel ?? null,
+      };
+    }).filter(m => m.nome !== null);
 
-    return NextResponse.json(personagemLocalizado);
+    // Map pericias: junta info do catálogo com pontuação do vínculo
+    const pericias = (periciaPersonagem ?? []).map(pp => {
+      const catalog = pp.pericia;
+      return {
+        nome: catalog?.nome ?? null,
+        tipo: catalog?.tipo ?? '',
+        pontuacao: pp.pontuacao ?? 0,
+        descricao: pp.descricao ?? catalog?.descricao ?? '',
+      };
+    }).filter(p => p.nome !== null);
+
+    const result = {
+      id: personagem.id,
+      nome: (personagem.apelido && personagem.apelido.trim() !== '') ? personagem.apelido : personagem.nome,
+      apelido: personagem.apelido ?? null,
+      campanhaId: personagem.campanhaId,
+      classeId: personagem.classeId,
+      classe_nome: personagem.classe?.nome ?? null,
+      racaId: personagem.racaId,
+      raca_nome: personagem.raca?.nome ?? null,
+      elemento: personagem.elemento,
+      hp_atual: personagem.hp_atual ?? null,
+      mana_atual: personagem.mana_atual ?? null,
+      hp: hpBase,
+      mana: manaBase,
+      sobre: personagem.descricao ?? null,
+      url_imagem: personagem.url_imagem ?? null,
+      imagem_pixel: personagem.imagem_pixel ?? null,
+      magias,
+      pericias,
+      status_baile: personagem.status_baile ?? null,
+    };
+
+    return NextResponse.json(result);
   } catch (error) {
-    console.error('Erro ao buscar personagens:', error);
+    console.error('Erro ao buscar personagem:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }

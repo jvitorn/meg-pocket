@@ -2,7 +2,7 @@ import type { ColorThemeName } from "@/lib/utils";
 import { MagiaPersonagem } from "@/types";
 
 export interface BaseInterface {
-    _id:number;
+    id:number;
     mana:number;
     hp:number;
     nome: string;

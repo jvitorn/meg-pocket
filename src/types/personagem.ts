@@ -1,10 +1,10 @@
 import { BaseInterface } from "@/types";
 
 export interface PersonagemInterface extends BaseInterface {
-  campanha_id: number;
-  raca_id: number;
+  campanhaId: number;
+  racaId: number;
   raca_nome?: string;
-  classe_id: number;
+  classeId: number;
   classe_nome?: string;
   elemento: string;
   hp_atual?: number;
@@ -12,7 +12,6 @@ export interface PersonagemInterface extends BaseInterface {
   sobre: string;
   url_imagem?: string;
   magias?: MagiaPersonagem[];
-  index: number;
   pericias?: PericiaPersonagem [];
   status_baile?: StatusBaile;
   actions?: { nome: string; descricao: string; custo_mana: number; }[];

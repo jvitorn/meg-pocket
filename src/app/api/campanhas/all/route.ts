@@ -1,50 +1,45 @@
-import redis from '@/lib/redis';
-import { NextResponse } from 'next/server';
-import { CampanhaInterface } from '@/types';
-
-// Helper function para salvar com tipo correto
-async function saveCampanhas(key: string, campanhas: CampanhaInterface[]) {
-  await redis.json.set(key, '$', campanhas as any);
-}
+// src/app/api/campanhas/all/route.ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import type { CampanhaInterface } from "@/types";
 
 export async function GET() {
   try {
-    const key = 'campanhas';
-    const data = await redis.json.get(key);
-    
-    let campanhas: CampanhaInterface[] = [];
+    const rows = await prisma.campanha.findMany({
+      orderBy: { id: "asc" },
+      select: {
+        id: true,
+        nome: true,
+        sinopse: true,
+        capa: true,
+        count_jogadores: true,
+        mestre: true,
+        tags: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
 
-    switch (true) {
-      case data === null:
-      case data === undefined:
-        campanhas = [
-          { nome: 'Conservatório de Mana Cooper', mestre:"jvitorn",count_jogadores: 5, _id: "1" },
-        ];
-        await saveCampanhas(key, campanhas);
-        break;
+    // Mapeia para o formato legado esperado pelo frontend (CampanhaInterface)
+    const campanhas: CampanhaInterface[] = (rows || []).map((r) => {
+      // tags pode ser JSON no banco; garantir array ou undefined
+      const tags = Array.isArray(r.tags) ? r.tags : (r.tags ? r.tags : undefined);
 
-      case Array.isArray(data) && data.length > 0:
-        campanhas = data as CampanhaInterface[];
-        break;
+      return {
+        id: r.id,               // mantém compatibilidade com o frontend
+        nome: r.nome,
+        sinopse: r.sinopse ?? undefined,
+        capa: r.capa ?? undefined,
+        count_jogadores: r.count_jogadores ?? 0,
+        mestre: r.mestre ?? "",
+        tags: tags as string[] | undefined,
+      };
+    });
 
-      case typeof data === 'object' && data !== null:
-        campanhas = [data as CampanhaInterface];
-        break;
-
-      default:
-        console.warn('Formato de dados inesperado, usando padrão');
-        campanhas = [
-          {
-            nome: 'Conservatório de Mana Cooper', count_jogadores: 5, _id: "1",
-            mestre: ''
-          },
-        ];
-        await saveCampanhas(key, campanhas);
-    }
-
+    // Retornar array vazio quando não há campanhas (útil pro frontend)
     return NextResponse.json(campanhas);
   } catch (error) {
-    console.error('Erro ao buscar campanhas:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    console.error("Erro ao listar campanhas:", error);
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }
 }

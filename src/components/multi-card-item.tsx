@@ -112,12 +112,12 @@ MultiCardItem.Carousel = function CarouselComponent({
       <CarouselContent className="-ml-2 pr-2">
         {items.map((item, index) => (
           <CarouselItem
-            key={item._id || index}
+            key={item.id || index}
             className="pl-2 sm:basis-1/2 md:basis-1/3 lg:basis-1/5 xl:basis-1/6"
           >
             <MultiCardItem
               data={item}
-              isSelected={item._id === selectedId}
+              isSelected={item.id === selectedId}
               onClick={() => onSelect(item)}
               onButtonClick={() => onButtonClick?.(item)}
             />

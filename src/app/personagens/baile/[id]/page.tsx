@@ -141,7 +141,7 @@ export default function PersonagemUnicoPage() {
       if (!personagem) return;
       const novoHP = Math.max(0, Math.min(personagem.hp || 30, novoValor));
       try {
-        await setPersonagemValores(personagem.index, "hp_atual", novoHP);
+        await setPersonagemValores(personagem.id, "hp_atual", novoHP);
         setPersonagem((p) => (p ? { ...p, hp_atual: novoHP } : p));
         toast.success(`HP atualizado: ${novoHP}`);
       } catch (err) {
@@ -159,7 +159,7 @@ export default function PersonagemUnicoPage() {
       if (!personagem) return;
       const novaMana = Math.max(0, Math.min(personagem.mana || 0, novoValor));
       try {
-        await setPersonagemValores(personagem.index, "mana_atual", novaMana);
+        await setPersonagemValores(personagem.id, "mana_atual", novaMana);
         setPersonagem((p) => (p ? { ...p, mana_atual: novaMana } : p));
         toast.success(`Mana atualizada: ${novaMana}`);
       } catch (err) {
@@ -199,7 +199,7 @@ const handleAtivarMagia = useCallback(async () => {
 
   try {
     setMagiaAtualizando(true);
-    await setPersonagemValores(personagem.index, "mana_atual", novaMana);
+    await setPersonagemValores(personagem.id, "mana_atual", novaMana);
     setPersonagem((p) => (p ? { ...p, mana_atual: novaMana } : p));
 
     setMagiaDialogOpen(false);
@@ -228,7 +228,7 @@ const handleAtivarMagia = useCallback(async () => {
     if (!personagem) return;
     try {
       setEditSaving(true);
-      await setPersonagemValores(personagem.index, "sobre", editingSobre);
+      await setPersonagemValores(personagem.id, "sobre", editingSobre);
       setPersonagem((p) => (p ? { ...p, sobre: editingSobre } : p));
       setEditDialogOpen(false);
       toast.success("Descrição salva.");

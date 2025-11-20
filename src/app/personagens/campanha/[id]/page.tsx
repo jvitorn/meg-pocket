@@ -32,7 +32,7 @@ export default function PersonagemCampanhaPage() {
     const loadPersonagensCampanha = async () => {
       try {
         const dataPersonagensCampanha: PersonagemInterface[] =
-          await getPersonagensNaCampanha(id);
+          await getPersonagensNaCampanha(Number(id));
         setPersonagens(dataPersonagensCampanha);
         setPersonagemSelecionado(dataPersonagensCampanha[0]);
       } catch (err) {
@@ -71,7 +71,7 @@ export default function PersonagemCampanhaPage() {
           personagemSelecionado && (
             <SelecionadoCard
               selectedRace={personagemSelecionado}
-              url={`/personagens/${personagemSelecionado._id}`}
+              url={`/personagens/${personagemSelecionado.id}`}
             />
           )
         )}
@@ -116,7 +116,7 @@ export default function PersonagemCampanhaPage() {
               ) : (
                 <MultiCardItem.Carousel
                   items={personagens}
-                  selectedId={personagemSelecionado?._id || 1}
+                  selectedId={personagemSelecionado?.id || 1}
                   onSelect={(item) => {
                     setPersonagemSelecionado(item);
                     if (isMobile) {

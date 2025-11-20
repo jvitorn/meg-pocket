@@ -50,7 +50,7 @@ export default function CampanhasPage() {
 
     try {
       const dataPersonagens: PersonagemInterface[] =
-        await getPersonagensNaCampanha(campanha._id);
+        await getPersonagensNaCampanha(campanha.id);
       setPersonagens(dataPersonagens || []);
     } catch (err) {
       console.error("Erro ao carregar personagens:", err);
@@ -96,7 +96,7 @@ export default function CampanhasPage() {
           >
             {campanhas.map((campanha) => (
               <motion.div
-                key={campanha._id}
+                key={campanha.id}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: "spring", stiffness: 200, damping: 20 }}
@@ -121,7 +121,7 @@ export default function CampanhasPage() {
                   <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/35 to-transparent" />
                   <div className="absolute left-4 right-4 bottom-4 rounded-md bg-black/40 backdrop-blur-sm px-4 py-3 border border-white/5">
                     <h2
-                      id={`camp-${campanha._id}-title`}
+                      id={`camp-${campanha.id}-title`}
                       className="text-lg font-semibold text-white truncate"
                     >
                       {campanha.nome}
@@ -164,7 +164,7 @@ export default function CampanhasPage() {
                     onClick={(e) => e.stopPropagation()} // impede clique de abrir modal
                   >
                     <Link
-                      href={`/personagens/campanha/${campanha._id}`}
+                      href={`/personagens/campanha/${campanha.id}`}
                       className="flex-1 inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold bg-purple-600 text-white shadow-md hover:opacity-95 transition"
                     >
                       Ver Personagens
@@ -223,7 +223,7 @@ export default function CampanhasPage() {
                   <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/30 to-transparent" />
                   <div className="absolute bottom-4 left-6 text-white drop-shadow-lg">
                     <motion.h2
-                      layoutId={`title-${campanhaSelecionada._id}`}
+                      layoutId={`title-${campanhaSelecionada.id}`}
                       className="text-2xl md:text-3xl font-bold"
                     >
                       {campanhaSelecionada.nome}
@@ -289,7 +289,7 @@ export default function CampanhasPage() {
                       >
                         {personagens.map((p) => (
                           <motion.div
-                            key={p._id}
+                            key={p.id}
                             variants={{
                               hidden: { opacity: 0, y: 10 },
                               visible: { opacity: 1, y: 0 },
@@ -346,7 +346,7 @@ export default function CampanhasPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Link
-                      href={`/personagens/campanha/${campanhaSelecionada._id}`}
+                      href={`/personagens/campanha/${campanhaSelecionada.id}`}
                       className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-purple-600 text-white shadow hover:opacity-95 transition"
                     >
                       Ver todos os personagens

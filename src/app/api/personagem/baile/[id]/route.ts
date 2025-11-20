@@ -1,98 +1,190 @@
-import redis from '@/lib/redis';
-import { NextRequest, NextResponse } from 'next/server';
-import { PersonagemInterface, ClasseInterface, RacaInterface } from '@/types';
+// src/app/api/personagens/baile/[id]/route.ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+type ActionItem = { nome: string; descricao: string; custo_mana?: number };
 
 export async function GET(
-  request: NextRequest,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const personagemId = Number(id);
+    const idParam = id;
+    const personagemId = Number(idParam);
+    if (Number.isNaN(personagemId)) {
+      return NextResponse.json({ error: "ID do personagem inválido" }, { status: 400 });
+    }
+    // buscar personagem com relações mínimas
+    const personagem = await prisma.personagem.findUnique({
+      where: { id: personagemId },
+      include: {
+        raca: true,
+        classe: true,
+        baile: true, 
+      },
+    });
 
-    if (isNaN(personagemId)) {
-      return NextResponse.json({ error: 'ID do personagem inválido' }, { status: 400 });
+    if (!personagem) {
+      return NextResponse.json({ error: "Personagem não encontrado" }, { status: 404 });
+    }
+    // garantia de status_baile
+    const statusBaile = personagem.status_baile ?? "vivo";
+
+    // calcula hp/mana base (fallback raca+classe)
+    const hpBase = ((personagem.raca?.hp ?? 0) + (personagem.classe?.hp ?? 0));
+    const manaBase = ((personagem.raca?.mana ?? 0) + (personagem.classe?.mana ?? 0));
+    // Determinar o baile ativo:
+    // 1) se personagem.baileId estiver setado, usamos esse baile
+    // 2) senão, tentamos pegar o baile mais recente cujo nome contenha 'baile' (heurística)
+    let baileRecord = personagem.baile ?? null;
+    if (!baileRecord) {
+      baileRecord = await prisma.baile.findFirst({
+        where: { nome: { contains: "baile", mode: "insensitive" } },
+        orderBy: { createdAt: "desc" },
+      });
+    }
+    // Buscar ações definidas para o tipo do personagem (por classe -> por raça -> default)
+    let actions: ActionItem[] = [];
+
+    if (baileRecord) {
+      // Se o personagem NÃO tem status no baile, não pesquisamos nada
+      if (!statusBaile || String(statusBaile).trim() === "") {
+        actions = []; // mantém vazio — o fallback posterior tratará o caso
+      } else {
+        // Busca apenas as ações do tipo igual ao status_baile (ex: 'killer' ou 'morto')
+        const roleActions = await prisma.baileRoleAction.findMany({
+          where: {
+            baileId: baileRecord.id,
+            tipo: statusBaile,
+          },
+          orderBy: { id: "asc" }, // ordem de preferência (opcional)
+        });
+
+        for (const ra of roleActions) {
+          try {
+            const parsed = Array.isArray(ra.acoes) ? ra.acoes : JSON.parse(String(ra.acoes ?? "[]"));
+            if (Array.isArray(parsed)) {
+              actions = actions.concat(parsed as ActionItem[]);
+            }
+          } catch (e) {
+            console.warn("BaileRoleAction parse failed for id", ra.id);
+          }
+        }
+      }
     }
 
-    const dataPersonagem: PersonagemInterface[] = (await redis.json.get('personagens')) || [];
-    const dataRaca: RacaInterface[] = (await redis.json.get('racas')) || [];
-    const dataClasse: ClasseInterface[] = (await redis.json.get('classes')) || [];
-
-    const personagemLocalizado = dataPersonagem.find((p) => p._id === personagemId);
-    const indexPersonagemLocalizado = dataPersonagem.findIndex(p => p._id === personagemId);
-
-    if (!personagemLocalizado) {
-      return NextResponse.json({ error: 'Personagem não encontrado' }, { status: 404 });
+    // Se não houver ações definidas no DB, aplica fallback baseado no status_baile
+    if (!actions || actions.length === 0) {
+      switch (statusBaile) {
+        case "killer":
+          actions = [
+            {
+              nome: "Ocultar Presença",
+              descricao:
+                "O Killer se funde às sombras e torna-se invisível por 2 turnos ou até atacar. Durante esse estado, não pode ser alvo de magias, ataques ou detecção. Inimigos a até 5 metros devem realizar um teste de Vontade (CD 12) ou ficam Amedrontados por 1 turno.",
+              custo_mana: 5,
+            },
+            {
+              nome: "Golpe Sombrio",
+              descricao:
+                "Ataque físico mortal imbuído com energia das trevas. Causa 7 de dano direto (9 se alvo amedrontado) e aplica Sangramento Leve (1d4 por 1d3 rodadas). Se usado logo após Ocultar Presença, torna-se Golpe Fatal (teste CD 14 para incapacitar).",
+              custo_mana: 10,
+            },
+            {
+              nome: "Execução Silenciosa",
+              descricao:
+                "Ataque supremo: instakill condicional (só válido se o alvo estiver amedrontado, incapacitado ou com <50% vida). Caso contrário causa 9 de dano. Só pode ser usado uma vez por sessão.",
+              custo_mana: 30,
+            },
+          ];
+          break;
+        case "morto":
+          actions = [
+            { nome: "Sussurro do Além", descricao: "Sussurra para os vivos, interferindo temporariamente nas suas ações.", custo_mana: 5 },
+            { nome: "Travessia Etérea", descricao: "Permite atravessar objetos físicos por alguns instantes.", custo_mana: 8 },
+          ];
+          break;
+        case "vivo":
+        default:
+          actions = []; // vivo não tem ações por padrão
+          break;
+      }
     }
 
-    const raca = dataRaca.find((r) => r._id === Number(personagemLocalizado.raca_id));
-    const classe = dataClasse.find((c) => c._id === Number(personagemLocalizado.classe_id));
+    // Busca vínculos separadamente (evita usar nomes de relações que não existem no include do client)
+    const magiaPersonagem = await prisma.magiaPersonagem.findMany({
+      where: { personagemId: personagemId },
+      include: { magia: true },
+    });
+    // Map magias: prioriza overrides do vínculo (MagiaPersonagem), senão usa MagiaCatalog
+    const magias = (magiaPersonagem ?? []).map(mp => {
+      const catalog = mp.magia;
+      return {
+        nome: catalog?.nome ?? null,
+        alcance: mp.descricao && !catalog?.alcance ? null : (mp.descricao ? (catalog?.alcance ?? null) : (catalog?.alcance ?? null)),
+        // Prioriza descricao do vínculo se houver, senão do catalog
+        descricao: mp.descricao ?? catalog?.descricao ?? '',
+        // Prioriza custo_nivel do vínculo, senão do catalog
+        custo_nivel: mp.custo_nivel ?? catalog?.custo_nivel ?? null,
+      };
+    }).filter(m => m.nome !== null);
 
-    if (!raca || !classe) {
-      return NextResponse.json({ error: 'Raça ou classe não encontrada' }, { status: 404 });
+    const periciaPersonagem = await prisma.periciaPersonagem.findMany({
+      where: { personagemId: personagemId },
+      include: { pericia: true },
+    });
+    // Map pericias: junta info do catálogo com pontuação do vínculo
+    const pericias = (periciaPersonagem ?? []).map(pp => {
+      const catalog = pp.pericia;
+      return {
+        nome: catalog?.nome ?? null,
+        tipo: catalog?.tipo ?? '',
+        pontuacao: pp.pontuacao ?? 0,
+        descricao: pp.descricao ?? catalog?.descricao ?? '',
+      };
+    }).filter(p => p.nome !== null);
+
+    // Ajustes especiais: se status_baile === 'killer' multiplica hp/mana como na lógica antiga
+    let hpFinal = hpBase;
+    let manaFinal = manaBase;
+    if (statusBaile === "killer") {
+      hpFinal = hpFinal * 5;
+      manaFinal = manaFinal * 5;
+      personagem.apelido = "O Mascarado";
+      personagem.descricao = "A máscara não esconde seu rosto, mas consome sua alma. O que era sede de vingança tornou-se sede de sangue, e cada vida que ele ceifa alimenta a maldição que um dia jurou controlar. A linha entre o vingador e o monstro se desfez para sempre.";
+    } else if (statusBaile === "morto") {
+      hpFinal = 0;
+      manaFinal = Math.floor(manaFinal * 0.5);
     }
 
-    // Se status_baile não vier definido, assume 'vivo'
-    personagemLocalizado.status_baile = personagemLocalizado.status_baile ?? 'vivo';
+    const response = {
+      id: personagem.id,
+      nome: (personagem.apelido && personagem.apelido.trim() !== "") ? personagem.apelido : personagem.nome,
+      apelido: personagem.apelido ?? null,
+      raca_nome: personagem.raca?.nome ?? null,
+      classe_nome: personagem.classe?.nome ?? null,
+      raca_id: personagem.racaId,
+      classe_id: personagem.classeId,
+      status_baile: statusBaile,
+      hp: hpFinal,
+      mana: manaFinal,
+      hp_base: hpBase,
+      mana_base: manaBase,
+      hp_atual: personagem.hp_atual ?? null,
+      mana_atual: personagem.mana_atual ?? null,
+      sobre: personagem.descricao ?? null,
+      url_imagem: personagem.url_imagem ?? null,
+      imagem_pixel: personagem.imagem_pixel ?? null,
+      actions,
+      magias,
+      pericias,
+      baile: baileRecord ? { id: baileRecord.id, nome: baileRecord.nome } : null,
+    };
 
-    // Cálculo base
-    personagemLocalizado.hp = (raca.hp ?? 0) + (classe.hp ?? 0);
-    personagemLocalizado.mana = (raca.mana ?? 0) + (classe.mana ?? 0);
-    personagemLocalizado.raca_nome = raca.nome;
-    personagemLocalizado.classe_nome = classe.nome;
-    personagemLocalizado.index = indexPersonagemLocalizado;
-
-    // 🎭 Regras do Baile de Máscaras
-    switch (personagemLocalizado.status_baile) {
-      case 'killer':
-        personagemLocalizado.hp *= 5;
-        personagemLocalizado.mana *= 5;
-        personagemLocalizado.actions = [
-          {
-            nome: 'Ocultar Presença',
-            descricao: "O Killer se funde às sombras e torna-se invisível por **2 turnos** ou até atacar.\n\nDurante esse estado, não pode ser alvo de magias, ataques ou detecção.\n\nEnquanto invisível, seus passos são inaudíveis e sua presença não pode ser sentida.\n\nInimigos a até 5 metros devem realizar um **teste de Vontade (CD 12)** ou ficam **Amedrontados** por 1 turno.\n\n**Efeitos:** Invisibilidade total e intimidação mágica.\n\n**Dano:** — (nenhum dano direto).",
-            custo_mana: 5,
-          },
-          {
-            nome: 'Golpe Sombrio',
-            descricao: "Ataque físico mortal imbuído com energia das trevas.\n\nCausa **7 de dano direto** (média de 60% da vida de um mago comum).\n\nSe o alvo estiver **Amedrontado**, o dano sobe para **9**.\n\nAlém disso, aplica **Sangramento Leve**, causando **1d4 de dano** no fim de cada rodada por até **1d3 rodadas**.\n\nSe o ataque for realizado logo após *Ocultar Presença*, torna-se um **Golpe Fatal**: o alvo deve realizar um **teste de Vontade (CD 14)**; se falhar, fica **Incapacitado** por 1 turno.",
-            custo_mana: 10,
-          },
-          {
-            nome: 'Execução Silenciosa',
-            descricao: "A ação suprema do Killer. Ele invoca toda a energia maldita de sua existência em um único golpe ritual.\n\nO ataque deve ser realizado contra um alvo **Amedrontado**, **Incapacitado** ou com menos de **50% da vida total**.\n\nSe acertar, o alvo é **morto instantaneamente** — **sem testes adicionais**.\n\nCaso o alvo não cumpra essas condições, o ataque ainda causa **9 de dano direto** (quase letal).\n\nSó pode ser usado **uma vez por sessão**.\n\n**Efeitos:** Instakill condicional / Finalização ritual.",
-            custo_mana: 30,
-          },
-        ];
-        break;
-
-      case 'morto':
-        personagemLocalizado.hp = 0;
-        personagemLocalizado.mana = Math.floor(((raca.mana ?? 0) + (classe.mana ?? 0)) * 0.5);
-        personagemLocalizado.actions = [
-          {
-            nome: 'Sussurro do Além',
-            descricao: 'Sussurra para os vivos, interferindo temporariamente nas suas ações.',
-            custo_mana: 5,
-          },
-          {
-            nome: 'Travessia Etérea',
-            descricao: 'Permite atravessar objetos físicos por alguns instantes.',
-            custo_mana: 8,
-          },
-        ];
-        break;
-
-      case 'vivo':
-      default:
-        // Vivo não tem ações
-        personagemLocalizado.actions = [];
-        break;
-    }
-
-    return NextResponse.json(personagemLocalizado);
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('Erro ao buscar personagem no baile:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    console.error("Erro ao buscar personagem no baile:", error);
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }
 }
