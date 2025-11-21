@@ -197,6 +197,8 @@ const handleAtivarMagia = useCallback(async () => {
 
   const novaMana = manaAtual - custo;
 
+  toast.loading(`Usando ${selectedMagia.nome}...`);
+
   try {
     setMagiaAtualizando(true);
     await setPersonagemValores(personagem.id, "mana_atual", novaMana);

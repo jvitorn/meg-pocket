@@ -37,12 +37,8 @@ export async function GET(
       where: { personagemId: personagemId },
       include: { pericia: true },
     });
-    console.log('personagem raca->',personagem.raca);
-
     // Calcula hp/mana finais (se não houver hp_base, recalcula a partir de raca/classe)
     const hpBase = ((personagem.raca?.hp ?? 0) + (personagem.classe?.hp ?? 0));
-
-   
     const manaBase = ((personagem.raca?.mana ?? 0) + (personagem.classe?.mana ?? 0));
     // Map magias: prioriza overrides do vínculo (MagiaPersonagem), senão usa MagiaCatalog
     const magias = (magiaPersonagem ?? []).map(mp => {
@@ -56,7 +52,6 @@ export async function GET(
         custo_nivel: mp.custo_nivel ?? catalog?.custo_nivel ?? null,
       };
     }).filter(m => m.nome !== null);
-
     // Map pericias: junta info do catálogo com pontuação do vínculo
     const pericias = (periciaPersonagem ?? []).map(pp => {
       const catalog = pp.pericia;
