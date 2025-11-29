@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,200 +8,181 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-/*
-  MODELS
-*/
-
-/* Raça */
+/// Raça
 model Raca {
-  id          Int         @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   nome        String
   descricao   String?
-  hp          Int?        @default(0)
-  mana        Int?        @default(0)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
+  hp          Int?         @default(0)
+  mana        Int?         @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   personagens Personagem[]
 }
 
-/* Classe */
+/// Classe
 model Classe {
-  id          Int         @id @default(autoincrement())
-  nome        String
-  descricao   String?
-  hp          Int?        @default(0)
-  mana        Int?        @default(0)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                Int      @id @default(autoincrement())
+  slug              String?  @unique // <-- opcional agora
+  nome              String
+  subtitulo         String?
+  descricao         String?
+  gameplay          String?
+  background        String?
+  img_corpo         String?
+  exemploPersonagem String?
+  tags              Json?
+  hp                Int?     @default(0)
+  mana              Int?     @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   personagens Personagem[]
+  Magias      MagiaCatalog[] @relation("ClasseMagias")
 }
 
-/* Campanha */
+/// Campanha
 model Campanha {
-  id              Int         @id @default(autoincrement())
+  id              Int          @id @default(autoincrement())
   nome            String
   sinopse         String?
   capa            String?
   count_jogadores Int?
   mestre          String?
   tags            Json?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-
-  personagens     Personagem[] // relação para Personagem.campanhaId
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  personagens     Personagem[]
 }
 
-/* Personagem */
+/// Personagem
 model Personagem {
-  id           Int      @id @default(autoincrement())
-  nome         String
-  apelido      String?
-  descricao    String?  // mapeia o campo 'sobre'
-  campanhaId   Int
-  classeId     Int
-  racaId       Int
-  elemento     String
-  hp_atual     Int?
-  mana_atual   Int?
-  hp_base      Int?
-  mana_base    Int?
-  imagem_pixel String?
-  url_imagem   String?
-  status_baile String?  // 'vivo' | 'morto' | 'killer'
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  baileId Int?    // aponta para o baile atual (opcional)
- 
-
-  // relations
-  raca       Raca    @relation(fields: [racaId], references: [id])
-  classe     Classe  @relation(fields: [classeId], references: [id])
-  campanha   Campanha @relation(fields: [campanhaId], references: [id])
-  baile      Baile?  @relation(fields: [baileId], references: [id], onDelete: SetNull)
-
-  // vínculos e inventário
+  id                Int                 @id @default(autoincrement())
+  nome              String
+  apelido           String?
+  descricao         String?
+  campanhaId        Int
+  classeId          Int
+  racaId            Int
+  elemento          String
+  hp_atual          Int?
+  mana_atual        Int?
+  hp_base           Int?
+  mana_base         Int?
+  imagem_pixel      String?
+  url_imagem        String?
+  status_baile      String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  baileId           Int?
+  inventarios       Inventorio[]
   magiaPersonagem   MagiaPersonagem[]
   periciaPersonagem PericiaPersonagem[]
-  inventarios       Inventorio[]
+  baile             Baile?              @relation(fields: [baileId], references: [id])
+  campanha          Campanha            @relation(fields: [campanhaId], references: [id])
+  classe            Classe              @relation(fields: [classeId], references: [id])
+  raca              Raca                @relation(fields: [racaId], references: [id])
 
   @@index([campanhaId])
   @@index([racaId])
   @@index([classeId])
 }
 
-/*
-  Magias: catálogo + vínculo com personagem
-*/
-
-/* Catálogo de Magias */
+/// Catálogo de Magias
 model MagiaCatalog {
-  id          Int               @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   nome        String
   alcance     String?
   descricao   String?
   custo_nivel Int?
-  classeId    Int?              // magia pode pertencer a uma classe
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  classeId    Int?
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  classe      Classe?           @relation("ClasseMagias", fields: [classeId], references: [id])
   personagens MagiaPersonagem[]
 
   @@unique([nome, classeId])
   @@index([classeId])
 }
 
-/* Vínculo Magia <-> Personagem */
+/// Vínculo Magia <-> Personagem
 model MagiaPersonagem {
-  id            Int          @id @default(autoincrement())
-  personagemId  Int
-  magiaId       Int
-  custo_nivel   Int?
-  descricao     String?
-  createdAt     DateTime     @default(now())
-
-  personagem    Personagem   @relation(fields: [personagemId], references: [id])
-  magia         MagiaCatalog @relation(fields: [magiaId], references: [id])
+  id           Int          @id @default(autoincrement())
+  personagemId Int
+  magiaId      Int
+  custo_nivel  Int?
+  descricao    String?
+  createdAt    DateTime     @default(now())
+  magia        MagiaCatalog @relation(fields: [magiaId], references: [id])
+  personagem   Personagem   @relation(fields: [personagemId], references: [id])
 
   @@index([personagemId])
   @@index([magiaId])
 }
 
-/*
-  Perícias: catálogo + vínculo com personagem (com pontuação)
-*/
-
-/* Catálogo de Perícias */
+/// Catálogo de Perícias
 model PericiaCatalog {
-  id         Int                 @id @default(autoincrement())
-  nome       String
-  tipo       String              @default("") // mantemos non-null para facilitar unique
-  descricao  String?
-  createdAt  DateTime            @default(now())
-  updatedAt  DateTime            @updatedAt
-
+  id          Int                 @id @default(autoincrement())
+  nome        String
+  tipo        String              @default("")
+  descricao   String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
   personagens PericiaPersonagem[]
 
   @@unique([nome, tipo])
 }
 
-/* Vínculo Perícia <-> Personagem */
+/// Vínculo Perícia <-> Personagem
 model PericiaPersonagem {
-  id            Int             @id @default(autoincrement())
-  personagemId  Int
-  periciaId     Int
-  pontuacao     Int
-  descricao     String?
-  createdAt     DateTime        @default(now())
-
-  personagem    Personagem      @relation(fields: [personagemId], references: [id])
-  pericia       PericiaCatalog  @relation(fields: [periciaId], references: [id])
+  id           Int            @id @default(autoincrement())
+  personagemId Int
+  periciaId    Int
+  pontuacao    Int
+  descricao    String?
+  createdAt    DateTime       @default(now())
+  pericia      PericiaCatalog @relation(fields: [periciaId], references: [id])
+  personagem   Personagem     @relation(fields: [personagemId], references: [id])
 
   @@index([personagemId])
   @@index([periciaId])
 }
 
-/*
-  Inventório de Personagem (opcional)
-*/
+/// Inventório de Personagem (opcional)
 model Inventorio {
-  id             Int        @id @default(autoincrement())
-  personagemId   Int
-  nome           String
-  tipo           String?
-  descricao      String?
-  icon           String?
-  createdAt      DateTime   @default(now())
-
-  personagem     Personagem @relation(fields: [personagemId], references: [id])
+  id           Int        @id @default(autoincrement())
+  personagemId Int
+  nome         String
+  tipo         String?
+  descricao    String?
+  icon         String?
+  createdAt    DateTime   @default(now())
+  personagem   Personagem @relation(fields: [personagemId], references: [id])
 
   @@index([personagemId])
 }
 
 model Baile {
-  id        Int               @id @default(autoincrement())
-  nome      String
-  descricao String?
-  meta      Json?             // uso genérico (opcional) - configurações do baile
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-
-  // Relação: várias ações por tipo (classe/raça/etc)
+  id          Int               @id @default(autoincrement())
+  nome        String
+  descricao   String?
+  meta        Json?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   roleActions BaileRoleAction[]
-
-  personagens Personagem[]    // relação com Personagem
+  personagens Personagem[]
 }
 
 model BaileRoleAction {
-  id        Int    @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   baileId   Int
-  baile     Baile  @relation(fields: [baileId], references: [id], onDelete: Cascade)
-  tipo      String // por exemplo: "Guerreiro", "Elementalista", "Umbra", "default", etc.
-  acoes     Json   // array de ações no formato JSON - ex: [{ nome, descricao, custo_mana }]
+  tipo      String
+  acoes     Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  baile     Baile    @relation(fields: [baileId], references: [id], onDelete: Cascade)
 
   @@index([baileId, tipo])
 }
-

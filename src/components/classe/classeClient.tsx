@@ -3,7 +3,6 @@
 
 import Image from "next/image";
 import LogoGuerreiro from "@/components/icons/guerreiro";
-import { Navbar } from "@/components/navbar";
 
 type ParamsLike = { id: string } | Promise<{ id: string }>;
 
@@ -14,7 +13,7 @@ export default async function ClassePage({ params }: { params: ParamsLike }) {
     nome: "Guerreiro",
     subtitulo: "Combatente",
     background: `/imgs/backgrounds/classe_guerreiro.jpg`,
-    corpo:
+    img_corpo:
       "https://krxuafiolrihvoajvmnc.supabase.co/storage/v1/object/public/assets/background/guerreiro.png",
     exemploPersonagem: "Ragnar Forja",
     sobre:
@@ -67,7 +66,7 @@ export default async function ClassePage({ params }: { params: ParamsLike }) {
             {/* Full-body — coluna direita */}
             <div className="md:col-span-5 relative flex flex-col items-center order-1 md:order-2">
               <img
-                src={mock.corpo}
+                src={mock.img_corpo}
                 alt={`${mock.nome} full body`}
                 className="max-h-[520px] object-contain drop-shadow-[0_0_30px_rgba(0,0,0,0.6)]"
               />
