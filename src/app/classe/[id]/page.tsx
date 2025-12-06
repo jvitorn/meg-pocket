@@ -4,16 +4,14 @@ import ClasseClient from "@/components/classe/classeClient";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 
-export default function ClassePage() {
+type Props = { params: { id: string } };
+
+export default function ClassePage({ params }: Props) {
   return (
     <>
       <Navbar />
       <Suspense fallback={<LoadingSpinner />}>
-        <ClasseClient
-          params={{
-            id: "",
-          }}
-        />
+       <ClasseClient />
       </Suspense>
 
       <Footer />

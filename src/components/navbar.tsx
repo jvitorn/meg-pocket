@@ -44,7 +44,7 @@ export function Navbar() {
             </NavigationMenuItem>
             <NavigationMenuItem>
               <NavigationMenuLink asChild>
-                <Link href="/">Raças</Link>
+                <Link href="/classe">Classes</Link>
               </NavigationMenuLink>
             </NavigationMenuItem>
           </NavigationMenuList>

@@ -20,6 +20,7 @@ export interface PersonagemInterface extends BaseInterface {
 
 type StatusBaile = 'vivo' | 'morto' | 'killer';
 export interface MagiaPersonagem {
+  id?: string;
   nome: string;
   alcance : string;
   descricao: string;

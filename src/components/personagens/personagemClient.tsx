@@ -4,7 +4,6 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import {
   useEffect,
   useState,
@@ -14,8 +13,6 @@ import {
 } from "react";
 import { motion } from "framer-motion";
 import { toast, Toaster } from "sonner";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
 import { LoadingSpinner } from "@/components/loadingSpinner";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,7 +24,6 @@ import {
   Flame,
   Wind,
   CircleDotDashed,
-  Wand2,
   Bolt,
 } from "lucide-react";
 
