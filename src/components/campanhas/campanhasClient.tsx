@@ -84,7 +84,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 200, damping: 20 }}
             onClick={() => abrirDetalhes(campanha)}
-            className="group relative rounded-xl overflow-hidden border border-border/30 bg-slate-900/60 hover:border-primary/50 transition-all duration-300 hover:shadow-2xl cursor-pointer"
+            className="group relative rounded-xl overflow-hidden border border-border/30 dark:bg-slate-900/60 hover:border-primary/50 transition-all duration-300 hover:shadow-2xl cursor-pointer"
           >
             {/* Imagem de capa */}
             <div className="relative w-full h-44 sm:h-52 overflow-hidden">
@@ -115,7 +115,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
             {/* Conteúdo inferior */}
             <div className="p-4 flex flex-col justify-between h-[170px] bg-linear-to-b from-transparent to-black/5">
               {campanha.sinopse ? (
-                <p className="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed">
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
                   {campanha.sinopse}
                 </p>
               ) : (
@@ -125,7 +125,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
               {campanha.tags && campanha.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
                   {campanha.tags.map((tag) => (
-                    <span key={tag} className="text-xs px-2 py-1 rounded-full bg-white/5 text-white/80 border border-white/6 capitalize">
+                    <span key={tag} className="text-xs px-2 py-1 rounded-full dark:bg-white/5 dark:text-white/80 border dark:border-white/6 border-b-black/6 capitalize">
                       {tag}
                     </span>
                   ))}
@@ -138,7 +138,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                   Ver Personagens
                 </Link>
 
-                <button onClick={() => abrirDetalhes(campanha)} className="flex-1 inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium border border-white/10 hover:bg-white/5 transition">
+                <button onClick={() => abrirDetalhes(campanha)} className="flex-1 inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium border dark:border-white/10 border-b-black/10 hover:bg-white/5 transition">
                   Detalhes
                 </button>
               </div>
@@ -240,7 +240,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                 <div className="sticky bottom-0 border-t bg-background/95 p-4 flex flex-col sm:flex-row justify-between items-center gap-3">
                   <div className="text-sm text-muted-foreground">{campanhaSelecionada.count_jogadores ?? 0} jogadores registrados</div>
                   <div className="flex items-center gap-3">
-                    <Link href={`/personagens/campanha/${campanhaSelecionada.id}`} className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-purple-600 text-white shadow hover:opacity-95 transition">
+                    <Link href={`/personagens/campanha/${campanhaSelecionada.id}`} onClick={() => setDialogAberto(false)} className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-purple-600 text-white shadow hover:opacity-95 transition">
                       Ver todos os personagens
                     </Link>
                     <button onClick={() => setDialogAberto(false)} className="inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium border hover:bg-white/5 transition">

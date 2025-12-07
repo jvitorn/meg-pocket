@@ -3,14 +3,14 @@ import { BaseInterface, MagiaPersonagem } from "@/types";
 
 export interface ClasseInterface extends BaseInterface {
   id: number;
-   slug?: string | null;
+   slug?: string;
    nome: string;
-   subtitulo?: string | null;
-   background?: string | null;
-   img_corpo?: string | null;
-   exemploPersonagem?: string | null;
-   sobre?: string | null;
-   gameplay?: string | null;
+   subtitulo?: string;
+   background?: string;
+   img_corpo?: string;
+   exemploPersonagem?: string;
+   sobre?: string;
+   gameplay?: string;
    hp: number;
    mana: number;
    tags?: string[] | null;

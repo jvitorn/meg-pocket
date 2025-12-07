@@ -123,7 +123,7 @@ export default function ClassePage() {
             fill
             priority
             unoptimized
-            className="object-cover object-center"
+            className="object-cover object-top"
           />
 
           <div className="absolute inset-0 bg-black/60" />
@@ -165,11 +165,11 @@ export default function ClassePage() {
 
               <div className="bg-white/90 dark:bg-transparent backdrop-blur-sm md:shadow-lg md:rounded-lg md:p-7 md:border md:border-gray-300 dark:border-primary">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-2">Sobre</h3>
-                <p className="leading-relaxed text-[15px] text-foreground/90">{classe.sobre ?? "Sem descrição disponível."}</p>
+                <p className="leading-relaxed text-[15px] text-foreground/90 whitespace-pre-wrap">{classe.descricao ?? "Sem descrição disponível."}</p>
 
                 <div className="mt-6">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-2">Gameplay</h3>
-                  <p className="leading-relaxed text-[15px] text-foreground/90">{classe.gameplay ?? "Sem gameplay disponível."}</p>
+                  <p className="leading-relaxed text-[15px] text-foreground/90 whitespace-pre-wrap ">{classe.gameplay ?? "Sem gameplay disponível."}</p>
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 sm:grid-cols-2 gap-4">

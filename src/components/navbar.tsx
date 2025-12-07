@@ -89,10 +89,10 @@ export function Navbar() {
                 Campanhas
               </Link>
               <Link
-                href="/racas"
+                href="/classe"
                 onClick={() => setTimeout(() => setMenuOpen(false), 150)}
               >
-                Raças
+                Classes
               </Link>
               <div className="flex gap-4 pt-2 text-muted-foreground">
                 <button
