@@ -134,7 +134,9 @@ export default function ClassePage() {
             <h1 className="mt-4 text-5xl md:text-7xl font-extrabold tracking-wide uppercase">
               {classe.nome}
             </h1>
-            <p className="mt-2 text-lg md:text-xl opacity-90">{classe.subtitulo}</p>
+            <p className="mt-2 text-lg md:text-xl opacity-90">
+              {classe.subtitulo}
+            </p>
           </div>
         </section>
 
@@ -161,35 +163,66 @@ export default function ClassePage() {
 
             {/* COLUNA TEXTO — esquerda: Card cortado até TAGS no desktop */}
             <div className="md:col-span-7 order-2 md:order-1">
-              <h2 className="text-3xl md:text-4xl font-extrabold mb-4 tracking-tight text-white">{classe.nome}</h2>
+              <h2 className="text-3xl md:text-4xl font-extrabold mb-4 tracking-tight text-white">
+                {classe.nome}
+              </h2>
 
               <div className="bg-white/90 dark:bg-transparent backdrop-blur-sm md:shadow-lg md:rounded-lg md:p-7 md:border md:border-gray-300 dark:border-primary">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-2">Sobre</h3>
-                <p className="leading-relaxed text-[15px] text-foreground/90 whitespace-pre-wrap">{classe.descricao ?? "Sem descrição disponível."}</p>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-2">
+                  Sobre
+                </h3>
+                <p className="leading-relaxed text-[15px] text-foreground/90 whitespace-pre-wrap">
+                  {classe.descricao ?? "Sem descrição disponível."}
+                </p>
 
                 <div className="mt-6">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-2">Gameplay</h3>
-                  <p className="leading-relaxed text-[15px] text-foreground/90 whitespace-pre-wrap ">{classe.gameplay ?? "Sem gameplay disponível."}</p>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase mb-2">
+                    Gameplay
+                  </h3>
+                  <p className="leading-relaxed text-[15px] text-foreground/90 whitespace-pre-wrap ">
+                    {classe.gameplay ?? "Sem gameplay disponível."}
+                  </p>
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 sm:grid-cols-2 gap-4">
                   <div className="bg-gray-100 dark:bg-slate-800 rounded-lg p-4 border border-gray-300 dark:border-gray-700 text-center">
-                    <div className="text-xs text-muted-foreground uppercase">HP Base</div>
-                    <div className="text-2xl font-bold mt-1">{classe.hp ?? "—"}</div>
+                    <div className="text-xs text-muted-foreground uppercase">
+                      HP Base
+                    </div>
+                    <div className="text-2xl font-bold mt-1">
+                      {classe.hp ?? "—"}
+                    </div>
                   </div>
 
                   <div className="bg-gray-100 dark:bg-slate-800 rounded-lg p-4 border border-gray-300 dark:border-gray-700 text-center">
-                    <div className="text-xs text-muted-foreground uppercase">Mana Base</div>
-                    <div className="text-2xl font-bold mt-1">{classe.mana ?? "—"}</div>
+                    <div className="text-xs text-muted-foreground uppercase">
+                      Mana Base
+                    </div>
+                    <div className="text-2xl font-bold mt-1">
+                      {classe.mana ?? "—"}
+                    </div>
                   </div>
                 </div>
 
                 <div className="mt-6">
-                  <h4 className="text-sm font-semibold text-muted-foreground uppercase mb-2">Tags</h4>
+                  <h4 className="text-sm font-semibold text-muted-foreground uppercase mb-2">
+                    Tags
+                  </h4>
                   <div className="flex flex-wrap gap-2">
-                    {tags.length > 0 ? tags.map((tag) => (
-                      <span key={tag} className="px-3 py-1 text-xs rounded-full bg-gray-200 dark:bg-slate-800 border border-gray-300 dark:border-gray-700 text-foreground/90">{tag}</span>
-                    )) : <span className="text-xs text-muted-foreground">Sem tags</span>}
+                    {tags.length > 0 ? (
+                      tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-3 py-1 text-xs rounded-full bg-gray-200 dark:bg-slate-800 border border-gray-300 dark:border-gray-700 text-foreground/90"
+                        >
+                          {tag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        Sem tags
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -199,16 +232,24 @@ export default function ClassePage() {
           <div className="grid grid-cols-12 gap-2">
             <div className="col-span-12 order-2 md:order-1 mt-8">
               <div className="bg-white/80 dark:bg-slate-900/70 rounded-lg p-6">
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase mb-2">Exemplo de personagem</h4>
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase mb-2">
+                  Exemplo de personagem
+                </h4>
                 <div className="bg-gray-100 dark:bg-slate-800 rounded-md px-4 py-3">
-                  <span className="text-foreground font-semibold">{classe.exemploPersonagem ?? "—"}</span>
+                  <span className="text-foreground font-semibold">
+                    {classe.exemploPersonagem ?? "—"}
+                  </span>
                 </div>
               </div>
 
               <div className="mt-6 bg-white/80 dark:bg-slate-900/70 rounded-lg p-6">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold uppercase text-muted-foreground">Combate e Magias</h4>
-                  <p className="text-xs text-muted-foreground">Toque em uma magia para ver mais</p>
+                  <h4 className="text-sm font-semibold uppercase text-muted-foreground">
+                    Combate e Magias
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Toque em uma magia para ver mais
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -225,11 +266,15 @@ export default function ClassePage() {
                           <div className="font-semibold text-sm">{m.nome}</div>
                           <Sparkles className="w-4 h-4 text-primary" />
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2 line-clamp-3">{m.descricao ?? "Sem descrição."}</p>
+                        <p className="text-xs text-muted-foreground mt-2 line-clamp-3">
+                          {m.descricao ?? "Sem descrição."}
+                        </p>
                       </button>
                     ))
                   ) : (
-                    <div className="col-span-1 md:col-span-3 text-sm text-muted-foreground">Nenhuma magia cadastrada para esta classe.</div>
+                    <div className="col-span-1 md:col-span-3 text-sm text-muted-foreground">
+                      Nenhuma magia cadastrada para esta classe.
+                    </div>
                   )}
                 </div>
               </div>
@@ -241,7 +286,13 @@ export default function ClassePage() {
       </main>
 
       {/* Dialog de magia: exibe dados completos da magia selecionada */}
-      <Dialog open={magiaDialogOpen} onOpenChange={(v) => { setMagiaDialogOpen(v); if (!v) setSelectedMagia(null); }}>
+      <Dialog
+        open={magiaDialogOpen}
+        onOpenChange={(v) => {
+          setMagiaDialogOpen(v);
+          if (!v) setSelectedMagia(null);
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{selectedMagia?.nome ?? "Magia"}</DialogTitle>
@@ -250,20 +301,33 @@ export default function ClassePage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="p-4 space-y-3">
+          {/* ÁREA DE CONTEÚDO COM SCROLL */}
+          <div className="p-4 space-y-4 max-h-[420px] overflow-y-auto pr-2">
             <div>
-              <h5 className="text-xs text-muted-foreground uppercase mb-1">Descrição</h5>
-              <p className="text-sm leading-relaxed whitespace-pre-line">{selectedMagia?.descricao ?? "Sem descrição disponível."}</p>
+              <h5 className="text-xs text-muted-foreground uppercase mb-1">
+                Descrição
+              </h5>
+              <p className="text-sm leading-relaxed whitespace-pre-line">
+                {selectedMagia?.descricao ?? "Sem descrição disponível."}
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <h6 className="text-xs text-muted-foreground uppercase mb-1">Alcance</h6>
+                <h6 className="text-xs text-muted-foreground uppercase mb-1">
+                  Alcance
+                </h6>
                 <div className="text-sm">{selectedMagia?.alcance ?? "—"}</div>
               </div>
               <div>
-                <h6 className="text-xs text-muted-foreground uppercase mb-1">Custo (mana)</h6>
-                <div className="text-sm">{typeof selectedMagia?.custo_nivel === "number" ? selectedMagia.custo_nivel : "—"}</div>
+                <h6 className="text-xs text-muted-foreground uppercase mb-1">
+                  Custo (mana)
+                </h6>
+                <div className="text-sm">
+                  {typeof selectedMagia?.custo_nivel === "number"
+                    ? selectedMagia.custo_nivel
+                    : "—"}
+                </div>
               </div>
             </div>
           </div>
