@@ -120,7 +120,9 @@ export function PersonagemMagias({ personagem, setPersonagem }: Props) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="p-4 max-h-[420px] overflow-y-auto rounded-md pr-2">
+          <div className="p-4 max-h-[360px] overflow-y-auto pr-2 rounded-md
+             scrollbar-thin scrollbar-thumb-foreground/30 scrollbar-track-transparent
+             hover:scrollbar-thumb-foreground/50">
             <p className="text-sm leading-relaxed whitespace-pre-line">
               {selected?.descricao}
             </p>
