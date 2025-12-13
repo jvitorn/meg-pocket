@@ -1,35 +1,69 @@
 import { BaseInterface } from "@/types";
 
+
+
+/* -------------------------------------------------------
+   Personagem
+---------------------------------------------------------*/
 export interface PersonagemInterface extends BaseInterface {
   campanhaId: number;
+
   racaId: number;
   raca_nome?: string;
+
   classeId: number;
   classe_nome?: string;
+
   elemento: string;
+
   hp_atual?: number;
   mana_atual?: number;
+
   sobre: string;
+
   url_imagem?: string;
+
   magias?: MagiaPersonagem[];
-  pericias?: PericiaPersonagem [];
+  pericias?: PericiaPersonagem[];
+
   status_baile?: StatusBaile;
-  actions?: { nome: string; descricao: string; custo_mana: number; }[];
+
+  actions?: {
+    nome: string;
+    descricao: string;
+    custo_mana: number;
+  }[];
+
   apelido?: string;
+
+  /** Controle de slots defensivos por combate */
+  slotsDefensivos?: SlotsDefensivos;
 }
 
-type StatusBaile = 'vivo' | 'morto' | 'killer';
+/* -------------------------------------------------------
+   Tipos auxiliares
+---------------------------------------------------------*/
+type StatusBaile = "vivo" | "morto" | "killer";
+
 export interface MagiaPersonagem {
   id?: string;
   nome: string;
-  alcance : string;
+  alcance: string;
   descricao: string;
   custo_nivel: number;
 }
 
 export interface PericiaPersonagem {
   nome: string;
-  tipo: string; 
+  tipo: string;
   pontuacao: number;
-  descricao?: string; // opcional, aparece no dialog
+  descricao?: string;
+}
+/* -------------------------------------------------------
+   Slots Defensivos
+---------------------------------------------------------*/
+export interface SlotsDefensivos {
+  esquivaUsada: number;
+  bloqueioUsado: number;
+  contraAtaqueUsado: number;
 }

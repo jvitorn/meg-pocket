@@ -22,6 +22,7 @@ import { PersonagemMagias } from "./ficha/PersonagemMagias";
 
 /* Elementos */
 import { Leaf, Droplet, Flame, Wind } from "lucide-react";
+import { PersonagemSlotsDefensivos } from "./ficha/PersonagemSlotsDefensivos";
 
 type ElementType = "natureza" | "agua" | "fogo" | "vento";
 
@@ -35,7 +36,9 @@ const elements = {
 export default function PersonagemClient() {
   const { id } = useParams<{ id: string }>();
 
-  const [personagem, setPersonagem] = useState<PersonagemInterface | null>(null);
+  const [personagem, setPersonagem] = useState<PersonagemInterface | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,10 +94,8 @@ export default function PersonagemClient() {
       >
         <Card className="overflow-hidden shadow-lg p-4 md:p-6 bg-background border border-border">
           <div className="md:grid md:grid-cols-[280px_1fr] gap-6">
-
             {/* ---------------- COLUNA ESQUERDA ---------------- */}
             <aside className="flex flex-col gap-6 md:sticky md:top-20">
-
               <PersonagemHeader
                 nome={personagem.nome}
                 classe={personagem.classe_nome}
@@ -106,11 +107,17 @@ export default function PersonagemClient() {
                 personagem={personagem}
                 setPersonagem={setPersonagem}
               />
+
+              <PersonagemSlotsDefensivos
+                personagemId={personagem.id}
+                slots={personagem.slotsDefensivos}
+                pericias={personagem.pericias}
+                setPersonagem={setPersonagem}
+              />
             </aside>
 
             {/* ---------------- COLUNA DIREITA ---------------- */}
             <section className="flex flex-col gap-6">
-
               {/* Elemento */}
               <div>
                 <h3 className="text-xs font-semibold uppercase text-muted-foreground">
@@ -139,7 +146,6 @@ export default function PersonagemClient() {
                 personagem={personagem}
                 setPersonagem={setPersonagem}
               />
-
             </section>
           </div>
         </Card>

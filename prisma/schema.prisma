@@ -83,6 +83,8 @@ model Personagem {
   classe            Classe              @relation(fields: [classeId], references: [id])
   raca              Raca                @relation(fields: [racaId], references: [id])
 
+  slotsDefensivos SlotsDefensivos?
+
   @@index([campanhaId])
   @@index([racaId])
   @@index([classeId])
@@ -186,3 +188,16 @@ model BaileRoleAction {
 
   @@index([baileId, tipo])
 }
+
+model SlotsDefensivos {
+  id                Int @id @default(autoincrement())
+  personagemId      Int @unique
+  esquivaUsada      Int @default(0)
+  bloqueioUsado     Int @default(0)
+  contraAtaqueUsado Int @default(0)
+
+  personagem        Personagem @relation(fields: [personagemId], references: [id], onDelete: Cascade)
+
+  @@map("slots_defensivos")
+}
+
