@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeProvider } from "@/components/theme-provider";
+import { Suspense } from "react";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,7 +29,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background`}
       >
-        <ThemeProvider
+         <Suspense fallback={null}>
+          <ThemeProvider
             attribute="class"
             defaultTheme="system"
             enableSystem
@@ -36,6 +38,7 @@ export default function RootLayout({
           >
             {children}
           </ThemeProvider>
+        </Suspense>
       </body>
     </html>
   );
