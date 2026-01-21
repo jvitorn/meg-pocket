@@ -3,10 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
+
 
 /// Raça
 model Raca {
@@ -228,10 +227,14 @@ model Account {
   scope             String?
   id_token          String?
 
+  // 👇 senha apenas para credentials
+  password          String?
+
   user User @relation(fields: [userId], references: [id])
 
   @@unique([provider, providerAccountId])
 }
+
 
 model Session {
   id           String   @id @default(cuid())
