@@ -1,10 +1,8 @@
-export const dynamic = "force-static"; // OBRIGA comportamento estático e permite prisma
-
 import { prisma } from "@/lib/prisma";
 import type { CampanhaInterface } from "@/types";
-import { cache } from "react";
+import { unstable_cache } from "next/cache";
 
-export const getCampanhas = cache(async function (): Promise<CampanhaInterface[]> {
+export const getCampanhas = unstable_cache(async function (): Promise<CampanhaInterface[]> {
   try {
     const rows = await prisma.campanha.findMany({
       orderBy: { id: "asc" },
@@ -34,4 +32,4 @@ export const getCampanhas = cache(async function (): Promise<CampanhaInterface[]
     console.error("Erro ao buscar campanhas no DB:", err);
     return [];
   }
-});
+}, ["campanhas"], { revalidate: 300 });

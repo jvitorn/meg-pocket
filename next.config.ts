@@ -13,8 +13,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  /* habilita Cache Components (Next 16) */
-  cacheComponents: true,
+  /* desabilita Cache Components para evitar erro de Date no build */
+  cacheComponents: false,
 
   /* já estava no seu config — mantém o React Compiler ativo */
   reactCompiler: true,

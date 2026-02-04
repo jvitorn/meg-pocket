@@ -9,6 +9,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Cormorant_Garamond } from "next/font/google";
 import { Plus, Settings } from "lucide-react";
+import { unstable_noStore as noStore } from "next/cache";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -16,6 +17,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export default async function DashboardPage() {
+  noStore();
   const session = await getServerSession(authOptions);
   const MAX_PERSONAGENS = 15;
 

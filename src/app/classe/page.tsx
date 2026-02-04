@@ -5,6 +5,7 @@ import ClassesListClient from "@/components/classe/classeListClient";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { LoadingSpinner } from "@/components/loadingSpinner";
+import { unstable_noStore as noStore } from "next/cache";
 
 export const metadata = {
   title: "Classes — M&G Pocket",
@@ -16,6 +17,7 @@ export const metadata = {
  * Faz a chamada ao banco e retorna o Client Component com os dados.
  */
 async function ClassesFetcher() {
+  noStore();
   const classes = await prisma.classe.findMany({
     select: {
       id: true,
