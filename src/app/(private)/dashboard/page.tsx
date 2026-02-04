@@ -10,18 +10,23 @@ import Image from "next/image";
 import { Cormorant_Garamond } from "next/font/google";
 import { Plus, Settings } from "lucide-react";
 import { unstable_noStore as noStore } from "next/cache";
+import type { Prisma } from "@prisma/client";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
   weight: ["600", "700"],
 });
 
+type PersonagemListItem = Prisma.PersonagemGetPayload<{
+  include: { classe: true; raca: true };
+}>;
+
 export default async function DashboardPage() {
   noStore();
   const session = await getServerSession(authOptions);
   const MAX_PERSONAGENS = 15;
 
-  const personagens = await prisma.personagem.findMany({
+  const personagens: PersonagemListItem[] = await prisma.personagem.findMany({
     orderBy: { updatedAt: "desc" },
     take: MAX_PERSONAGENS,
     include: {
@@ -110,7 +115,7 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {personagens.map((personagem) => {
+              {personagens.map((personagem: PersonagemListItem) => {
                 const nome =
                   personagem.apelido?.trim() || personagem.nome || "Sem nome";
                 const classe = personagem.classe?.nome ?? null;
