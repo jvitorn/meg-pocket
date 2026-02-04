@@ -39,13 +39,21 @@ export function LoginForm({
       const result = await authService.loginComSenha(email, password);
       console.log('result login ->', result);
 
-      if (result?.ok) {
-        // full reload — evita a race condition
-        window.location.href = result.url ?? "/dashboard";
-      } else {
-        // tratar erro
-        alert(result?.error ?? "Email ou senha inválidos");
+      if (result?.error) {
+        alert(result.error || "Email ou senha inválidos");
+        return;
       }
+
+      if (result?.ok) {
+        const targetUrl = result.url
+          ? new URL(result.url, window.location.origin).pathname
+          : "/dashboard";
+        router.replace(targetUrl);
+        router.refresh();
+        return;
+      }
+
+      alert("Email ou senha inválidos");
     } catch (err: any) {
       alert(err.message || "Email ou senha inválidos");
     } finally {

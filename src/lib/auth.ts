@@ -62,20 +62,29 @@ export const authOptions: NextAuthOptions = {
   ],
 
   session: {
-    strategy: "database",
+    strategy: "jwt",
   },
 
   callbacks: {
     async redirect({ url, baseUrl }) {
-    // Se houver uma url de callback válida, retorna ela
-    if (url.startsWith(baseUrl)) {
-      return url;
-    }
-    return baseUrl;
-  },
-    session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
+      // Permite URLs relativas e evita redirecionos para domínios externos
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`;
+      }
+      if (new URL(url).origin === baseUrl) {
+        return url;
+      }
+      return baseUrl;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    session({ session, token }) {
+      if (session.user && token?.id) {
+        session.user.id = token.id as string;
       }
       return session;
     },
