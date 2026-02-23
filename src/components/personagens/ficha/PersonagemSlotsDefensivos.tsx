@@ -24,7 +24,11 @@ import {
   SlotDefensivoTipo,
 } from "@/lib/regras/slotsDefensivos";
 
-import type { PericiaPersonagem, SlotsDefensivos } from "@/types";
+import type {
+  PericiaPersonagem,
+  PersonagemInterface,
+  SlotsDefensivos,
+} from "@/types";
 
 /* -------------------------------------------------------
    Tipos
@@ -33,7 +37,10 @@ interface Props {
   personagemId: number;
   slots?: SlotsDefensivos;
   pericias?: PericiaPersonagem[];
-  setPersonagem: React.Dispatch<any>;
+  setPersonagem: React.Dispatch<
+    React.SetStateAction<PersonagemInterface | null>
+  >;
+  canEdit: boolean;
 }
 
 /* -------------------------------------------------------
@@ -89,6 +96,7 @@ export function PersonagemSlotsDefensivos({
   slots,
   pericias = [],
   setPersonagem,
+  canEdit,
 }: Props) {
   const [loadingSlot, setLoadingSlot] = useState<SlotDefensivoTipo | null>(null);
 
@@ -129,6 +137,7 @@ export function PersonagemSlotsDefensivos({
      Usar slot (com bloqueio no FRONT)
   ----------------------------------------------------*/
   const usar = async (tipo: SlotDefensivoTipo) => {
+    if (!canEdit) return;
     if (loadingSlot) return;
 
     if (usados[tipo] >= limites[tipo]) {
@@ -140,21 +149,24 @@ export function PersonagemSlotsDefensivos({
       setLoadingSlot(tipo);
 
       // Atualização otimista
-      setPersonagem((p: any) => ({
-        ...p,
-        slotsDefensivos: {
-          ...p.slotsDefensivos,
-          ...(tipo === "esquiva" && {
-            esquivaUsada: p.slotsDefensivos.esquivaUsada + 1,
-          }),
-          ...(tipo === "bloqueio" && {
-            bloqueioUsado: p.slotsDefensivos.bloqueioUsado + 1,
-          }),
-          ...(tipo === "contra" && {
-            contraAtaqueUsado: p.slotsDefensivos.contraAtaqueUsado + 1,
-          }),
-        },
-      }));
+      setPersonagem((p) => {
+        if (!p?.slotsDefensivos) return p;
+        return {
+          ...p,
+          slotsDefensivos: {
+            ...p.slotsDefensivos,
+            ...(tipo === "esquiva" && {
+              esquivaUsada: p.slotsDefensivos.esquivaUsada + 1,
+            }),
+            ...(tipo === "bloqueio" && {
+              bloqueioUsado: p.slotsDefensivos.bloqueioUsado + 1,
+            }),
+            ...(tipo === "contra" && {
+              contraAtaqueUsado: p.slotsDefensivos.contraAtaqueUsado + 1,
+            }),
+          },
+        };
+      });
 
       await usarSlotDefensivo(personagemId, tipo);
     } catch {
@@ -168,15 +180,19 @@ export function PersonagemSlotsDefensivos({
      Resetar slots
   ----------------------------------------------------*/
   const resetar = async () => {
+    if (!canEdit) return;
     try {
-      setPersonagem((p: any) => ({
-        ...p,
-        slotsDefensivos: {
-          esquivaUsada: 0,
-          bloqueioUsado: 0,
-          contraAtaqueUsado: 0,
-        },
-      }));
+      setPersonagem((p) => {
+        if (!p) return p;
+        return {
+          ...p,
+          slotsDefensivos: {
+            esquivaUsada: 0,
+            bloqueioUsado: 0,
+            contraAtaqueUsado: 0,
+          },
+        };
+      });
 
       await resetarSlotsDefensivos(personagemId);
       toast.success("Slots reativos resetados");
@@ -196,12 +212,19 @@ export function PersonagemSlotsDefensivos({
               Slots Reativos
             </h3>
             <p className="text-xs text-muted-foreground">
-              Usados durante o combate
+              {canEdit
+                ? "Usados durante o combate"
+                : "Somente leitura para esta ficha"}
             </p>
           </div>
         </div>
 
-        <Button variant="outline" size="sm" onClick={resetar}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={resetar}
+          disabled={!canEdit}
+        >
           Resetar
         </Button>
       </div>
@@ -228,6 +251,7 @@ export function PersonagemSlotsDefensivos({
         <Button
           size="sm"
           disabled={
+            !canEdit ||
             loadingSlot === "esquiva" ||
             usados.esquiva >= limites.esquiva
           }
@@ -257,6 +281,7 @@ export function PersonagemSlotsDefensivos({
         <Button
           size="sm"
           disabled={
+            !canEdit ||
             loadingSlot === "bloqueio" ||
             usados.bloqueio >= limites.bloqueio
           }
@@ -286,6 +311,7 @@ export function PersonagemSlotsDefensivos({
         <Button
           size="sm"
           disabled={
+            !canEdit ||
             loadingSlot === "contra" ||
             usados.contra >= limites.contra
           }

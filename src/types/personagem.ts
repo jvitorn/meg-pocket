@@ -38,6 +38,9 @@ export interface PersonagemInterface extends BaseInterface {
 
   /** Controle de slots defensivos por combate */
   slotsDefensivos?: SlotsDefensivos;
+
+  /** Indica se usuário logado é dono da ficha (pode editar). */
+  canEdit?: boolean;
 }
 
 /* -------------------------------------------------------

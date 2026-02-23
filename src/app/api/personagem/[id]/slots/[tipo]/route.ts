@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { validarEdicaoDaFicha } from "@/lib/regras/personagemPermissao";
 
 import {
   calcularLimiteSlotsDefensivos,
@@ -47,6 +48,14 @@ export async function POST(
       return NextResponse.json(
         { error: "Tipo de slot defensivo inválido" },
         { status: 400 }
+      );
+    }
+
+    const permissao = await validarEdicaoDaFicha(personagemId);
+    if (!permissao.ok) {
+      return NextResponse.json(
+        { error: permissao.error },
+        { status: permissao.status }
       );
     }
 

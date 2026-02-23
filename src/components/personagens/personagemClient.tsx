@@ -56,8 +56,12 @@ export default function PersonagemClient() {
 
         const data: PersonagemInterface = await response.json();
         setPersonagem(data);
-      } catch (e: any) {
-        setError(e.message);
+      } catch (error: unknown) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Erro ao carregar personagem"
+        );
       } finally {
         setLoading(false);
       }
@@ -81,6 +85,7 @@ export default function PersonagemClient() {
   if (error)
     return <div className="text-center text-red-500 mt-6">{error}</div>;
   if (!personagem) return null;
+  const canEdit = Boolean(personagem.canEdit);
 
   /* ---------------- Renderização ---------------- */
   return (
@@ -93,6 +98,11 @@ export default function PersonagemClient() {
         transition={{ duration: 0.25 }}
       >
         <Card className="overflow-hidden shadow-lg p-4 md:p-6 bg-background border border-border">
+          {!canEdit && (
+            <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              Modo visualização habilitado.
+            </div>
+          )}
           <div className="md:grid md:grid-cols-[280px_1fr] gap-6">
             {/* ---------------- COLUNA ESQUERDA ---------------- */}
             <aside className="flex flex-col gap-6 md:sticky md:top-20">
@@ -106,6 +116,7 @@ export default function PersonagemClient() {
               <PersonagemBarras
                 personagem={personagem}
                 setPersonagem={setPersonagem}
+                canEdit={canEdit}
               />
 
               <PersonagemSlotsDefensivos
@@ -113,6 +124,7 @@ export default function PersonagemClient() {
                 slots={personagem.slotsDefensivos}
                 pericias={personagem.pericias}
                 setPersonagem={setPersonagem}
+                canEdit={canEdit}
               />
             </aside>
 
@@ -136,6 +148,7 @@ export default function PersonagemClient() {
               <PersonagemSobre
                 personagem={personagem}
                 setPersonagem={setPersonagem}
+                canEdit={canEdit}
               />
 
               {/* Perícias */}
@@ -145,6 +158,7 @@ export default function PersonagemClient() {
               <PersonagemMagias
                 personagem={personagem}
                 setPersonagem={setPersonagem}
+                canEdit={canEdit}
               />
             </section>
           </div>

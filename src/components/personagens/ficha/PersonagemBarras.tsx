@@ -11,9 +11,10 @@ import { Bolt } from "lucide-react";
 interface Props {
   personagem: PersonagemInterface;
   setPersonagem: React.Dispatch<React.SetStateAction<PersonagemInterface | null>>;
+  canEdit: boolean;
 }
 
-export function PersonagemBarras({ personagem, setPersonagem }: Props) {
+export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) {
   /* Drawers locais */
   const [hpDrawerOpen, setHpDrawerOpen] = useState(false);
   const [manaDrawerOpen, setManaDrawerOpen] = useState(false);
@@ -21,6 +22,7 @@ export function PersonagemBarras({ personagem, setPersonagem }: Props) {
   /* Atualizar HP — idêntico ao original */
   const handleAtualizarHP = useCallback(
     async (novoValor: number) => {
+      if (!canEdit) return;
       const antigoHP = personagem.hp_atual ?? 0;
       const maxHP = personagem.hp ?? 0;
       const novo = Math.max(0, Math.min(maxHP, novoValor));
@@ -34,18 +36,19 @@ export function PersonagemBarras({ personagem, setPersonagem }: Props) {
         await setPersonagemValores(personagem.id, "hp_atual", novo);
         toast.dismiss();
         toast.success(`HP atualizado: ${novo}`);
-      } catch (err) {
+      } catch {
         setPersonagem((p) => (p ? { ...p, hp_atual: antigoHP } : p));
         toast.dismiss();
         toast.error("Não foi possível atualizar o HP.");
       }
     },
-    [personagem, setPersonagem]
+    [canEdit, personagem, setPersonagem]
   );
 
   /* Atualizar Mana — idêntico ao original */
   const handleAtualizarMana = useCallback(
     async (novoValor: number) => {
+      if (!canEdit) return;
       const antigo = personagem.mana_atual ?? 0;
       const max = personagem.mana ?? 0;
       const novo = Math.max(0, Math.min(max, novoValor));
@@ -58,13 +61,13 @@ export function PersonagemBarras({ personagem, setPersonagem }: Props) {
         await setPersonagemValores(personagem.id, "mana_atual", novo);
         toast.dismiss();
         toast.success(`Mana atualizada: ${novo}`);
-      } catch (err) {
+      } catch {
         setPersonagem((p) => (p ? { ...p, mana_atual: antigo } : p));
         toast.dismiss();
         toast.error("Não foi possível atualizar a mana.");
       }
     },
-    [personagem, setPersonagem]
+    [canEdit, personagem, setPersonagem]
   );
 
   /* Percentuais visuais */
@@ -129,21 +132,23 @@ export function PersonagemBarras({ personagem, setPersonagem }: Props) {
           <div className="flex gap-2 w-full">
             <button
               onClick={() => setHpDrawerOpen(true)}
-              className="flex-1 rounded-md px-3 py-2 bg-white/4 hover:bg-white/6 focus:outline-none focus:ring-2 focus:ring-primary/40 transition text-sm font-medium"
+              disabled={!canEdit}
+              className="flex-1 rounded-md px-3 py-2 bg-white/4 hover:bg-white/6 focus:outline-none focus:ring-2 focus:ring-primary/40 transition text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
             >
               Atualizar HP
             </button>
 
             <button
               onClick={() => setManaDrawerOpen(true)}
-              className="flex-1 rounded-md px-3 py-2 bg-white/4 hover:bg-white/6 focus:outline-none focus:ring-2 focus:ring-primary/40 transition text-sm font-medium"
+              disabled={!canEdit}
+              className="flex-1 rounded-md px-3 py-2 bg-white/4 hover:bg-white/6 focus:outline-none focus:ring-2 focus:ring-primary/40 transition text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
             >
               Atualizar Mana
             </button>
           </div>
 
           {/* Botão Baile, igual ao original */}
-          {personagem.status_baile && (
+          {personagem.status_baile && canEdit && (
             <div className="w-full">
               <button
                 onClick={() => {

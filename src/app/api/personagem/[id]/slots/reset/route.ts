@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { validarEdicaoDaFicha } from "@/lib/regras/personagemPermissao";
 
 /**
  * Reseta todos os slots defensivos do personagem.
@@ -17,6 +18,14 @@ export async function POST(
       return NextResponse.json(
         { error: "ID do personagem inválido" },
         { status: 400 }
+      );
+    }
+
+    const permissao = await validarEdicaoDaFicha(personagemId);
+    if (!permissao.ok) {
+      return NextResponse.json(
+        { error: permissao.error },
+        { status: permissao.status }
       );
     }
 

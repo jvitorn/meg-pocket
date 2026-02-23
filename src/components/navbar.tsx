@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTheme } from "next-themes";
+import { useSession } from "next-auth/react";
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -12,7 +13,8 @@ import { Github, Menu, X, Lightbulb } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cormorant_Garamond } from "next/font/google";
-import { NAV_LINKS } from "@/lib/navigation";
+import { getNavLinks } from "@/lib/navigation";
+import { authService } from "@/services/authService";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -22,6 +24,11 @@ const cormorant = Cormorant_Garamond({
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { data: session } = useSession();
+  const isAuthenticated = Boolean(session?.user);
+  const navLinks = getNavLinks(isAuthenticated);
+  const userLabel =
+    session?.user?.name ?? session?.user?.email ?? "Usuário logado";
 
   return (
     <div className="sticky top-0 z-50 w-full backdrop-blur shadow-md bg-transparent">
@@ -43,7 +50,7 @@ export function Navbar() {
         {/* Desktop menu */}
         <NavigationMenu className="hidden md:flex">
           <NavigationMenuList className="flex gap-6 text-base">
-            {NAV_LINKS.map((link) => (
+            {navLinks.map((link) => (
               <NavigationMenuItem key={link.href}>
                 <NavigationMenuLink asChild>
                   <Link href={link.href}>{link.label}</Link>
@@ -55,6 +62,18 @@ export function Navbar() {
 
         {/* Right icons */}
         <div className="hidden md:flex items-center gap-4 text-muted-foreground">
+          {isAuthenticated && (
+            <>
+              <span className="text-xs text-foreground/80">{userLabel}</span>
+              <button
+                onClick={() => authService.logout()}
+                className="text-sm px-3 py-1 rounded border border-border hover:bg-muted transition text-foreground"
+              >
+                Sair
+              </button>
+            </>
+          )}
+
           <button
             onClick={() =>
               setTheme(theme === "dark" ? "light" : "dark")
@@ -87,7 +106,7 @@ export function Navbar() {
             className="md:hidden px-6 pb-4"
           >
             <nav className="flex flex-col gap-4 text-base">
-              {NAV_LINKS.map((link) => (
+              {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -98,6 +117,18 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
+
+              {isAuthenticated && (
+                <div className="pt-1 space-y-2">
+                  <p className="text-xs text-muted-foreground">{userLabel}</p>
+                  <button
+                    onClick={() => authService.logout()}
+                    className="text-sm px-3 py-2 rounded border border-border hover:bg-muted transition w-fit"
+                  >
+                    Sair
+                  </button>
+                </div>
+              )}
 
               <div className="flex gap-4 pt-2 text-muted-foreground">
                 <button

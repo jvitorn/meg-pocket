@@ -1,6 +1,7 @@
 // app/personagens/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSessionUserId } from "@/lib/regras/personagemPermissao";
 
 export async function GET(
   request: NextRequest,
@@ -33,6 +34,12 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    const sessionUserId = await getSessionUserId();
+    const canEdit =
+      !!sessionUserId &&
+      !!personagem.userId &&
+      personagem.userId === sessionUserId;
 
     // Busca vínculos separadamente
     const magiaPersonagem = await prisma.magiaPersonagem.findMany({
@@ -112,6 +119,7 @@ export async function GET(
               personagem.slotsDefensivos.contraAtaqueUsado,
           }
         : null,
+      canEdit,
     };
 
     return NextResponse.json(result);

@@ -20,21 +20,24 @@ import { Button } from "@/components/ui/button";
 interface Props {
   personagem: PersonagemInterface;
   setPersonagem: React.Dispatch<React.SetStateAction<PersonagemInterface | null>>;
+  canEdit: boolean;
 }
 
-export function PersonagemSobre({ personagem, setPersonagem }: Props) {
+export function PersonagemSobre({ personagem, setPersonagem, canEdit }: Props) {
   const [open, setOpen] = useState(false);
   const [texto, setTexto] = useState(personagem.sobre ?? "");
   const [saving, setSaving] = useState(false);
 
   /* Abrir modal — igual ao original */
   const handleAbrir = useCallback(() => {
+    if (!canEdit) return;
     setTexto(personagem.sobre ?? "");
     setOpen(true);
-  }, [personagem]);
+  }, [canEdit, personagem]);
 
   /* Salvar — igual ao original */
   const handleSalvar = useCallback(async () => {
+    if (!canEdit) return;
     const antigo = personagem.sobre ?? "";
     const novo = texto;
 
@@ -56,7 +59,7 @@ export function PersonagemSobre({ personagem, setPersonagem }: Props) {
     } finally {
       setSaving(false);
     }
-  }, [texto, personagem, setPersonagem]);
+  }, [canEdit, texto, personagem, setPersonagem]);
 
   return (
     <>
@@ -70,7 +73,8 @@ export function PersonagemSobre({ personagem, setPersonagem }: Props) {
         {/* Botão igual ao original */}
           <button
             onClick={handleAbrir}
-            className="text-xs px-2 py-1 rounded bg-white/4 hover:bg-white/6 transition"
+            disabled={!canEdit}
+            className="text-xs px-2 py-1 rounded bg-white/4 hover:bg-white/6 transition disabled:cursor-not-allowed disabled:opacity-50"
           >
             Editar
           </button>

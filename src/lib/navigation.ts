@@ -1,6 +1,6 @@
 import { NavbarInterface } from "@/types";
 
-export const NAV_LINKS = [
+export const BASE_NAV_LINKS = [
   {
     label: "Início",
     href: "/",
@@ -13,9 +13,13 @@ export const NAV_LINKS = [
     label: "Classes",
     href: "/classe",
   },
-  {
-    label: "Login",
-    href: "/login",
-  },
 ] as const satisfies NavbarInterface[];
 
+export function getNavLinks(isAuthenticated: boolean): NavbarInterface[] {
+  return [
+    ...BASE_NAV_LINKS,
+    isAuthenticated
+      ? { label: "Personagens", href: "/dashboard" }
+      : { label: "Login", href: "/login" },
+  ];
+}

@@ -23,14 +23,16 @@ interface Props {
   setPersonagem: React.Dispatch<
     React.SetStateAction<PersonagemInterface | null>
   >;
+  canEdit: boolean;
 }
 
-export function PersonagemMagias({ personagem, setPersonagem }: Props) {
+export function PersonagemMagias({ personagem, setPersonagem, canEdit }: Props) {
   const [selected, setSelected] = useState<MagiaPersonagem | null>(null);
   const [loading, setLoading] = useState(false);
 
   const conjurar = async () => {
     if (!selected) return;
+    if (!canEdit) return;
 
     const custo = selected.custo_nivel ?? 0;
     const atual = personagem.mana_atual ?? 0;
@@ -137,11 +139,12 @@ export function PersonagemMagias({ personagem, setPersonagem }: Props) {
               <Button
                 onClick={conjurar}
                 disabled={
+                  !canEdit ||
                   loading ||
                   (personagem.mana_atual ?? 0) < (selected?.custo_nivel ?? 0)
                 }
               >
-                {loading ? "Ativando..." : "Ativar"}
+                {!canEdit ? "Somente leitura" : loading ? "Ativando..." : "Ativar"}
               </Button>
             </div>
           </DialogFooter>

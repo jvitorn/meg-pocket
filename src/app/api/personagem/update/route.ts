@@ -1,11 +1,13 @@
 // src/app/api/personagem/update/route.ts
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { validarEdicaoDaFicha } from "@/lib/regras/personagemPermissao";
 
 type Body = {
   index?: number | string; // aqui deve vir o ID (pk) do personagem
   campo: string;
-  valor: any;
+  valor: unknown;
 };
 
 const numericFields = new Set([
@@ -67,6 +69,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Index inválido (deve ser um id inteiro positivo)." }, { status: 400 });
     }
 
+    const permissao = await validarEdicaoDaFicha(id);
+    if (!permissao.ok) {
+      return NextResponse.json(
+        { success: false, error: permissao.error },
+        { status: permissao.status }
+      );
+    }
+
     if (!allowedFields.has(campo)) {
       return NextResponse.json({
         success: false,
@@ -77,7 +87,7 @@ export async function POST(request: Request) {
     const dbField = normalizeField(campo);
 
     // converte se for campo numérico
-    let newValue: any = valor;
+    let newValue: unknown = valor;
     if (numericFields.has(campo) && typeof valor === "string" && valor.trim() !== "") {
       const maybeNum = Number(valor);
       if (Number.isNaN(maybeNum)) {
@@ -87,7 +97,7 @@ export async function POST(request: Request) {
     }
 
     // prepara objeto de update reduzido
-    const updates: any = {};
+    const updates: Record<string, unknown> = {};
     if (dbField === "classeId") {
       // verificamos existência; se não existir, abortamos
       const classeExists = await prisma.classe.findUnique({ where: { id: Number(newValue) }});
@@ -116,7 +126,7 @@ export async function POST(request: Request) {
     const [updated, magiasRaw, periciasRaw] = await prisma.$transaction([
       prisma.personagem.update({
         where: { id },
-        data: updates,
+        data: updates as Prisma.PersonagemUncheckedUpdateInput,
         include: {
           raca: true,
           classe: true,
@@ -188,13 +198,19 @@ export async function POST(request: Request) {
     };
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erro ao atualizar personagem:", error);
     // tratamento de not found (Prisma P2025)
-    if (error?.code === "P2025") {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2025"
+    ) {
       return NextResponse.json({ success: false, error: "Personagem não encontrado." }, { status: 404 });
     }
-    const message = error?.message ?? String(error);
+    const message =
+      error instanceof Error ? error.message : String(error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

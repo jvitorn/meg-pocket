@@ -60,6 +60,7 @@ model Personagem {
   nome              String
   apelido           String?
   descricao         String?
+  userId            String?
   campanhaId        Int
   classeId          Int
   racaId            Int
@@ -81,12 +82,14 @@ model Personagem {
   campanha          Campanha            @relation(fields: [campanhaId], references: [id])
   classe            Classe              @relation(fields: [classeId], references: [id])
   raca              Raca                @relation(fields: [racaId], references: [id])
+  user              User?               @relation(fields: [userId], references: [id])
 
   slotsDefensivos SlotsDefensivos?
 
   @@index([campanhaId])
   @@index([racaId])
   @@index([classeId])
+  @@index([userId])
 }
 
 /// Catálogo de Magias
@@ -211,6 +214,7 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
+  personagens   Personagem[]
 }
 
 
@@ -244,6 +248,5 @@ model Session {
 
   user User @relation(fields: [userId], references: [id])
 }
-
 
 

@@ -25,15 +25,19 @@ export default async function DashboardPage() {
   noStore();
   const session = await getServerSession(authOptions);
   const MAX_PERSONAGENS = 15;
+  const userId = session?.user?.id;
 
-  const personagens: PersonagemListItem[] = await prisma.personagem.findMany({
-    orderBy: { updatedAt: "desc" },
-    take: MAX_PERSONAGENS,
-    include: {
-      classe: true,
-      raca: true,
-    },
-  });
+  const personagens: PersonagemListItem[] = userId
+    ? await prisma.personagem.findMany({
+        where: { userId },
+        orderBy: { updatedAt: "desc" },
+        take: MAX_PERSONAGENS,
+        include: {
+          classe: true,
+          raca: true,
+        },
+      })
+    : [];
 
   const formatter = new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
