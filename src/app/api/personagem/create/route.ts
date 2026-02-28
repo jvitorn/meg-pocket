@@ -14,6 +14,20 @@ function toPositiveInt(value: unknown) {
   return num;
 }
 
+function isValidExternalUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function normalizePericiaTipo(value?: string | null) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return normalized || "geral";
+}
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -34,6 +48,22 @@ export async function POST(request: Request) {
     const campanhaId = toPositiveInt(body?.campanhaId);
     const classeId = toPositiveInt(body?.classeId);
     const racaId = toPositiveInt(body?.racaId);
+    const rawPericiaIds: unknown[] = Array.isArray(body?.periciaIds)
+      ? body.periciaIds
+      : body?.periciaId !== null && body?.periciaId !== undefined
+        ? [body.periciaId]
+        : [];
+    const parsedPericiaIds = rawPericiaIds.map((value) => toPositiveInt(value));
+    const hasInvalidPericiaId = parsedPericiaIds.some((value) => value === null);
+    const periciaIds = Array.from(
+      new Set(parsedPericiaIds.filter((value): value is number => value !== null))
+    );
+    const rawMagiaIds: unknown[] = Array.isArray(body?.magiaIds) ? body.magiaIds : [];
+    const parsedMagiaIds = rawMagiaIds.map((value) => toPositiveInt(value));
+    const hasInvalidMagiaId = parsedMagiaIds.some((value) => value === null);
+    const magiaIds = Array.from(
+      new Set(parsedMagiaIds.filter((value): value is number => value !== null))
+    );
 
     if (!nome) {
       return NextResponse.json(
@@ -56,10 +86,54 @@ export async function POST(request: Request) {
       );
     }
 
-    const [campanha, classe, raca] = await prisma.$transaction([
+    if (urlImagem && !isValidExternalUrl(urlImagem)) {
+      return NextResponse.json(
+        { ok: false, error: "URL da imagem inválida." },
+        { status: 400 }
+      );
+    }
+
+    if (hasInvalidMagiaId) {
+      return NextResponse.json(
+        { ok: false, error: "Lista de magias inválida." },
+        { status: 400 }
+      );
+    }
+
+    if (hasInvalidPericiaId) {
+      return NextResponse.json(
+        { ok: false, error: "Lista de perícias inválida." },
+        { status: 400 }
+      );
+    }
+
+    if (magiaIds.length > 3) {
+      return NextResponse.json(
+        { ok: false, error: "Você pode selecionar no máximo 3 magias." },
+        { status: 400 }
+      );
+    }
+
+    const [campanha, classe, raca, periciasCatalogo] = await prisma.$transaction([
       prisma.campanha.findUnique({ where: { id: campanhaId } }),
-      prisma.classe.findUnique({ where: { id: classeId } }),
+      prisma.classe.findUnique({
+        where: { id: classeId },
+        select: {
+          id: true,
+          hp: true,
+          mana: true,
+          Magias: {
+            select: { id: true },
+          },
+        },
+      }),
       prisma.raca.findUnique({ where: { id: racaId } }),
+      prisma.periciaCatalog.findMany({
+        select: {
+          id: true,
+          tipo: true,
+        },
+      }),
     ]);
 
     if (!campanha) {
@@ -83,6 +157,69 @@ export async function POST(request: Request) {
       );
     }
 
+    const periciasPorId = new Map(periciasCatalogo.map((pericia) => [pericia.id, pericia]));
+    const tiposPericiaDisponiveis = new Set(
+      periciasCatalogo.map((pericia) => normalizePericiaTipo(pericia.tipo))
+    );
+    const requiredPericiasCount =
+      periciasCatalogo.length > 0 ? (tiposPericiaDisponiveis.size >= 3 ? 2 : 1) : 0;
+
+    if (requiredPericiasCount === 0 && periciaIds.length > 0) {
+      return NextResponse.json(
+        { ok: false, error: "Não há perícias disponíveis para seleção." },
+        { status: 400 }
+      );
+    }
+
+    if (requiredPericiasCount > 0 && periciaIds.length !== requiredPericiasCount) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Selecione ${requiredPericiasCount} ${
+            requiredPericiasCount === 1 ? "perícia" : "perícias"
+          } para continuar.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const periciaNaoEncontrada = periciaIds.some((periciaId) => !periciasPorId.has(periciaId));
+    if (periciaNaoEncontrada) {
+      return NextResponse.json(
+        { ok: false, error: "Perícia não encontrada." },
+        { status: 400 }
+      );
+    }
+
+    const tiposSelecionados = new Set<string>();
+    for (const periciaId of periciaIds) {
+      const pericia = periciasPorId.get(periciaId);
+      const tipo = normalizePericiaTipo(pericia?.tipo);
+      if (tiposSelecionados.has(tipo)) {
+        return NextResponse.json(
+          { ok: false, error: "Selecione no máximo 1 perícia por tipo." },
+          { status: 400 }
+        );
+      }
+      tiposSelecionados.add(tipo);
+    }
+
+    const magiaIdsDaClasse = new Set(classe.Magias.map((magia) => magia.id));
+    const magiaInvalida = magiaIds.some((magiaId) => !magiaIdsDaClasse.has(magiaId));
+    if (magiaInvalida) {
+      return NextResponse.json(
+        { ok: false, error: "Existe magia que não pertence à classe selecionada." },
+        { status: 400 }
+      );
+    }
+
+    if (classe.Magias.length > 0 && magiaIds.length === 0) {
+      return NextResponse.json(
+        { ok: false, error: "Selecione ao menos 1 magia da classe." },
+        { status: 400 }
+      );
+    }
+
     const hpBase = (raca.hp ?? 0) + (classe.hp ?? 0);
     const manaBase = (raca.mana ?? 0) + (classe.mana ?? 0);
 
@@ -101,6 +238,26 @@ export async function POST(request: Request) {
         hp_atual: hpBase,
         mana_atual: manaBase,
         userId: session.user.id,
+        slotsDefensivos: {
+          create: {},
+        },
+        magiaPersonagem:
+          magiaIds.length > 0
+            ? {
+                create: magiaIds.map((magiaId) => ({
+                  magiaId,
+                })),
+              }
+            : undefined,
+        periciaPersonagem:
+          periciaIds.length > 0
+            ? {
+                create: periciaIds.map((periciaId) => ({
+                  periciaId,
+                  pontuacao: 1,
+                })),
+              }
+            : undefined,
       },
     });
 
