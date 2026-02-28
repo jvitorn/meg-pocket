@@ -11,6 +11,7 @@ interface SelecionadoCardProps extends BaseInterface {
   sobre?: string;
   mana_atual?: number;
   hp_atual?: number;
+  url_imagem?: string;
 }
 // Interface para os props com valores opcionais
 interface Props {
@@ -39,10 +40,10 @@ export default function SelecionadoCard({
     <>
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 p-6 rounded-xl light:shadow-xl">
         {/* Imagem (mantive exatamente como o seu original) */}
-        <div className="relative w-full h-[280px] md:h-[360px]">
+        <div className="relative w-full h-70 md:h-90">
           <div className="relative w-full h-full transition-transform duration-200 ease-in-out hover:scale-110">
             <Image
-              src={race.imagem_pixel ?? ""}
+              src={race.imagem_pixel || race.url_imagem || ""}
               alt={race.nome}
               fill
               className="object-contain h-full mx-auto light:drop-shadow-xl"

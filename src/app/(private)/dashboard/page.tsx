@@ -49,9 +49,9 @@ export default async function DashboardPage() {
     <>
       <Navbar />
       <main className="min-h-screen bg-background text-foreground">
-        <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-emerald-400 to-sky-500" />
+        <div className="h-1 w-full bg-linear-to-r from-amber-400 via-emerald-400 to-sky-500" />
 
-        <section className="bg-gradient-to-b from-muted/40 via-background to-background">
+        <section className="bg-linear-to-b from-muted/40 via-background to-background">
           <div className="max-w-7xl mx-auto px-6 py-10">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
@@ -136,7 +136,7 @@ export default async function DashboardPage() {
                     key={personagem.id}
                     className="group relative overflow-hidden rounded-2xl border bg-card/80 p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
                   >
-                    <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-amber-400 via-emerald-400 to-sky-500 opacity-70" />
+                    <div className="absolute inset-x-0 top-0 h-0.5 bg-linear-to-r from-amber-400 via-emerald-400 to-sky-500 opacity-70" />
 
                     <div className="flex gap-4">
                       <div className="flex-1">
@@ -174,7 +174,7 @@ export default async function DashboardPage() {
                             className="object-cover"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/40 text-sm font-semibold text-muted-foreground">
+                          <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-muted to-muted/40 text-sm font-semibold text-muted-foreground">
                             {nome.slice(0, 2).toUpperCase()}
                           </div>
                         )}

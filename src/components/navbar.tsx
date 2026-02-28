@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
 import {
@@ -11,27 +11,53 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Github, Menu, X, Lightbulb } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cormorant_Garamond } from "next/font/google";
 import { getNavLinks } from "@/lib/navigation";
 import { authService } from "@/services/authService";
+import { cn } from "@/lib/utils";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
   weight: ["700"],
 });
 
+function isLinkActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hasScrolled, setHasScrolled] = useState(false);
   const { theme, setTheme } = useTheme();
   const { data: session } = useSession();
+  const pathname = usePathname();
   const isAuthenticated = Boolean(session?.user);
   const navLinks = getNavLinks(isAuthenticated);
   const userLabel =
     session?.user?.name ?? session?.user?.email ?? "Usuário logado";
 
+  useEffect(() => {
+    const onScroll = () => {
+      setHasScrolled(window.scrollY > 8);
+    };
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <div className="sticky top-0 z-50 w-full backdrop-blur shadow-md bg-transparent">
+    <div
+      className={cn(
+        "sticky top-0 z-50 w-full backdrop-blur transition-colors duration-200",
+        hasScrolled
+          ? "border-b border-border/60 bg-background/85 shadow-md supports-[backdrop-filter]:bg-background/75"
+          : "border-b border-transparent bg-transparent"
+      )}
+    >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo */}
         <div className={`${cormorant.className} font-bold text-lg`}>
@@ -50,13 +76,28 @@ export function Navbar() {
         {/* Desktop menu */}
         <NavigationMenu className="hidden md:flex">
           <NavigationMenuList className="flex gap-6 text-base">
-            {navLinks.map((link) => (
-              <NavigationMenuItem key={link.href}>
-                <NavigationMenuLink asChild>
-                  <Link href={link.href}>{link.label}</Link>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = isLinkActive(pathname, link.href);
+
+              return (
+                <NavigationMenuItem key={link.href}>
+                  <NavigationMenuLink asChild active={isActive}>
+                    <Link
+                      href={link.href}
+                      aria-current={isActive ? "page" : undefined}
+                      className={cn(
+                        "px-1 py-1 transition-colors",
+                        isActive
+                          ? "font-semibold text-yellow-600 hover:text-yellow-600 focus:text-yellow-600"
+                          : "text-foreground/90 hover:text-foreground"
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  </NavigationMenuLink>
+                </NavigationMenuItem>
+              );
+            })}
           </NavigationMenuList>
         </NavigationMenu>
 
@@ -106,17 +147,26 @@ export function Navbar() {
             className="md:hidden px-6 pb-4"
           >
             <nav className="flex flex-col gap-4 text-base">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() =>
-                    setTimeout(() => setMenuOpen(false), 150)
-                  }
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isActive = isLinkActive(pathname, link.href);
+
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMenuOpen(false)}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "transition-colors",
+                      isActive
+                        ? "font-semibold text-yellow-600"
+                        : "text-foreground/90 hover:text-foreground"
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
 
               {isAuthenticated && (
                 <div className="pt-1 space-y-2">

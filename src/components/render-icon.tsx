@@ -1,4 +1,3 @@
-"use client";
 import { createElement } from "react";
 
 import * as LucideIcons from "lucide-react";

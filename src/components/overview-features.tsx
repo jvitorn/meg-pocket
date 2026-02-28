@@ -1,11 +1,7 @@
-"use client";
-
 import { renderIcon, IconProps } from "@/components/render-icon";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { SectionHeading } from "@/components/section-heading";
-import { useEffect, useState } from "react";
-import { SkeletonOverviewFeatures } from "@/components/skeletons/overview-features.skeleton"
 interface FeatureCard {
   icon: IconProps["iconName"];
   title: string;
@@ -20,13 +16,6 @@ interface OverviewFeaturesProps {
 }
 
 function OverviewFeatures({ title, subtitle, cards }: OverviewFeaturesProps) {
-  const [isRendered, setIsRendered] = useState(false);
-  useEffect(() => {
-    // Considera o componente "renderizado" no próximo tick do loop de eventos
-    const timeout = setTimeout(() => setIsRendered(true), 0);
-    return () => clearTimeout(timeout);
-  }, []);
-
   return (
     <section className="bg-background text-foreground py-16 px-6">
       <SectionHeading
@@ -36,14 +25,6 @@ function OverviewFeatures({ title, subtitle, cards }: OverviewFeaturesProps) {
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-      {!isRendered ? (
-        <>
-        {Array.from({ length: 4 }).map((_, i) => (
-          <SkeletonOverviewFeatures.Card key={i} />
-        ))}
-        </>
-      ) : (
-        <>
         {cards.map((card, index) => (
           <OverviewFeatureCard
             key={index}
@@ -53,8 +34,6 @@ function OverviewFeatures({ title, subtitle, cards }: OverviewFeaturesProps) {
             colorIcon={card.colorIcon}
           />
         ))}
-        </>
-        )}
       </div>
     </section>
   );

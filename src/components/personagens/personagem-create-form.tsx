@@ -119,17 +119,17 @@ type RacaTheme = {
 };
 
 const steps = [
-  { id: 1 as const, title: "Raca", helper: "Linhagem e heranca" },
+  { id: 1 as const, title: "Raça", helper: "Linhagem e herança" },
   { id: 2 as const, title: "Classe", helper: "Trilha de combate" },
-  { id: 3 as const, title: "Magias", helper: "Grimorio inicial" },
-  { id: 4 as const, title: "Pericia", helper: "Treino por categoria" },
+  { id: 3 as const, title: "Magias", helper: "Grimório inicial" },
+  { id: 4 as const, title: "Perícia", helper: "Treino por categoria" },
   { id: 5 as const, title: "Origem", helper: "Campanha e afinidade" },
   { id: 6 as const, title: "Finalizar", helper: "Identidade da ficha" },
 ];
 
 const elementOptions = [
   { value: "natureza", label: "Natureza", icon: Leaf },
-  { value: "agua", label: "Agua", icon: Droplet },
+  { value: "agua", label: "Água", icon: Droplet },
   { value: "fogo", label: "Fogo", icon: Flame },
   { value: "vento", label: "Vento", icon: Wind },
 ] as const;
@@ -353,20 +353,20 @@ function classeResumoCurto(classe: ClasseOption) {
   return (
     classe.subtitulo?.trim() ||
     classe.descricao?.trim() ||
-    "Sem descricao breve para esta classe."
+    "Sem descrição breve para esta classe."
   );
 }
 
 function racaResumoCurto(raca: RacaOption) {
-  return raca.descricao?.trim() || "Sem descricao breve para esta raca.";
+  return raca.descricao?.trim() || "Sem descrição breve para esta raça.";
 }
 
 function magiaResumoCurto(magia: MagiaOption) {
-  return magia.descricao?.trim() || "Sem descricao breve para esta magia.";
+  return magia.descricao?.trim() || "Sem descrição breve para esta magia.";
 }
 
 function periciaResumoCurto(pericia: PericiaOption) {
-  return pericia.descricao?.trim() || "Sem descricao breve para esta pericia.";
+  return pericia.descricao?.trim() || "Sem descrição breve para esta perícia.";
 }
 
 function normalizePericiaTipo(tipo?: string | null) {
@@ -580,7 +580,7 @@ export default function PersonagemCreateForm({
   function handleContinue() {
     if (step === 1) {
       if (!canAdvanceStep1) {
-        setError("Selecione uma raca para continuar.");
+        setError("Selecione uma raça para continuar.");
         return;
       }
       setError(null);
@@ -612,8 +612,8 @@ export default function PersonagemCreateForm({
       if (!canAdvanceStep4) {
         setError(
           `Selecione ${requiredPericiasCount} ${
-            requiredPericiasCount === 1 ? "pericia" : "pericias"
-          } (no maximo 1 por tipo).`
+            requiredPericiasCount === 1 ? "perícia" : "perícias"
+          } (no máximo 1 por tipo).`
         );
         return;
       }
@@ -701,12 +701,12 @@ export default function PersonagemCreateForm({
     event.preventDefault();
 
     if (!isUrlImagemValida) {
-      setError("Informe uma URL valida com http:// ou https://.");
+      setError("Informe uma URL válida com http:// ou https://.");
       return;
     }
 
     if (!canSubmit) {
-      setError("Preencha os campos obrigatorios antes de criar o personagem.");
+      setError("Preencha os campos obrigatórios antes de criar o personagem.");
       return;
     }
 
@@ -759,7 +759,7 @@ export default function PersonagemCreateForm({
     <div className="flex flex-col gap-6">
       {!isReady && (
         <FieldDescription className="text-center text-destructive">
-          E preciso ter campanhas, classes (exceto Unico) e racas cadastradas.
+          É preciso ter campanhas, classes (exceto as únicas) e raças cadastradas.
         </FieldDescription>
       )}
 
@@ -862,7 +862,7 @@ export default function PersonagemCreateForm({
                   <div>
                     <h3 className="text-base font-semibold">Defina sua classe</h3>
                     <p className="mt-1 text-sm text-muted-foreground/90">
-                      A classe determina sua funcao tatica, recursos base e estilo de combate.
+                      A classe determina sua função tática, recursos base e estilo de combate.
                     </p>
                   </div>
 
@@ -885,7 +885,7 @@ export default function PersonagemCreateForm({
                         >
                           <div
                             className={cn(
-                              "pointer-events-none absolute inset-0 bg-gradient-to-br opacity-80",
+                              "pointer-events-none absolute inset-0 bg-linear-to-br opacity-80",
                               theme.glowClass
                             )}
                           />
@@ -950,9 +950,9 @@ export default function PersonagemCreateForm({
               {step === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-base font-semibold">Defina sua raca</h3>
+                    <h3 className="text-base font-semibold">Defina sua raça</h3>
                     <p className="mt-1 text-sm text-muted-foreground/90">
-                      A raca estabelece herança, cultura e atributos iniciais da ficha.
+                      A raça estabelece herança, cultura e atributos iniciais da ficha.
                     </p>
                   </div>
 
@@ -1023,9 +1023,9 @@ export default function PersonagemCreateForm({
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <h3 className="text-base font-semibold">Monte seu grimorio inicial</h3>
+                      <h3 className="text-base font-semibold">Monte seu grimório inicial</h3>
                       <p className="mt-1 text-sm text-muted-foreground/90">
-                        Escolha ate 3 magias disponiveis para a classe selecionada.
+                        Escolha até 3 magias disponíveis para a classe selecionada.
                       </p>
                     </div>
                     <span
@@ -1060,13 +1060,13 @@ export default function PersonagemCreateForm({
 
                   {!selectedClasse && (
                     <div className="rounded-2xl border border-border/60 bg-background/60 p-4 text-sm text-muted-foreground">
-                      Selecione uma classe para carregar o grimorio.
+                      Selecione uma classe para carregar o grimório.
                     </div>
                   )}
 
                   {selectedClasse && !hasMagiasNaClasse && (
                     <div className="rounded-2xl border border-border/60 bg-background/60 p-4 text-sm text-muted-foreground">
-                      Esta classe ainda nao possui magias cadastradas. Voce pode continuar.
+                      Esta classe ainda não possui magias cadastradas. Você pode continuar.
                     </div>
                   )}
 
@@ -1176,14 +1176,14 @@ export default function PersonagemCreateForm({
                       <h3 className="text-base font-semibold">
                         {hasPericiasDisponiveis
                           ? `Escolha ${requiredPericiasCount} ${
-                              requiredPericiasCount === 1 ? "pericia" : "pericias"
+                              requiredPericiasCount === 1 ? "perícia" : "perícias"
                             }`
-                          : "Pericias"}
+                          : "Perícias"}
                       </h3>
                       <p className="mt-1 text-sm text-muted-foreground/90">
                         {hasPericiasDisponiveis
                           ? "Selecione talentos de treinamento, com limites por categoria."
-                          : "Nenhuma pericia disponivel para selecao nesta etapa."}
+                          : "Nenhuma perícia disponível para seleção nesta etapa."}
                       </p>
                     </div>
                     {hasPericiasDisponiveis && (
@@ -1202,7 +1202,7 @@ export default function PersonagemCreateForm({
 
                   {!hasPericiasDisponiveis && (
                     <div className="rounded-2xl border border-border/60 bg-background/60 p-4 text-sm text-muted-foreground">
-                      Nenhuma pericia cadastrada no catalogo. Voce pode continuar.
+                      Nenhuma perícia cadastrada no catálogo. Você pode continuar.
                     </div>
                   )}
 
@@ -1387,12 +1387,12 @@ export default function PersonagemCreateForm({
                       name="apelido"
                       value={apelido}
                       onChange={(e) => setApelido(e.target.value)}
-                      placeholder="Ex: A Lamina do Norte"
+                      placeholder="Ex: A Lâmina do Norte"
                     />
                   </Field>
 
                   <Field>
-                    <FieldLabel htmlFor="descricao">Descricao curta</FieldLabel>
+                    <FieldLabel htmlFor="descricao">Descrição curta</FieldLabel>
                     <textarea
                       id="descricao"
                       name="descricao"
@@ -1400,7 +1400,7 @@ export default function PersonagemCreateForm({
                       value={descricao}
                       onChange={(e) => setDescricao(e.target.value)}
                       className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-xs outline-none focus:ring-2 focus:ring-primary/40"
-                      placeholder="Uma breve historia ou personalidade do personagem."
+                      placeholder="Uma breve história ou personalidade do personagem."
                     />
                   </Field>
 
@@ -1425,8 +1425,8 @@ export default function PersonagemCreateForm({
                     />
                     <FieldDescription className={cn(!isUrlImagemValida && "text-destructive")}>
                       {isUrlImagemValida
-                        ? "Apenas links validos (http:// ou https://)."
-                        : "Informe uma URL valida iniciando com http:// ou https://."}
+                        ? "Apenas links válidos (http:// ou https://)."
+                        : "Informe uma URL válida iniciando com http:// ou https://."}
                     </FieldDescription>
                   </Field>
 
@@ -1437,7 +1437,7 @@ export default function PersonagemCreateForm({
 
                       <div className="relative z-10">
                         <div className="mb-3 flex items-center justify-between gap-2">
-                          <h4 className="text-sm font-semibold tracking-wide">Revisao da ficha</h4>
+                          <h4 className="text-sm font-semibold tracking-wide">Revisão da ficha</h4>
                           <span className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                             pronta para registro
                           </span>
@@ -1455,7 +1455,7 @@ export default function PersonagemCreateForm({
                           {selectedRaca && (
                             <div className="rounded-xl border border-border/60 bg-background/70 px-3 py-2">
                               <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-                                Raca
+                                Raça
                               </p>
                               <p className="mt-1 text-sm font-medium">{selectedRaca.nome}</p>
                             </div>
@@ -1471,7 +1471,7 @@ export default function PersonagemCreateForm({
                           {selectedPericias.length > 0 && (
                             <div className="rounded-xl border border-border/60 bg-background/70 px-3 py-2">
                               <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
-                                Pericias
+                                Perícias
                               </p>
                               <p className="mt-1 text-sm font-medium line-clamp-2">
                                 {selectedPericias.map((pericia) => pericia.nome).join(", ")}
@@ -1495,7 +1495,7 @@ export default function PersonagemCreateForm({
                         {selectedMagias.length > 0 && (
                           <div className="mt-3">
                             <p className="mb-2 text-xs uppercase tracking-[0.15em] text-muted-foreground">
-                              Grimorio selecionado
+                              Grimório selecionado
                             </p>
                             <div className="flex flex-wrap gap-2">
                               {selectedMagias.map((magia) => (
@@ -1588,7 +1588,7 @@ export default function PersonagemCreateForm({
                 <div className="space-y-2 text-sm">
                   {selectedRaca && (
                     <p className="text-muted-foreground">
-                      Raca: <span className="text-foreground">{selectedRaca.nome}</span>
+                      Raça: <span className="text-foreground">{selectedRaca.nome}</span>
                     </p>
                   )}
                   {selectedClasse && (
@@ -1598,7 +1598,7 @@ export default function PersonagemCreateForm({
                   )}
                   {selectedPericias.length > 0 && (
                     <p className="text-muted-foreground">
-                      Pericias:{" "}
+                      Perícias:{" "}
                       <span className="text-foreground">
                         {selectedPericias.map((pericia) => pericia.nome).join(", ")}
                       </span>
@@ -1646,7 +1646,7 @@ export default function PersonagemCreateForm({
                   )}
                 </div>
                 <FieldDescription className="mt-3 text-xs">
-                  Todos os dados podem ser ajustados depois, direto na ficha.
+                  A maioria dos dados pode ser ajustada depois, direto na ficha.
                 </FieldDescription>
               </div>
             </aside>
@@ -1717,7 +1717,7 @@ export default function PersonagemCreateForm({
                     {modalClasse.descricao && (
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                          Descricao
+                          Descrição
                         </p>
                         <p className="mt-1 whitespace-pre-wrap">{modalClasse.descricao}</p>
                       </div>
@@ -1746,7 +1746,7 @@ export default function PersonagemCreateForm({
                     {modalRaca.descricao && (
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                          Descricao
+                          Descrição
                         </p>
                         <p className="mt-1 whitespace-pre-wrap">{modalRaca.descricao}</p>
                       </div>
@@ -1781,7 +1781,7 @@ export default function PersonagemCreateForm({
                     {modalMagia.descricao && (
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                          Descricao
+                          Descrição
                         </p>
                         <p className="mt-1 whitespace-pre-wrap">{modalMagia.descricao}</p>
                       </div>
@@ -1819,7 +1819,7 @@ export default function PersonagemCreateForm({
                     {modalPericia.descricao && (
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                          Descricao
+                          Descrição
                         </p>
                         <p className="mt-1 whitespace-pre-wrap">{modalPericia.descricao}</p>
                       </div>

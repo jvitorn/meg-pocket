@@ -1,46 +1,58 @@
-import Image from "next/image";
-import Link from "next/link";
+import type { Metadata } from "next";
+import { getServerSession } from "next-auth";
 import { BackgroundHome } from "@/components/background-home";
+import { HomeFaq } from "@/components/home-faq";
+import { HomeQuickStart } from "@/components/home-quick-start";
 import { Navbar } from "@/components/navbar";
-import { OverviewFeatures } from "@/components/overview-features";
+import { authOptions } from "@/lib/auth";
+import { getCampanhas } from "@/data/campanhas";
 
-export default function Home() {
+export const metadata: Metadata = {
+  title: "Magos & Grimórios | Crie personagens e campanhas em Valthera",
+  description:
+    "Monte sua ficha, domine magias e jogue campanhas de Magos & Grimórios em uma plataforma web rápida e interativa.",
+  openGraph: {
+    title: "Magos & Grimórios",
+    description:
+      "Crie personagens, participe de campanhas e gerencie sua jornada em Valthera.",
+    type: "website",
+    images: [
+      {
+        url: "/imgs/backgrounds/home.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Panorama de Valthera",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Magos & Grimórios",
+    description:
+      "Crie personagens, participe de campanhas e gerencie sua jornada em Valthera.",
+    images: ["/imgs/backgrounds/home.jpg"],
+  },
+};
+
+export default async function Home() {
+  const session = await getServerSession(authOptions);
+  const isAuthenticated = Boolean(session?.user);
+  const featuredCampaigns = (await getCampanhas()).slice(0, 3);
+
   return (
     <>
-     <Navbar/>
-     <BackgroundHome
-            title="TORNE-SE A LENDA QUE VALTHERA ESPERA"
-            subtitle="Desperte seu grimório, domine magias únicas e enfrente os desafios de Valthera — um mundo à beira do colapso."
-            buttonText="Ver campanhas"
-          />
-      <OverviewFeatures
-            title="Sobre o Magos & Grimórios"
-            subtitle="Explore um sistema único e criativo, crie magias poderosas e desvende os segredos do mundo mágico de Valthera."
-            cards={[
-              {
-                icon: "WandSparkles",
-                title: "Magias Assinaturas",
-                description: "Crie magias únicas que evoluem com você.",
-              },
-              {
-                icon: "Users",
-                title: "Raças e Classes",
-                description: "Personalize o seu mago e crie um herói único.",
-              },
-              {
-                icon: "BookMarked",
-                title: "Ficha Online e Interativa",
-                description:
-                  "Gerencie todos os detalhes do seu personagem em tempo real.",
-              },
-              {
-                icon: "Shield",
-                title: "Invocações",
-                description: "Crie e invoque criaturas poderosas.",
-              },
-            ]}
-          />
+      <Navbar />
+      <BackgroundHome
+        title="TORNE-SE A LENDA QUE VALTHERA ESPERA"
+        subtitle="Desperte seu grimório, domine magias únicas e enfrente os desafios de Valthera — um mundo à beira do colapso."
+        primaryCta={{ label: "Ver campanhas", href: "/campanhas" }}
+        secondaryCta={{
+          label: isAuthenticated ? "Criar personagem" : "Criar conta",
+          href: isAuthenticated ? "/personagens/novo" : "/cadastro",
+        }}
+      />
+      <HomeQuickStart featuredCampaigns={featuredCampaigns} />
+      <HomeFaq isAuthenticated={isAuthenticated} />
     </>
-   
   );
 }

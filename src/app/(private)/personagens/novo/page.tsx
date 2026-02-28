@@ -72,9 +72,9 @@ export default async function NovoPersonagemPage() {
     <>
       <Navbar />
       <main className="min-h-screen bg-background text-foreground">
-        <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-emerald-400 to-sky-500" />
+        <div className="h-1 w-full bg-linear-to-r from-amber-400 via-emerald-400 to-sky-500" />
 
-        <section className="bg-gradient-to-b from-muted/40 via-background to-background">
+        <section className="bg-linear-to-b from-muted/40 via-background to-background">
           <div className="w-full px-4 py-10 sm:px-6 lg:px-8 xl:px-10 2xl:px-14">
             <div className="flex flex-col gap-3">
               <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">

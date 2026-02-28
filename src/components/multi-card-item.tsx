@@ -22,8 +22,11 @@ import { cn } from "@/lib/utils";
 import { getColorClasses } from "@/lib/utils";
 
 // Props para o componente de item de card reutilizável
+interface dataMulticardInterface extends BaseInterface{
+  url_imagem?: string
+}
 interface MultiCardItemProps {
-  data: BaseInterface; // dados da classe (ex: nome, imagem, etc.)
+  data: dataMulticardInterface; // dados da classe (ex: nome, imagem, etc.)
   isSelected?: boolean;
   onClick?: () => void; // ação ao clicar no card
   onButtonClick?: () => void; // ação ao clicar no botão interno
@@ -39,7 +42,7 @@ export function MultiCardItem({
   return (
     <Card
       onClick={onClick}
-      className={`relative h-[220px] w-full cursor-pointer overflow-hidden rounded-xl border border-zinc-700 hover:ring-2 hover:ring-inset hover:ring-offset-0transition-all duration-200 ease-in-out group
+      className={`relative h-55 w-full cursor-pointer overflow-hidden rounded-xl border border-zinc-700 hover:ring-2 hover:ring-inset hover:ring-offset-0transition-all duration-200 ease-in-out group
         ${isSelected ? "ring-2 ring-purple-500 ring-offset-0 ring-inset" : ""}`}
     >
       {/* Degradê de sombra na base do card */}
@@ -53,12 +56,12 @@ export function MultiCardItem({
       </CardHeader>
       {/* Imagem central da classe */}
       <CardContent className="relative z-20 flex justify-center -mt-1 overflow-visible">
-        <div className="relative w-[100px] h-[100px] z-30 transition-transform duration-200 ease-in-out group-hover:scale-[1.5] will-change-transform">
+        <div className="relative w-25 h-25 z-30 transition-transform duration-200 ease-in-out group-hover:scale-[1.5] will-change-transform">
           <Image
-            src={data.imagem_pixel || ""}
-            alt={data.nome}
-            fill
-            className="object-contain drop-shadow-md"
+        src={data.imagem_pixel || data.url_imagem || ""}
+        alt={data.nome}
+        fill
+        className="object-contain drop-shadow-md"
           />
         </div>
       </CardContent>

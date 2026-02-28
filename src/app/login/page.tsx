@@ -1,19 +1,19 @@
-import { GalleryVerticalEnd } from "lucide-react"
-
-import { LoginForm } from "@/components/login/login-form"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
+import { AuthPageShell } from "@/components/auth/auth-page-shell";
+import { LoginForm } from "@/components/login/login-form";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
 
 export default function LoginPage() {
   return (
     <>
-    <Navbar/>
-    <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-      <div className="flex w-full max-w-md flex-col gap-6">
+      <Navbar />
+      <AuthPageShell
+        backgroundSrc="/imgs/backgrounds/login.jpg"
+        backgroundAlt="Cena de fantasia para tela de login"
+      >
         <LoginForm />
-      </div>
-    </div>
-    <Footer/>
+      </AuthPageShell>
+      <Footer />
     </>
-  )
+  );
 }
