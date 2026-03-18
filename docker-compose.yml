@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: meg-pocket-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: meg_pocket
+      POSTGRES_USER: meg
+      POSTGRES_PASSWORD: meg
+    ports:
+      - "5433:5432"
+    volumes:
+      - meg-pocket-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meg -d meg_pocket"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  meg-pocket-postgres-data:

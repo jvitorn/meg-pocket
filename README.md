@@ -1,36 +1,147 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# meg-pocket
 
-## Getting Started
+Aplicação Next.js com Prisma e PostgreSQL.
 
-First, run the development server:
+## Sobre o projeto
+
+`meg-pocket` é a aplicação web de apoio ao universo de rpg `Magos & Grimórios`. O projeto concentra o fluxo principal de autenticação, criação de personagens, gerenciamento de fichas e persistência dos dados usados pela experiência do jogo como um facilitador do proprio sistema.
+
+Hoje a aplicação roda com:
+
+- `Next.js` no frontend e nas rotas server-side.
+- `Prisma` como camada de acesso ao banco.
+- `PostgreSQL` como banco principal.
+- `NextAuth` para autenticação.
+
+O projeto foi organizado para suportar dois contextos de banco:
+
+- desenvolvimento local com PostgreSQL em Docker, para implementar e testar com segurança;
+- ambiente remoto no Supabase, tratado neste repositório como `prod`.
+
+Na prática, o fluxo recomendado é desenvolver e validar primeiro no banco local, e só depois trocar o snapshot ativo para o ambiente remoto quando for necessário conferir comportamento, dados ou compatibilidade com a base hospedada.
+
+## Visão geral
+
+O projeto trabalha com dois snapshots de ambiente:
+
+- `.env.docker-local`: snapshot do banco local em Docker.
+- `.env.prod`: snapshot do ambiente remoto no Supabase.
+
+O arquivo ativo da aplicação é sempre `.env.local`. Os comandos `env:local` e `env:prod` apenas trocam o conteúdo desse arquivo ativo.
+
+## Setup local
+
+1. Instale as dependências:
+
+```bash
+npm install
+```
+
+2. Crie o snapshot local:
+
+```bash
+cp .env.example .env.docker-local
+```
+
+3. Ative o ambiente local:
+
+```bash
+npm run env:local
+```
+
+4. Suba o PostgreSQL:
+
+```bash
+npm run db:up
+```
+
+5. Aplique as migrations:
+
+```bash
+npm run db:setup
+```
+
+6. Se quiser popular o banco local:
+
+```bash
+npm run db:seed
+```
+
+7. Inicie a aplicação:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+O banco local fica disponível em `localhost:5433`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Produção
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Como neste fluxo `homolog == prod`, o snapshot remoto usa a nomenclatura de produção.
 
-## Learn More
+1. Crie o snapshot remoto:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+cp .env.prod.example .env.prod
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. Preencha as credenciais reais do Supabase.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. Ative o ambiente remoto:
 
-## Deploy on Vercel
+```bash
+npm run env:prod
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+4. Rode os comandos de banco necessários:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run db:setup
+npm run db:seed
+```
+
+Para voltar ao ambiente local:
+
+```bash
+npm run env:local
+```
+
+## Scripts
+
+- `npm run dev`: inicia o servidor Next.js em desenvolvimento.
+- `npm run build`: gera o Prisma Client e cria o build de produção do Next.js.
+- `npm run start`: sobe a aplicação já buildada.
+- `npm run lint`: executa o lint do projeto.
+- `npm run db:up`: sobe o container PostgreSQL local com Docker Compose.
+- `npm run db:down`: derruba o ambiente Docker local.
+- `npm run db:logs`: acompanha os logs do PostgreSQL local.
+- `npm run db:generate`: gera o Prisma Client.
+- `npm run db:migrate`: cria e aplica migrations no banco ativo.
+- `npm run db:deploy`: aplica migrations existentes no banco ativo.
+- `npm run db:setup`: atalho para `db:generate` + `db:deploy`.
+- `npm run db:seed`: executa o seed SQL no banco ativo.
+- `npm run env:local`: ativa o snapshot local em `.env.local`.
+- `npm run env:prod`: ativa o snapshot remoto em `.env.local`.
+- `npm run postinstall`: regenera automaticamente o Prisma Client após instalar dependências.
+
+## Seeds
+
+Os arquivos de seed estão em `prisma/seeds/generated`.
+
+- `index.sql` orquestra a execução na ordem correta.
+- O seed faz `TRUNCATE` das tabelas alvo antes de inserir os dados.
+- A mensagem final `Seed plantada com sucesso.` confirma a execução completa.
+
+## Arquivos de ambiente
+
+- `.env.example`: template do snapshot local.
+- `.env.prod.example`: template do snapshot remoto.
+- `.env.local`: arquivo ativo lido pelo Next.js e pelo Prisma.
+- `.env.docker-local`: snapshot local persistido fora do fluxo de produção.
+- `.env.prod`: snapshot remoto persistido fora do fluxo local.
+
+## Observações
+
+- O banco local sobe vazio; o schema entra via migrations e os dados via seed.
+- `db:setup` e `db:seed` sempre operam no ambiente atualmente ativo em `.env.local`.
+- O projeto usa PostgreSQL local no Docker e Supabase como ambiente remoto.

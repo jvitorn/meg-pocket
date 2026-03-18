@@ -7,6 +7,16 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:setup": "npm run db:generate && npm run db:deploy",
+    "db:seed": "node scripts/run-sql-file.mjs prisma/seeds/generated/index.sql",
+    "env:local": "node scripts/use-env.mjs local",
+    "env:prod": "node scripts/use-env.mjs prod",
     "postinstall": "prisma generate"
   },
   "dependencies": {
