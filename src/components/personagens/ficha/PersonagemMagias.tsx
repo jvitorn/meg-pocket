@@ -6,17 +6,8 @@ import { toast } from "sonner";
 import { FichaSection } from "./FichaSection";
 import { PersonagemInterface, MagiaPersonagem } from "@/types";
 import { setPersonagemValores } from "@/services/personagemService";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription,
-  DialogClose,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { MagiaDetailsDrawer } from "@/components/magia-details-drawer";
 
 interface Props {
   personagem: PersonagemInterface;
@@ -112,44 +103,26 @@ export function PersonagemMagias({ personagem, setPersonagem, canEdit }: Props) 
         </div>
       </FichaSection>
 
-      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{selected?.nome ?? "Confirmar magia"}</DialogTitle>
-
-            <DialogDescription>
-              Custo: {selected?.custo_nivel ?? 0} mana
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="p-4 max-h-[360px] overflow-y-auto pr-2 rounded-md
-             scrollbar-thin scrollbar-thumb-foreground/30 scrollbar-track-transparent
-             hover:scrollbar-thumb-foreground/50">
-            <p className="text-sm leading-relaxed whitespace-pre-line">
-              {selected?.descricao}
-            </p>
-          </div>
-
-          <DialogFooter>
-            <div className="flex gap-2 justify-end w-full">
-              <DialogClose asChild>
-                <Button variant="outline">Cancelar</Button>
-              </DialogClose>
-
-              <Button
-                onClick={conjurar}
-                disabled={
-                  !canEdit ||
-                  loading ||
-                  (personagem.mana_atual ?? 0) < (selected?.custo_nivel ?? 0)
-                }
-              >
-                {!canEdit ? "Somente leitura" : loading ? "Ativando..." : "Ativar"}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MagiaDetailsDrawer
+        open={!!selected}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
+        }}
+        magia={selected}
+        closeLabel="Cancelar"
+        footerAction={
+          <Button
+            onClick={conjurar}
+            disabled={
+              !canEdit ||
+              loading ||
+              (personagem.mana_atual ?? 0) < (selected?.custo_nivel ?? 0)
+            }
+          >
+            {!canEdit ? "Somente leitura" : loading ? "Ativando..." : "Ativar"}
+          </Button>
+        }
+      />
     </>
   );
 }

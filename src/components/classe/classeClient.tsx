@@ -6,7 +6,7 @@ export const fetchCache = "force-no-store";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { toast, Toaster } from "sonner";
+import { Toaster } from "sonner";
 
 import LogoGuerreiro from "@/components/icons/guerreiro";
 import LogoElementalista from "@/components/icons/elementalista";
@@ -16,17 +16,7 @@ import LogoArtifice from "@/components/icons/artifice";
 import { LoadingSpinner } from "@/components/loadingSpinner";
 import { HelpCircle, Sparkles } from "lucide-react";
 import { ClasseInterface,MagiaPersonagem } from "@/types";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { MagiaDetailsDrawer } from "@/components/magia-details-drawer";
 
 
 export default function ClassePage() {
@@ -35,9 +25,7 @@ export default function ClassePage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Dialog de magia
   const [selectedMagia, setSelectedMagia] = useState<MagiaPersonagem | null>(null);
-  const [magiaDialogOpen, setMagiaDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -84,7 +72,6 @@ export default function ClassePage() {
 
   const abrirMagia = useCallback((m: MagiaPersonagem) => {
     setSelectedMagia(m);
-    setMagiaDialogOpen(true);
   }, []);
 
   if (loading) return <LoadingSpinner />;
@@ -149,10 +136,10 @@ export default function ClassePage() {
                 <img
                   src={classe.img_corpo}
                   alt={`${classe.nome} full body`}
-                  className="max-h-[520px] object-contain drop-shadow-[0_0_30px_rgba(0,0,0,0.6)]"
+                  className="max-h-130 object-contain drop-shadow-[0_0_30px_rgba(0,0,0,0.6)]"
                 />
               ) : (
-                <div className="w-full h-[420px] bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                <div className="w-full h-105 bg-gray-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
                   <span className="text-muted-foreground">Sem imagem</span>
                 </div>
               )}
@@ -285,62 +272,14 @@ export default function ClassePage() {
         <div className="h-24" />
       </main>
 
-      {/* Dialog de magia: exibe dados completos da magia selecionada */}
-      <Dialog
-        open={magiaDialogOpen}
-        onOpenChange={(v) => {
-          setMagiaDialogOpen(v);
-          if (!v) setSelectedMagia(null);
+      <MagiaDetailsDrawer
+        open={!!selectedMagia}
+        onOpenChange={(open) => {
+          if (!open) setSelectedMagia(null);
         }}
-      >
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{selectedMagia?.nome ?? "Magia"}</DialogTitle>
-            <DialogDescription>
-              Detalhes da magia — alcance e custo.
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* ÁREA DE CONTEÚDO COM SCROLL */}
-          <div className="p-4 space-y-4 max-h-[420px] overflow-y-auto pr-2">
-            <div>
-              <h5 className="text-xs text-muted-foreground uppercase mb-1">
-                Descrição
-              </h5>
-              <p className="text-sm leading-relaxed whitespace-pre-line">
-                {selectedMagia?.descricao ?? "Sem descrição disponível."}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <h6 className="text-xs text-muted-foreground uppercase mb-1">
-                  Alcance
-                </h6>
-                <div className="text-sm">{selectedMagia?.alcance ?? "—"}</div>
-              </div>
-              <div>
-                <h6 className="text-xs text-muted-foreground uppercase mb-1">
-                  Custo (mana)
-                </h6>
-                <div className="text-sm">
-                  {typeof selectedMagia?.custo_nivel === "number"
-                    ? selectedMagia.custo_nivel
-                    : "—"}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <div className="flex gap-2 w-full justify-end">
-              <DialogClose asChild>
-                <Button variant="outline">Fechar</Button>
-              </DialogClose>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        magia={selectedMagia}
+        description="Detalhes da magia, alcance e custo."
+      />
     </>
   );
 }

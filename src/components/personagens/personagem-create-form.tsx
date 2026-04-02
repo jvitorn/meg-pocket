@@ -26,6 +26,7 @@ import LogoPurificador from "@/components/icons/purificador";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { MagiaDetailsDrawer } from "@/components/magia-details-drawer";
 import {
   Field,
   FieldDescription,
@@ -966,7 +967,7 @@ export default function PersonagemCreateForm({
                         <article
                           key={raca.id}
                           className={cn(
-                            "relative overflow-hidden rounded-3xl border bg-gradient-to-b p-4 transition",
+                            "relative overflow-hidden rounded-3xl border bg-linear-to-b p-4 transition",
                             theme.surfaceClass,
                             theme.frameClass,
                             isSelected && theme.selectedRingClass
@@ -1090,7 +1091,7 @@ export default function PersonagemCreateForm({
                           >
                             <div
                               className={cn(
-                                "pointer-events-none absolute inset-0 bg-gradient-to-br opacity-70",
+                                "pointer-events-none absolute inset-0 bg-linear-to-br opacity-70",
                                 selectedClasseTheme?.glowClass
                               )}
                             />
@@ -1431,7 +1432,7 @@ export default function PersonagemCreateForm({
                   </Field>
 
                   {(selectedClasse || selectedRaca || selectedCampanha) && (
-                    <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-background via-background/95 to-muted/40 p-5">
+                    <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-linear-to-br from-background via-background/95 to-muted/40 p-5">
                       <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full border border-white/10" />
                       <div className="pointer-events-none absolute -left-8 -bottom-12 h-36 w-36 rounded-full border border-white/10" />
 
@@ -1693,7 +1694,10 @@ export default function PersonagemCreateForm({
             </div>
       </form>
 
-      <Dialog open={!!detailsModal} onOpenChange={(open) => !open && setDetailsModal(null)}>
+      <Dialog
+        open={!!detailsModal && !modalMagia}
+        onOpenChange={(open) => !open && setDetailsModal(null)}
+      >
             <DialogContent className="max-w-lg">
               {modalClasse && (
                 <>
@@ -1764,44 +1768,6 @@ export default function PersonagemCreateForm({
                 </>
               )}
 
-              {modalMagia && (
-                <>
-                  <DialogHeader>
-                    <DialogTitle>{modalMagia.nome}</DialogTitle>
-                    <DialogDescription>{magiaResumoCurto(modalMagia)}</DialogDescription>
-                  </DialogHeader>
-
-                  <div className="space-y-4 text-sm">
-                    {selectedClasse && (
-                      <div className="rounded-full border px-3 py-1 text-xs text-muted-foreground w-fit">
-                        Classe: {selectedClasse.nome}
-                      </div>
-                    )}
-
-                    {modalMagia.descricao && (
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                          Descrição
-                        </p>
-                        <p className="mt-1 whitespace-pre-wrap">{modalMagia.descricao}</p>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap gap-2">
-                      <span className="rounded-full border px-3 py-1 text-xs text-muted-foreground">
-                        Alcance: {modalMagia.alcance?.trim() || "-"}
-                      </span>
-                      <span className="rounded-full border px-3 py-1 text-xs text-muted-foreground">
-                        Custo:{" "}
-                        {typeof modalMagia.custo_nivel === "number"
-                          ? modalMagia.custo_nivel
-                          : "-"}
-                      </span>
-                    </div>
-                  </div>
-                </>
-              )}
-
               {modalPericia && (
                 <>
                   <DialogHeader>
@@ -1837,6 +1803,16 @@ export default function PersonagemCreateForm({
               </DialogFooter>
             </DialogContent>
       </Dialog>
+
+      <MagiaDetailsDrawer
+        open={!!modalMagia}
+        onOpenChange={(open) => {
+          if (!open) setDetailsModal(null);
+        }}
+        magia={modalMagia}
+        description={modalMagia ? magiaResumoCurto(modalMagia) : "Detalhes da magia."}
+        contextBadge={selectedClasse ? `Classe: ${selectedClasse.nome}` : undefined}
+      />
     </div>
   );
 }

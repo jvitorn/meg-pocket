@@ -12,6 +12,7 @@ import {
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
   FieldSeparator,
@@ -30,17 +31,31 @@ export function LoginForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function getLoginErrorMessage(rawError?: string | null) {
+    if (!rawError) {
+      return "Não foi possível entrar agora. Tente novamente.";
+    }
+
+    if (rawError === "CredentialsSignin") {
+      return "Email ou senha incorretos. Confira os dados e tente novamente.";
+    }
+
+    return rawError;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
+
     try {
       setLoading(true);
      
       const result = await authService.loginComSenha(email, password);
-      console.log('result login ->', result);
 
       if (result?.error) {
-        alert(result.error || "Email ou senha inválidos");
+        setError(getLoginErrorMessage(result.error));
         return;
       }
 
@@ -53,9 +68,13 @@ export function LoginForm({
         return;
       }
 
-      alert("Email ou senha inválidos");
-    } catch (err: any) {
-      alert(err.message || "Email ou senha inválidos");
+      setError("Email ou senha incorretos. Confira os dados e tente novamente.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? getLoginErrorMessage(err.message)
+          : "Não foi possível entrar agora. Tente novamente."
+      );
     } finally {
       setLoading(false);
     }
@@ -96,7 +115,11 @@ export function LoginForm({
                   placeholder="m@example.com"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={!!error}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (error) setError(null);
+                  }}
                 />
               </Field>
 
@@ -115,9 +138,19 @@ export function LoginForm({
                   type="password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  aria-invalid={!!error}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error) setError(null);
+                  }}
                 />
               </Field>
+
+              {error && (
+                <FieldError className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center">
+                  {error}
+                </FieldError>
+              )}
 
               <Field>
                 <Button type="submit" disabled={loading} className="w-full">
