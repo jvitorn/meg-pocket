@@ -79,8 +79,8 @@ function SlotsVisual({
           className={cn(
             "w-3 h-3 rounded-sm border transition",
             i < usados
-              ? "bg-foreground border-foreground"
-              : "border-muted-foreground/40"
+              ? "border-slate-300 bg-slate-300"
+              : "border-slate-400/35"
           )}
         />
       ))}
@@ -103,18 +103,21 @@ export function PersonagemSlotsDefensivos({
   /* Fallback quando não existe mecânica */
   if (!slots) {
     return (
-      <div className="space-y-2">
+      <section
+        id="defesa"
+        className="scroll-mt-32 space-y-3 rounded-2xl border border-slate-500/20 bg-linear-to-br from-slate-500/10 via-card/92 to-card/82 p-4 shadow-sm backdrop-blur-sm"
+      >
         <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-muted-foreground" />
-          <h3 className="text-xs font-semibold uppercase text-muted-foreground">
+          <Shield className="w-4 h-4 text-slate-200" />
+          <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-100">
             Slots Reativos
           </h3>
         </div>
 
-        <p className="text-sm text-muted-foreground italic">
+        <p className="rounded-xl border border-dashed border-slate-500/20 bg-slate-500/6 p-4 text-sm italic text-slate-100/75">
           Mecânica de defesa ainda não definida para este personagem.
         </p>
-      </div>
+      </section>
     );
   }
 
@@ -202,16 +205,19 @@ export function PersonagemSlotsDefensivos({
   };
 
   return (
-    <div className="space-y-4 mb-3">
+    <section
+      id="defesa"
+      className="mb-3 space-y-4 rounded-2xl border border-slate-500/20 bg-linear-to-br from-slate-500/10 via-card/92 to-card/82 p-4 shadow-sm backdrop-blur-sm"
+    >
       {/* Cabeçalho */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-muted-foreground" />
+          <Shield className="w-4 h-4 text-slate-200" />
           <div>
-            <h3 className="text-xs font-semibold uppercase text-muted-foreground">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-100">
               Slots Reativos
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-slate-100/70">
               {canEdit
                 ? "Usados durante o combate"
                 : "Somente leitura para esta ficha"}
@@ -224,6 +230,7 @@ export function PersonagemSlotsDefensivos({
           size="sm"
           onClick={resetar}
           disabled={!canEdit}
+          className="border-slate-500/30 bg-slate-500/10 text-slate-100 hover:bg-slate-500/15"
         >
           Resetar
         </Button>
@@ -236,7 +243,7 @@ export function PersonagemSlotsDefensivos({
         className="flex items-center justify-between gap-3"
         animate={{ opacity: loadingSlot === "esquiva" ? 0.6 : 1 }}
       >
-        <div className="flex items-center gap-2 min-w-[110px]">
+        <div className="flex items-center gap-2 min-w-27.5">
           <Wind className={cn("w-4 h-4", slotStyle.esquiva.icon)} />
           <span className={cn("text-sm font-medium", slotStyle.esquiva.text)}>
             Esquiva
@@ -266,7 +273,7 @@ export function PersonagemSlotsDefensivos({
         className="flex items-center justify-between gap-3"
         animate={{ opacity: loadingSlot === "bloqueio" ? 0.6 : 1 }}
       >
-        <div className="flex items-center gap-2 min-w-[110px]">
+        <div className="flex items-center gap-2 min-w-27.5">
           <ShieldCheck className={cn("w-4 h-4", slotStyle.bloqueio.icon)} />
           <span className={cn("text-sm font-medium", slotStyle.bloqueio.text)}>
             Bloqueio
@@ -296,7 +303,7 @@ export function PersonagemSlotsDefensivos({
         className="flex items-center justify-between gap-3"
         animate={{ opacity: loadingSlot === "contra" ? 0.6 : 1 }}
       >
-        <div className="flex items-center gap-2 min-w-[110px]">
+        <div className="flex items-center gap-2 min-w-27.5">
           <Swords className={cn("w-4 h-4", slotStyle.contra.icon)} />
           <span className={cn("text-sm font-medium", slotStyle.contra.text)}>
             Contra
@@ -321,6 +328,6 @@ export function PersonagemSlotsDefensivos({
         </Button>
       </motion.div>
       <Separator />
-    </div>
+    </section>
   );
 }

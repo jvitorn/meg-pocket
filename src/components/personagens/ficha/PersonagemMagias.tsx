@@ -65,6 +65,8 @@ export function PersonagemMagias({ personagem, setPersonagem, canEdit }: Props) 
       <FichaSection
         title="Magias"
         subtitle="Toque em uma magia para ver detalhes."
+        sectionId="magias"
+        tone="sky"
       >
         <div className="mt-2 space-y-3">
           {personagem.magias?.length ? (
@@ -72,7 +74,7 @@ export function PersonagemMagias({ personagem, setPersonagem, canEdit }: Props) 
               <button
                 key={idx}
                 onClick={() => setSelected(magia)}
-                className="w-full text-left bg-white/3 hover:bg-white/6 transition p-4 rounded-md md:p-5 flex items-start justify-between gap-4"
+                className="flex w-full items-start justify-between gap-4 rounded-xl border border-sky-500/15 bg-sky-500/[0.07] p-4 text-left transition hover:bg-sky-500/12 md:p-5"
               >
                 <div className="flex items-center gap-4">
                   <Sparkles className="w-6 h-6 text-blue-600" />
@@ -96,9 +98,9 @@ export function PersonagemMagias({ personagem, setPersonagem, canEdit }: Props) 
               </button>
             ))
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma magia encontrada
-            </p>
+            <div className="rounded-xl border border-dashed border-sky-500/20 bg-sky-500/6 p-4 text-sm text-sky-100/75">
+              Nenhuma magia disponível para este personagem no momento.
+            </div>
           )}
         </div>
       </FichaSection>

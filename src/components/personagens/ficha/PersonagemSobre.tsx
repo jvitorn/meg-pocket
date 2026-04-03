@@ -1,9 +1,11 @@
 "use client";
 
+import type { Dispatch, SetStateAction } from "react";
 import { useState, useCallback, startTransition } from "react";
 import { toast } from "sonner";
 import { PersonagemInterface } from "@/types";
 import { setPersonagemValores } from "@/services/personagemService";
+import { FichaSection } from "./FichaSection";
 
 import {
   Dialog,
@@ -19,7 +21,7 @@ import { Button } from "@/components/ui/button";
 
 interface Props {
   personagem: PersonagemInterface;
-  setPersonagem: React.Dispatch<React.SetStateAction<PersonagemInterface | null>>;
+  setPersonagem: Dispatch<SetStateAction<PersonagemInterface | null>>;
   canEdit: boolean;
 }
 
@@ -63,27 +65,29 @@ export function PersonagemSobre({ personagem, setPersonagem, canEdit }: Props) {
 
   return (
     <>
-      {/* SEÇÃO SOBRE — layout idêntico ao original */}
-      <div className="mb-6">
-        <div className="flex items-start justify-between">
-          <h3 className="text-xs font-semibold uppercase text-muted-foreground">
-            Sobre
-          </h3>
-
-        {/* Botão igual ao original */}
+      <FichaSection
+        title="Sobre"
+        subtitle="História, personalidade e detalhes que dão vida à ficha."
+        sectionId="sobre"
+        tone="zinc"
+        action={
           <button
             onClick={handleAbrir}
             disabled={!canEdit}
-            className="text-xs px-2 py-1 rounded bg-white/4 hover:bg-white/6 transition disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full border border-zinc-500/30 bg-zinc-500/10 px-3 py-1 text-xs text-zinc-100 transition hover:bg-zinc-500/15 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Editar
           </button>
+        }
+      >
+        <div className="rounded-xl border border-dashed border-zinc-500/20 bg-zinc-500/[0.07] p-4">
+          <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line">
+            {personagem.sobre?.trim()
+              ? personagem.sobre
+              : "Nenhuma descrição disponível ainda para este personagem."}
+          </p>
         </div>
-
-        <p className="mt-3 text-sm leading-relaxed text-foreground/90">
-          {personagem.sobre ?? "Nenhuma descrição disponível."}
-        </p>
-      </div>
+      </FichaSection>
 
       {/* ------------------ DIALOG ORIGINAL ------------------ */}
       <Dialog open={open} onOpenChange={setOpen}>

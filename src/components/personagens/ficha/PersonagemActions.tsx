@@ -65,13 +65,15 @@ export function PersonagemActions({
       <FichaSection
         title="Ações"
         subtitle="Ações especiais do evento."
+        sectionId="acoes"
+        tone="emerald"
       >
         <div className="mt-2 space-y-3">
           {personagem.actions.map((acao, idx) => (
             <button
               key={`${acao.nome}-${idx}`}
               onClick={() => setSelected(acao)}
-              className="w-full text-left bg-white/3 hover:bg-white/6 transition p-4 rounded-md flex items-start justify-between gap-4 md:p-5"
+              className="flex w-full items-start justify-between gap-4 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.07] p-4 text-left transition hover:bg-emerald-500/12 md:p-5"
             >
               <div className="flex items-start gap-4">
                 <Bolt className="w-6 h-6 mt-0.5 text-emerald-500" />

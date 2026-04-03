@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { CircleDotDashed } from "lucide-react";
-import { PersonagemInterface, PericiaPersonagem } from "@/types";
+import { PericiaPersonagem } from "@/types";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +65,8 @@ export function PersonagemPericias({ pericias }: Props) {
       <FichaSection
         title="Perícias"
         subtitle="Toque em uma perícia para ver detalhes."
+        sectionId="pericias"
+        tone="orange"
       >
         <div className="mt-2 space-y-3">
           {Array.isArray(pericias) && pericias.length > 0 ? (
@@ -75,7 +77,7 @@ export function PersonagemPericias({ pericias }: Props) {
                 <button
                   key={idx}
                   onClick={() => handleAbrir(pericia)}
-                  className="w-full text-left bg-white/3 hover:bg-white/6 transition p-4 rounded-md flex items-start justify-between gap-4 md:p-5"
+                  className="flex w-full items-start justify-between gap-4 rounded-xl border border-orange-500/15 bg-orange-500/[0.07] p-4 text-left transition hover:bg-orange-500/12 md:p-5"
                 >
                   <div className="flex items-start gap-4">
                     <CircleDotDashed
@@ -104,9 +106,9 @@ export function PersonagemPericias({ pericias }: Props) {
               );
             })
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma perícia encontrada
-            </p>
+            <div className="rounded-xl border border-dashed border-orange-500/20 bg-orange-500/6 p-4 text-sm text-orange-100/75">
+              Nenhuma perícia configurada para esta ficha ainda.
+            </div>
           )}
         </div>
       </FichaSection>
@@ -145,7 +147,7 @@ export function PersonagemPericias({ pericias }: Props) {
 </DialogHeader>
           {/* Conteúdo rolável */}
          <div
-  className="p-4 max-h-[360px] overflow-y-auto pr-2 rounded-md
+  className="p-4 max-h-90 overflow-y-auto pr-2 rounded-md
              scrollbar-thin scrollbar-thumb-foreground/30 scrollbar-track-transparent
              hover:scrollbar-thumb-foreground/50"
 >
