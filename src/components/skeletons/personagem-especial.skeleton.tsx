@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function PersonagemBaileSkeleton() {
+export function PersonagemEspecialSkeleton() {
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-xl border border-border bg-background p-5 shadow-lg">

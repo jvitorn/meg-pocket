@@ -27,7 +27,11 @@ export interface PersonagemInterface extends BaseInterface {
   magias?: MagiaPersonagem[];
   pericias?: PericiaPersonagem[];
 
-  status_baile?: StatusBaile;
+  statusEspecial?: StatusEspecial;
+  especial?: {
+    id: number;
+    nome: string;
+  } | null;
 
   actions?: {
     nome: string;
@@ -47,7 +51,7 @@ export interface PersonagemInterface extends BaseInterface {
 /* -------------------------------------------------------
    Tipos auxiliares
 ---------------------------------------------------------*/
-type StatusBaile = "vivo" | "morto" | "killer";
+type StatusEspecial = "vivo" | "morto" | "killer";
 
 export interface MagiaPersonagem {
   id?: string;

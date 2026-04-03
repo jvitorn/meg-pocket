@@ -81,7 +81,7 @@ export async function GET(
         imagem_pixel: p.imagem_pixel ?? null,
         magias,
         pericias,
-        status_baile: p.status_baile ?? null,
+        statusEspecial: p.statusEspecial ?? null,
       };
     });
 

@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
 BEGIN;
-TRUNCATE TABLE "PericiaPersonagem", "MagiaPersonagem", "Inventorio", "slots_defensivos", "Personagem", "Session", "Account", "User", "BaileRoleAction", "Baile", "MagiaCatalog", "PericiaCatalog", "Campanha", "Classe", "Raca" RESTART IDENTITY CASCADE;
+TRUNCATE TABLE "PericiaPersonagem", "MagiaPersonagem", "Inventorio", "slots_defensivos", "Personagem", "Session", "Account", "User", "EspecialRoleAction", "Especial", "MagiaCatalog", "PericiaCatalog", "Campanha", "Classe", "Raca" RESTART IDENTITY CASCADE;
 \ir 000_auth_seed.sql
 \ir 001_raca.sql
 \ir 002_classe.sql

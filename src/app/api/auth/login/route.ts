@@ -1,18 +1,39 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import {
+  buildRateLimitHeaders,
+  enforceRateLimit,
+} from "@/lib/security/rate-limit";
 
 export async function POST(req: Request) {
-  const { email, senha } = await req.json();
+  const body = await req.json();
+  const email = String(body?.email ?? "").trim().toLowerCase();
+  const senha = String(body?.senha ?? "").trim();
 
-  if (!email || !senha) {
+  const rateLimit = await enforceRateLimit(req, {
+    key: "auth:login",
+    limit: 8,
+    windowMs: 60_000,
+    identifier: email || undefined,
+  });
+
+  const headers = buildRateLimitHeaders(rateLimit);
+
+  if (!rateLimit.allowed) {
     return NextResponse.json(
-      { error: "Dados inválidos" },
-      { status: 400 }
+      { error: "Muitas tentativas. Aguarde e tente novamente." },
+      { status: 429, headers }
     );
   }
 
-  // 1️⃣ Buscar usuário
+  if (!email || !senha) {
+    return NextResponse.json(
+      { error: "Credenciais inválidas." },
+      { status: 400, headers }
+    );
+  }
+
   const user = await prisma.user.findUnique({
     where: { email },
     include: {
@@ -20,27 +41,17 @@ export async function POST(req: Request) {
     },
   });
 
-  if (!user) {
-    return NextResponse.json(
-      { error: "Usuário ou senha inválidos" },
-      { status: 401 }
-    );
-  }
-
-  // 2️⃣ Buscar account de credentials
-  const credentialsAccount = user.accounts.find(
+  const credentialsAccount = user?.accounts.find(
     (acc) => acc.provider === "credentials"
   );
 
-  // Usuário só Google
-  if (!credentialsAccount || !credentialsAccount.password) {
+  if (!user || !credentialsAccount?.password) {
     return NextResponse.json(
-      { error: "Conta criada via Google. Use login com Google." },
-      { status: 403 }
+      { error: "Credenciais inválidas." },
+      { status: 401, headers }
     );
   }
 
-  // 3️⃣ Comparar senha
   const senhaValida = await bcrypt.compare(
     senha,
     credentialsAccount.password
@@ -48,15 +59,19 @@ export async function POST(req: Request) {
 
   if (!senhaValida) {
     return NextResponse.json(
-      { error: "Usuário ou senha inválidos" },
-      { status: 401 }
+      { error: "Credenciais inválidas." },
+      { status: 401, headers }
     );
   }
 
-  // 4️⃣ Sucesso (sessão ainda simples)
-  return NextResponse.json({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-  });
+  return NextResponse.json(
+    {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    },
+    {
+      headers,
+    }
+  );
 }

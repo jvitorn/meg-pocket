@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   getServerSession: vi.fn(),
   transaction: vi.fn(),
   create: vi.fn(),
+  enforceRateLimit: vi.fn(),
+  buildRateLimitHeaders: vi.fn(),
 }));
 
 vi.mock("next-auth", () => ({
@@ -35,6 +37,11 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+vi.mock("@/lib/security/rate-limit", () => ({
+  enforceRateLimit: mocks.enforceRateLimit,
+  buildRateLimitHeaders: mocks.buildRateLimitHeaders,
+}));
+
 import { POST } from "@/app/api/personagem/create/route";
 
 function makeRequest(body: unknown) {
@@ -50,6 +57,19 @@ describe("POST /api/personagem/create", () => {
     mocks.getServerSession.mockReset();
     mocks.transaction.mockReset();
     mocks.create.mockReset();
+    mocks.enforceRateLimit.mockReset();
+    mocks.buildRateLimitHeaders.mockReset();
+
+    mocks.enforceRateLimit.mockResolvedValue({
+      allowed: true,
+      limit: 10,
+      remaining: 9,
+      retryAfter: 60,
+      resetAt: Date.now() + 60_000,
+    });
+    mocks.buildRateLimitHeaders.mockReturnValue({
+      "X-RateLimit-Limit": "10",
+    });
   });
 
   it("retorna 401 quando nao ha sessao autenticada", async () => {
@@ -82,6 +102,34 @@ describe("POST /api/personagem/create", () => {
       error: "Elemento inválido.",
     });
     expect(response.status).toBe(400);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("retorna 429 quando o rate limit de criacao e excedido", async () => {
+    mocks.getServerSession.mockResolvedValue({ user: { id: "user-1" } });
+    mocks.enforceRateLimit.mockResolvedValue({
+      allowed: false,
+      limit: 10,
+      remaining: 0,
+      retryAfter: 60,
+      resetAt: Date.now() + 60_000,
+    });
+
+    const response = await POST(
+      makeRequest({
+        nome: "Arkan",
+        campanhaId: 1,
+        classeId: 2,
+        racaId: 3,
+        elemento: "fogo",
+      })
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: "Muitas tentativas. Aguarde e tente novamente.",
+    });
+    expect(response.status).toBe(429);
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 

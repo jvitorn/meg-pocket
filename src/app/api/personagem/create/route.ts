@@ -3,6 +3,10 @@ import { getServerSession } from "next-auth";
 
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import {
+  buildRateLimitHeaders,
+  enforceRateLimit,
+} from "@/lib/security/rate-limit";
 
 const allowedElements = new Set(["natureza", "agua", "fogo", "vento"]);
 
@@ -38,6 +42,22 @@ export async function POST(request: Request) {
       );
     }
 
+    const rateLimit = await enforceRateLimit(request, {
+      key: "personagem:create",
+      limit: 10,
+      windowMs: 60_000,
+      identifier: session.user.id,
+    });
+
+    const rateLimitHeaders = buildRateLimitHeaders(rateLimit);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { ok: false, error: "Muitas tentativas. Aguarde e tente novamente." },
+        { status: 429, headers: rateLimitHeaders }
+      );
+    }
+
     const body = await request.json();
     const nome = String(body?.nome ?? "").trim();
     const apelido = String(body?.apelido ?? "").trim();
@@ -68,49 +88,56 @@ export async function POST(request: Request) {
     if (!nome) {
       return NextResponse.json(
         { ok: false, error: "Nome do personagem é obrigatório." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
+      );
+    }
+
+    if (nome.length > 80 || apelido.length > 80 || descricao.length > 2000) {
+      return NextResponse.json(
+        { ok: false, error: "Dados do personagem excedem o limite permitido." },
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
     if (!campanhaId || !classeId || !racaId) {
       return NextResponse.json(
         { ok: false, error: "Campanha, classe e raça são obrigatórias." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
     if (!allowedElements.has(elemento)) {
       return NextResponse.json(
         { ok: false, error: "Elemento inválido." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
     if (urlImagem && !isValidExternalUrl(urlImagem)) {
       return NextResponse.json(
         { ok: false, error: "URL da imagem inválida." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
     if (hasInvalidMagiaId) {
       return NextResponse.json(
         { ok: false, error: "Lista de magias inválida." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
     if (hasInvalidPericiaId) {
       return NextResponse.json(
         { ok: false, error: "Lista de perícias inválida." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
     if (magiaIds.length > 3) {
       return NextResponse.json(
         { ok: false, error: "Você pode selecionar no máximo 3 magias." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
@@ -139,21 +166,21 @@ export async function POST(request: Request) {
     if (!campanha) {
       return NextResponse.json(
         { ok: false, error: "Campanha não encontrada." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
     if (!classe) {
       return NextResponse.json(
         { ok: false, error: "Classe não encontrada." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
     if (!raca) {
       return NextResponse.json(
         { ok: false, error: "Raça não encontrada." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
@@ -167,7 +194,7 @@ export async function POST(request: Request) {
     if (requiredPericiasCount === 0 && periciaIds.length > 0) {
       return NextResponse.json(
         { ok: false, error: "Não há perícias disponíveis para seleção." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
@@ -179,7 +206,7 @@ export async function POST(request: Request) {
             requiredPericiasCount === 1 ? "perícia" : "perícias"
           } para continuar.`,
         },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
@@ -187,7 +214,7 @@ export async function POST(request: Request) {
     if (periciaNaoEncontrada) {
       return NextResponse.json(
         { ok: false, error: "Perícia não encontrada." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
@@ -198,7 +225,7 @@ export async function POST(request: Request) {
       if (tiposSelecionados.has(tipo)) {
         return NextResponse.json(
           { ok: false, error: "Selecione no máximo 1 perícia por tipo." },
-          { status: 400 }
+          { status: 400, headers: rateLimitHeaders }
         );
       }
       tiposSelecionados.add(tipo);
@@ -209,14 +236,14 @@ export async function POST(request: Request) {
     if (magiaInvalida) {
       return NextResponse.json(
         { ok: false, error: "Existe magia que não pertence à classe selecionada." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
     if (classe.Magias.length > 0 && magiaIds.length === 0) {
       return NextResponse.json(
         { ok: false, error: "Selecione ao menos 1 magia da classe." },
-        { status: 400 }
+        { status: 400, headers: rateLimitHeaders }
       );
     }
 
@@ -263,7 +290,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { ok: true, id: personagem.id },
-      { status: 201 }
+      { status: 201, headers: rateLimitHeaders }
     );
   } catch (error) {
     console.error("Erro ao criar personagem:", error);

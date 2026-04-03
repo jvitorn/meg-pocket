@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   validarEdicaoDaFicha: vi.fn(),
   findPersonagem: vi.fn(),
   updateSlots: vi.fn(),
+  enforceRateLimit: vi.fn(),
+  buildRateLimitHeaders: vi.fn(),
 }));
 
 vi.mock("@/lib/regras/personagemPermissao", () => ({
@@ -21,6 +23,11 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+vi.mock("@/lib/security/rate-limit", () => ({
+  enforceRateLimit: mocks.enforceRateLimit,
+  buildRateLimitHeaders: mocks.buildRateLimitHeaders,
+}));
+
 import { POST } from "@/app/api/personagem/[id]/slots/[tipo]/route";
 
 describe("POST /api/personagem/[id]/slots/[tipo]", () => {
@@ -28,6 +35,19 @@ describe("POST /api/personagem/[id]/slots/[tipo]", () => {
     mocks.validarEdicaoDaFicha.mockReset();
     mocks.findPersonagem.mockReset();
     mocks.updateSlots.mockReset();
+    mocks.enforceRateLimit.mockReset();
+    mocks.buildRateLimitHeaders.mockReset();
+
+    mocks.enforceRateLimit.mockResolvedValue({
+      allowed: true,
+      limit: 20,
+      remaining: 19,
+      retryAfter: 60,
+      resetAt: Date.now() + 60_000,
+    });
+    mocks.buildRateLimitHeaders.mockReturnValue({
+      "X-RateLimit-Limit": "20",
+    });
   });
 
   it("rejeita tipo de slot invalido", async () => {
@@ -86,6 +106,31 @@ describe("POST /api/personagem/[id]/slots/[tipo]", () => {
     });
     expect(response.status).toBe(400);
     expect(mocks.updateSlots).not.toHaveBeenCalled();
+  });
+
+  it("retorna 429 quando o rate limit de uso de slot e excedido", async () => {
+    mocks.validarEdicaoDaFicha.mockResolvedValue({
+      ok: true,
+      userId: "user-1",
+    });
+    mocks.enforceRateLimit.mockResolvedValue({
+      allowed: false,
+      limit: 20,
+      remaining: 0,
+      retryAfter: 60,
+      resetAt: Date.now() + 60_000,
+    });
+
+    const response = await POST(
+      new Request("http://localhost:3000/api/personagem/7/slots/esquiva") as never,
+      { params: Promise.resolve({ id: "7", tipo: "esquiva" }) }
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      error: "Muitas ações em sequência. Aguarde alguns instantes.",
+    });
+    expect(response.status).toBe(429);
+    expect(mocks.findPersonagem).not.toHaveBeenCalled();
   });
 
   it("incrementa o uso quando ainda ha limite disponivel", async () => {

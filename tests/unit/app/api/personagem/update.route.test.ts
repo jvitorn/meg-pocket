@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   validarEdicaoDaFicha: vi.fn(),
-  classeFindUnique: vi.fn(),
-  racaFindUnique: vi.fn(),
+  personagemFindUnique: vi.fn(),
   personagemUpdate: vi.fn(),
   magiaFindMany: vi.fn(),
   periciaFindMany: vi.fn(),
   transaction: vi.fn(),
+  enforceRateLimit: vi.fn(),
+  buildRateLimitHeaders: vi.fn(),
 }));
 
 vi.mock("@/lib/regras/personagemPermissao", () => ({
@@ -16,13 +17,8 @@ vi.mock("@/lib/regras/personagemPermissao", () => ({
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    classe: {
-      findUnique: mocks.classeFindUnique,
-    },
-    raca: {
-      findUnique: mocks.racaFindUnique,
-    },
     personagem: {
+      findUnique: mocks.personagemFindUnique,
       update: mocks.personagemUpdate,
     },
     magiaPersonagem: {
@@ -33,6 +29,11 @@ vi.mock("@/lib/prisma", () => ({
     },
     $transaction: mocks.transaction,
   },
+}));
+
+vi.mock("@/lib/security/rate-limit", () => ({
+  enforceRateLimit: mocks.enforceRateLimit,
+  buildRateLimitHeaders: mocks.buildRateLimitHeaders,
 }));
 
 import { POST } from "@/app/api/personagem/update/route";
@@ -48,12 +49,24 @@ function makeRequest(body: unknown) {
 describe("POST /api/personagem/update", () => {
   beforeEach(() => {
     mocks.validarEdicaoDaFicha.mockReset();
-    mocks.classeFindUnique.mockReset();
-    mocks.racaFindUnique.mockReset();
+    mocks.personagemFindUnique.mockReset();
     mocks.personagemUpdate.mockReset();
     mocks.magiaFindMany.mockReset();
     mocks.periciaFindMany.mockReset();
     mocks.transaction.mockReset();
+    mocks.enforceRateLimit.mockReset();
+    mocks.buildRateLimitHeaders.mockReset();
+
+    mocks.enforceRateLimit.mockResolvedValue({
+      allowed: true,
+      limit: 30,
+      remaining: 29,
+      retryAfter: 60,
+      resetAt: Date.now() + 60_000,
+    });
+    mocks.buildRateLimitHeaders.mockReturnValue({
+      "X-RateLimit-Limit": "30",
+    });
   });
 
   it("rejeita campos nao permitidos", async () => {
@@ -83,6 +96,14 @@ describe("POST /api/personagem/update", () => {
       ok: true,
       userId: "user-1",
     });
+    mocks.personagemFindUnique.mockResolvedValue({
+      id: 7,
+      hp_base: 8,
+      mana_base: 9,
+      statusEspecial: "vivo",
+      raca: { hp: 3, mana: 2 },
+      classe: { hp: 5, mana: 7 },
+    });
 
     const response = await POST(
       makeRequest({
@@ -99,10 +120,47 @@ describe("POST /api/personagem/update", () => {
     expect(response.status).toBe(400);
   });
 
+  it("retorna 429 quando o rate limit de update e excedido", async () => {
+    mocks.validarEdicaoDaFicha.mockResolvedValue({
+      ok: true,
+      userId: "user-1",
+    });
+    mocks.enforceRateLimit.mockResolvedValue({
+      allowed: false,
+      limit: 30,
+      remaining: 0,
+      retryAfter: 60,
+      resetAt: Date.now() + 60_000,
+    });
+
+    const response = await POST(
+      makeRequest({
+        index: 7,
+        campo: "mana_atual",
+        valor: "9",
+      })
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: "Muitas alterações em sequência. Aguarde alguns instantes.",
+    });
+    expect(response.status).toBe(429);
+    expect(mocks.personagemFindUnique).not.toHaveBeenCalled();
+  });
+
   it("atualiza a ficha e devolve o payload normalizado", async () => {
     mocks.validarEdicaoDaFicha.mockResolvedValue({
       ok: true,
       userId: "user-1",
+    });
+    mocks.personagemFindUnique.mockResolvedValue({
+      id: 7,
+      hp_base: null,
+      mana_base: null,
+      statusEspecial: "vivo",
+      raca: { hp: 5, mana: 2 },
+      classe: { hp: 4, mana: 7 },
     });
     mocks.personagemUpdate.mockResolvedValue({});
     mocks.magiaFindMany.mockResolvedValue([]);
@@ -123,7 +181,7 @@ describe("POST /api/personagem/update", () => {
         descricao: "Arcanista veterana",
         url_imagem: "https://example.com/selene.png",
         imagem_pixel: null,
-        status_baile: "vivo",
+        statusEspecial: "vivo",
         raca: { nome: "Humana", hp: 5, mana: 2 },
         classe: { nome: "Elementalista", hp: 4, mana: 7 },
       },
@@ -160,7 +218,7 @@ describe("POST /api/personagem/update", () => {
         imagem_pixel: null,
         magias: [],
         pericias: [],
-        status_baile: "vivo",
+        statusEspecial: "vivo",
       },
     });
     expect(response.status).toBe(200);

@@ -71,14 +71,14 @@ model Personagem {
   mana_base         Int?
   imagem_pixel      String?
   url_imagem        String?
-  status_baile      String?
+  statusEspecial    String?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
-  baileId           Int?
+  especialId        Int?
   inventarios       Inventorio[]
   magiaPersonagem   MagiaPersonagem[]
   periciaPersonagem PericiaPersonagem[]
-  baile             Baile?              @relation(fields: [baileId], references: [id])
+  especial          Especial?            @relation(fields: [especialId], references: [id])
   campanha          Campanha            @relation(fields: [campanhaId], references: [id])
   classe            Classe              @relation(fields: [classeId], references: [id])
   raca              Raca                @relation(fields: [racaId], references: [id])
@@ -168,27 +168,27 @@ model Inventorio {
   @@index([personagemId])
 }
 
-model Baile {
-  id          Int               @id @default(autoincrement())
+model Especial {
+  id          Int                  @id @default(autoincrement())
   nome        String
   descricao   String?
   meta        Json?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  roleActions BaileRoleAction[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  roleActions EspecialRoleAction[]
   personagens Personagem[]
 }
 
-model BaileRoleAction {
-  id        Int      @id @default(autoincrement())
-  baileId   Int
-  tipo      String
-  acoes     Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  baile     Baile    @relation(fields: [baileId], references: [id], onDelete: Cascade)
+model EspecialRoleAction {
+  id         Int       @id @default(autoincrement())
+  especialId Int
+  tipo       String
+  acoes      Json
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  especial   Especial  @relation(fields: [especialId], references: [id], onDelete: Cascade)
 
-  @@index([baileId, tipo])
+  @@index([especialId, tipo])
 }
 
 model SlotsDefensivos {
@@ -248,5 +248,3 @@ model Session {
 
   user User @relation(fields: [userId], references: [id])
 }
-
-

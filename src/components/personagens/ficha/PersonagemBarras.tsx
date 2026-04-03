@@ -147,17 +147,16 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
             </button>
           </div>
 
-          {/* Botão Baile, igual ao original */}
-          {personagem.status_baile && canEdit && (
+          {personagem.statusEspecial && canEdit && (
             <div className="w-full">
               <button
                 onClick={() => {
-                  window.location.href = `/personagens/baile/${personagem.id}`;
+                  window.location.href = `/personagens/especial/${personagem.id}`;
                 }}
                 className="w-full inline-flex items-center gap-2 justify-center px-4 py-2 rounded shadow-lg bg-linear-to-r from-purple-600 to-pink-500 text-white hover:scale-[1.025] transition-transform text-sm font-semibold"
               >
                 <Bolt className="w-4 h-4" />
-                Ativar ficha
+                Ativar ficha especial
               </button>
             </div>
           )}

@@ -1,8 +1,15 @@
 // src/app/api/personagem/update/route.ts
 import { NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { validarEdicaoDaFicha } from "@/lib/regras/personagemPermissao";
+import {
+  buildRateLimitHeaders,
+  enforceRateLimit,
+} from "@/lib/security/rate-limit";
+import {
+  calcularAtributosEspeciais,
+  parseStatusEspecial,
+} from "@/lib/regras/personagemEspecial";
 
 type Body = {
   index?: number | string; // aqui deve vir o ID (pk) do personagem
@@ -10,45 +17,16 @@ type Body = {
   valor: unknown;
 };
 
-const numericFields = new Set([
-  "hp",
-  "hp_atual",
-  "mana",
-  "mana_atual",
-  "count_jogadores",
-  "campanha_id",
-  "classe_id",
-  "raca_id",
-  "hp_base",
-  "mana_base",
-  "index",
-]);
+const allowedFields = new Set(["sobre", "hp_atual", "mana_atual"]);
 
-const allowedFields = new Set([
-  "nome",
-  "apelido",
-  "descricao",
-  "sobre",
-  "campanha_id",
-  "classe_id",
-  "raca_id",
-  "elemento",
-  "hp_atual",
-  "mana_atual",
-  "hp_base",
-  "mana_base",
-  "imagem_pixel",
-  "url_imagem",
-  "index",
-  "status_baile",
-]);
+function parseNonNegativeInteger(value: unknown) {
+  const parsed = Number(value);
 
-function normalizeField(field: string) {
-  if (field === "sobre") return "descricao";
-  if (field === "raca_id") return "racaId";
-  if (field === "classe_id") return "classeId";
-  if (field === "campanha_id") return "campanhaId";
-  return field;
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return parsed;
 }
 
 export async function POST(request: Request) {
@@ -78,60 +56,127 @@ export async function POST(request: Request) {
     }
 
     if (!allowedFields.has(campo)) {
-      return NextResponse.json({
-        success: false,
-        error: `Campo '${campo}' não permitido por esta rota. Use endpoints específicos para magias/pericias/inventario.`,
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Campo '${campo}' não permitido por esta rota. Use endpoints específicos para magias/pericias/inventario.`,
+        },
+        { status: 400 }
+      );
     }
 
-    const dbField = normalizeField(campo);
+    const rateLimit = await enforceRateLimit(request, {
+      key: "personagem:update",
+      limit: 30,
+      windowMs: 60_000,
+      identifier: permissao.userId,
+    });
 
-    // converte se for campo numérico
-    let newValue: unknown = valor;
-    if (numericFields.has(campo) && typeof valor === "string" && valor.trim() !== "") {
-      const maybeNum = Number(valor);
-      if (Number.isNaN(maybeNum)) {
-        return NextResponse.json({ success: false, error: `Valor numérico inválido para campo ${campo}` }, { status: 400 });
+    const rateLimitHeaders = buildRateLimitHeaders(rateLimit);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { success: false, error: "Muitas alterações em sequência. Aguarde alguns instantes." },
+        { status: 429, headers: rateLimitHeaders }
+      );
+    }
+
+    const personagemAtual = await prisma.personagem.findUnique({
+      where: { id },
+      include: {
+        raca: true,
+        classe: true,
+      },
+    });
+
+    if (!personagemAtual) {
+      return NextResponse.json(
+        { success: false, error: "Personagem não encontrado." },
+        { status: 404, headers: rateLimitHeaders }
+      );
+    }
+
+    const hpBase =
+      personagemAtual.hp_base ??
+      (personagemAtual.raca?.hp ?? 0) + (personagemAtual.classe?.hp ?? 0);
+    const manaBase =
+      personagemAtual.mana_base ??
+      (personagemAtual.raca?.mana ?? 0) + (personagemAtual.classe?.mana ?? 0);
+
+    const statusEspecial = parseStatusEspecial(personagemAtual.statusEspecial);
+    const { hpMax, manaMax } = calcularAtributosEspeciais({
+      hpBase,
+      manaBase,
+      statusEspecial,
+    });
+
+    const updates: {
+      descricao?: string;
+      hp_atual?: number;
+      mana_atual?: number;
+    } = {};
+
+    if (campo === "sobre") {
+      const descricao = String(valor ?? "").trim();
+
+      if (descricao.length > 2000) {
+        return NextResponse.json(
+          { success: false, error: "O campo sobre excede o limite permitido." },
+          { status: 400, headers: rateLimitHeaders }
+        );
       }
-      newValue = maybeNum;
+
+      updates.descricao = descricao;
     }
 
-    // prepara objeto de update reduzido
-    const updates: Record<string, unknown> = {};
-    if (dbField === "classeId") {
-      // verificamos existência; se não existir, abortamos
-      const classeExists = await prisma.classe.findUnique({ where: { id: Number(newValue) }});
-      if (!classeExists) return NextResponse.json({ success: false, error: "Classe não encontrada." }, { status: 400 });
-      updates.classeId = Number(newValue);
-    } else if (dbField === "racaId") {
-      const racaExists = await prisma.raca.findUnique({ where: { id: Number(newValue) }});
-      if (!racaExists) return NextResponse.json({ success: false, error: "Raça não encontrada." }, { status: 400 });
-      updates.racaId = Number(newValue);
-    } else if (dbField === "campanhaId") {
-      updates.campanhaId = Number(newValue);
-    } else if (dbField === "descricao") {
-      updates.descricao = String(newValue ?? "");
-    } else if (dbField === "index") {
-      updates.index = Number(newValue);
-    } else if (dbField === "hp_atual" || dbField === "mana_atual" || dbField === "hp_base" || dbField === "mana_base") {
-      updates[dbField] = Number(newValue);
-    } else if (dbField === "status_baile") {
-      updates.status_baile = String(newValue ?? null);
-    } else {
-      updates[dbField] = newValue;
+    if (campo === "hp_atual") {
+      const novoHp = parseNonNegativeInteger(valor);
+
+      if (novoHp === null) {
+        return NextResponse.json(
+          { success: false, error: "Valor numérico inválido para campo hp_atual" },
+          { status: 400, headers: rateLimitHeaders }
+        );
+      }
+
+      if (novoHp > hpMax) {
+        return NextResponse.json(
+          { success: false, error: `HP não pode ultrapassar ${hpMax}.` },
+          { status: 400, headers: rateLimitHeaders }
+        );
+      }
+
+      updates.hp_atual = novoHp;
     }
 
-    // Executa update e busca magias/pericias em uma transação para minimizar roundtrips
-    // Update retorna raca e classe embutidas (necessários para hp/mana base fallback)
+    if (campo === "mana_atual") {
+      const novaMana = parseNonNegativeInteger(valor);
+
+      if (novaMana === null) {
+        return NextResponse.json(
+          { success: false, error: "Valor numérico inválido para campo mana_atual" },
+          { status: 400, headers: rateLimitHeaders }
+        );
+      }
+
+      if (novaMana > manaMax) {
+        return NextResponse.json(
+          { success: false, error: `Mana não pode ultrapassar ${manaMax}.` },
+          { status: 400, headers: rateLimitHeaders }
+        );
+      }
+
+      updates.mana_atual = novaMana;
+    }
+
     const [updated, magiasRaw, periciasRaw] = await prisma.$transaction([
       prisma.personagem.update({
         where: { id },
-        data: updates as Prisma.PersonagemUncheckedUpdateInput,
+        data: updates,
         include: {
           raca: true,
           classe: true,
         },
-        // retornamos apenas os campos necessários; evitar select gigante
       }),
       prisma.magiaPersonagem.findMany({
         where: { personagemId: id },
@@ -144,11 +189,11 @@ export async function POST(request: Request) {
     ]);
 
     // calcula hp/mana finais (tratando hp_base/mana_base = 0 como valor válido)
-    const hpBase = (updated.hp_base !== null && updated.hp_base !== undefined)
+    const finalHpBase = (updated.hp_base !== null && updated.hp_base !== undefined)
       ? updated.hp_base
       : ((updated.raca?.hp ?? 0) + (updated.classe?.hp ?? 0));
 
-    const manaBase = (updated.mana_base !== null && updated.mana_base !== undefined)
+    const finalManaBase = (updated.mana_base !== null && updated.mana_base !== undefined)
       ? updated.mana_base
       : ((updated.raca?.mana ?? 0) + (updated.classe?.mana ?? 0));
 
@@ -186,18 +231,18 @@ export async function POST(request: Request) {
         elemento: updated.elemento,
         hp_atual: updated.hp_atual ?? null,
         mana_atual: updated.mana_atual ?? null,
-        hp: hpBase,
-        mana: manaBase,
+        hp: finalHpBase,
+        mana: finalManaBase,
         sobre: updated.descricao ?? null,
         url_imagem: updated.url_imagem ?? null,
         imagem_pixel: updated.imagem_pixel ?? null,
         magias,
         pericias,
-        status_baile: updated.status_baile ?? null,
+        statusEspecial: updated.statusEspecial ?? null,
       }
     };
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: rateLimitHeaders });
   } catch (error: unknown) {
     console.error("Erro ao atualizar personagem:", error);
     // tratamento de not found (Prisma P2025)

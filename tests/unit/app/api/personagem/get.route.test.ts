@@ -75,7 +75,7 @@ describe("GET /api/personagem/[id]", () => {
       descricao: "Cronista arcano",
       url_imagem: "https://example.com/arkan.png",
       imagem_pixel: null,
-      status_baile: "vivo",
+      statusEspecial: "vivo",
       userId: "user-1",
       raca: { nome: "Humano", hp: 5, mana: 2 },
       classe: { nome: "Mago", hp: 3, mana: 7 },
@@ -148,7 +148,7 @@ describe("GET /api/personagem/[id]", () => {
           descricao: "Arte marcial.",
         },
       ],
-      status_baile: "vivo",
+      statusEspecial: "vivo",
       slotsDefensivos: {
         esquivaUsada: 1,
         bloqueioUsado: 0,

@@ -1,6 +1,6 @@
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
-import { PersonagemBaileSkeleton } from "@/components/skeletons/personagem-baile.skeleton";
+import { PersonagemEspecialSkeleton } from "@/components/skeletons/personagem-especial.skeleton";
 
 export default function Loading() {
   return (
@@ -12,11 +12,11 @@ export default function Loading() {
             Ficha Especial
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Informações sobre seu personagem
+            Informações e ações do evento especial
           </p>
         </header>
 
-        <PersonagemBaileSkeleton />
+        <PersonagemEspecialSkeleton />
       </main>
       <Footer />
     </>

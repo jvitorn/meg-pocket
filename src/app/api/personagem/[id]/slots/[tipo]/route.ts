@@ -3,6 +3,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validarEdicaoDaFicha } from "@/lib/regras/personagemPermissao";
+import {
+  buildRateLimitHeaders,
+  enforceRateLimit,
+} from "@/lib/security/rate-limit";
 
 import {
   calcularLimiteSlotsDefensivos,
@@ -56,6 +60,22 @@ export async function POST(
       return NextResponse.json(
         { error: permissao.error },
         { status: permissao.status }
+      );
+    }
+
+    const rateLimit = await enforceRateLimit(_req, {
+      key: `personagem:slots:${slotTipo}`,
+      limit: 20,
+      windowMs: 60_000,
+      identifier: permissao.userId,
+    });
+
+    const rateLimitHeaders = buildRateLimitHeaders(rateLimit);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Muitas ações em sequência. Aguarde alguns instantes." },
+        { status: 429, headers: rateLimitHeaders }
       );
     }
 
@@ -160,7 +180,7 @@ export async function POST(
       usadosAntes: usados,
       usadosAgora: usados + 1,
       limite,
-    });
+    }, { headers: rateLimitHeaders });
   } catch (error) {
     console.error(
       "Erro ao usar slot defensivo:",

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validarEdicaoDaFicha } from "@/lib/regras/personagemPermissao";
+import {
+  buildRateLimitHeaders,
+  enforceRateLimit,
+} from "@/lib/security/rate-limit";
 
 /**
  * Reseta todos os slots defensivos do personagem.
@@ -29,6 +33,22 @@ export async function POST(
       );
     }
 
+    const rateLimit = await enforceRateLimit(_req, {
+      key: "personagem:slots:reset",
+      limit: 10,
+      windowMs: 60_000,
+      identifier: permissao.userId,
+    });
+
+    const rateLimitHeaders = buildRateLimitHeaders(rateLimit);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Muitas tentativas. Aguarde alguns instantes." },
+        { status: 429, headers: rateLimitHeaders }
+      );
+    }
+
     const slots = await prisma.slotsDefensivos.findUnique({
       where: { personagemId },
     });
@@ -49,7 +69,7 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: rateLimitHeaders });
   } catch (error) {
     console.error("Erro ao resetar slots:", error);
     return NextResponse.json(

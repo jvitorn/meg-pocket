@@ -7,40 +7,37 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Toaster } from "sonner";
-
-import { PersonagemFichaSkeleton } from "@/components/skeletons/personagem-ficha.skeleton";
-
 import { PersonagemInterface } from "@/types";
+import { PersonagemEspecialSkeleton } from "@/components/skeletons/personagem-especial.skeleton";
+import { PersonagemActions } from "./ficha/PersonagemActions";
 import { PersonagemView } from "./personagem-view";
 
-export default function PersonagemClient() {
+export default function PersonagemEspecialClient() {
   const { id } = useParams<{ id: string }>();
-
-  const [personagem, setPersonagem] = useState<PersonagemInterface | null>(
-    null
-  );
+  const [personagem, setPersonagem] = useState<PersonagemInterface | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  /* ---------------- Carregar personagem ---------------- */
   useEffect(() => {
     if (!id) return;
 
     const fetchPersonagem = async () => {
       try {
-        const response = await fetch(`/api/personagem/${id}`, {
+        const response = await fetch(`/api/personagem/especial/${id}`, {
           cache: "no-store",
         });
 
-        if (!response.ok) throw new Error("Erro ao carregar personagem");
+        if (!response.ok) {
+          throw new Error("Erro ao carregar personagem especial");
+        }
 
         const data: PersonagemInterface = await response.json();
         setPersonagem(data);
-      } catch (error: unknown) {
+      } catch (err) {
         setError(
-          error instanceof Error
-            ? error.message
-            : "Erro ao carregar personagem"
+          err instanceof Error
+            ? err.message
+            : "Erro ao carregar personagem especial"
         );
       } finally {
         setLoading(false);
@@ -50,14 +47,10 @@ export default function PersonagemClient() {
     fetchPersonagem();
   }, [id]);
 
-  /* ---------------- Estados de carregamento ---------------- */
-  if (loading) return <PersonagemFichaSkeleton />;
-  if (error)
-    return <div className="text-center text-red-500 mt-6">{error}</div>;
+  if (loading) return <PersonagemEspecialSkeleton />;
+  if (error) return <div className="text-center text-red-500 mt-6">{error}</div>;
   if (!personagem) return null;
-  const canEdit = Boolean(personagem.canEdit);
 
-  /* ---------------- Renderização ---------------- */
   return (
     <>
       <Toaster position="top-right" />
@@ -70,7 +63,14 @@ export default function PersonagemClient() {
         <PersonagemView
           personagem={personagem}
           setPersonagem={setPersonagem}
-          canEdit={canEdit}
+          canEdit={Boolean(personagem.canEdit)}
+          extraSection={
+            <PersonagemActions
+              personagem={personagem}
+              setPersonagem={setPersonagem}
+              canEdit={Boolean(personagem.canEdit)}
+            />
+          }
         />
       </motion.div>
     </>

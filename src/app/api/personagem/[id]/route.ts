@@ -108,7 +108,7 @@ export async function GET(
       imagem_pixel: personagem.imagem_pixel ?? null,
       magias,
       pericias,
-      status_baile: personagem.status_baile ?? null,
+      statusEspecial: personagem.statusEspecial ?? null,
 
       // 🔥 NOVO — Slots defensivos
       slotsDefensivos: personagem.slotsDefensivos
