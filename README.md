@@ -112,6 +112,11 @@ npm run env:local
 - `npm run build`: gera o Prisma Client e cria o build de produção do Next.js.
 - `npm run start`: sobe a aplicação já buildada.
 - `npm run lint`: executa o lint do projeto.
+- `npm run test`: executa os testes unitários com Vitest.
+- `npm run test:watch`: inicia os testes unitários em modo observação.
+- `npm run test:e2e:install`: instala o navegador Chromium usado pelo Playwright.
+- `npm run test:e2e`: executa os testes automatizados end-to-end com Playwright.
+- `npm run test:all`: executa a suíte unitária e a suíte automatizada em sequência.
 - `npm run db:up`: sobe o container PostgreSQL local com Docker Compose.
 - `npm run db:down`: derruba o ambiente Docker local.
 - `npm run db:logs`: acompanha os logs do PostgreSQL local.
@@ -145,3 +150,25 @@ Os arquivos de seed estão em `prisma/seeds/generated`.
 - O banco local sobe vazio; o schema entra via migrations e os dados via seed.
 - `db:setup` e `db:seed` sempre operam no ambiente atualmente ativo em `.env.local`.
 - O projeto usa PostgreSQL local no Docker e Supabase como ambiente remoto.
+
+## Testes
+
+O projeto agora possui duas camadas de validação:
+
+- testes unitários e de componente com `Vitest` + `Testing Library`;
+- smoke tests automatizados com `Playwright` para fluxos públicos.
+
+Estrutura recomendada:
+
+- `tests/unit/components`: testes de componentes React.
+- `tests/unit/lib`: regras de negócio e utilitários puros.
+- `tests/unit/app`: rotas e comportamentos server-side.
+- `tests/unit/services`: services cliente e integrações locais.
+- `tests/e2e`: jornadas automatizadas no navegador.
+
+Fluxo recomendado:
+
+1. Rode `npm run test` durante o desenvolvimento para validar regras de negócio e componentes.
+2. Instale o navegador do Playwright uma vez com `npm run test:e2e:install`.
+3. Rode `npm run test:e2e` para validar os fluxos públicos no navegador.
+4. Use `npm run test:all` antes de abrir PRs ou publicar mudanças relevantes.
