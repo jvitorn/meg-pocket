@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { PersonagemInterface } from "@/types";
-import { Navbar } from "@/components/navbar";
 import { getPersonagensNaCampanha } from "@/services/personagemService";
 import { MultiCardItem } from "@/components/multi-card-item";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronsDown, ChevronsUp } from "lucide-react";
 import SelectedCardSkeleton from "@/components/skeletons/selected-card.skeleton";
 import SelecionadoCard from "@/components/selecionado-card";
-import { Footer } from "@/components/footer";
 import { MultiCardItemSkeleton } from "@/components/skeletons/multi-card-item.skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 

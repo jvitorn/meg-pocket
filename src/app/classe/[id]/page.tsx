@@ -1,16 +1,14 @@
 import { Suspense } from "react";
-import { LoadingSpinner } from "@/components/loadingSpinner";
 import ClasseClient from "@/components/classe/classeClient";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { ClasseDetailSkeleton } from "@/components/skeletons/classe-detail.skeleton";
 
-type Props = { params: { id: string } };
-
-export default function ClassePage({ params }: Props) {
+export default function ClassePage() {
   return (
     <>
       <Navbar />
-      <Suspense fallback={<LoadingSpinner />}>
+      <Suspense fallback={<ClasseDetailSkeleton />}>
        <ClasseClient />
       </Suspense>
 

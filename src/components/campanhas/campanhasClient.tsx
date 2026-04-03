@@ -1,27 +1,25 @@
 // src/components/campanhas/CampanhasClient.tsx
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { LoadingSpinner } from '@/components/loadingSpinner';
 import { CampanhaInterface, PersonagemInterface } from '@/types';
 import { getPersonagensNaCampanha } from '@/services/personagemService';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Props = {
   initialCampanhas: CampanhaInterface[];
 };
 
 export default function CampanhasClient({ initialCampanhas }: Props) {
-  const [campanhas, setCampanhas] = useState<CampanhaInterface[]>(initialCampanhas || []);
+  const [campanhas] = useState<CampanhaInterface[]>(initialCampanhas || []);
   const [campanhaSelecionada, setCampanhaSelecionada] = useState<CampanhaInterface | null>(null);
   const [personagens, setPersonagens] = useState<PersonagemInterface[]>([]);
-  const [loadingCampanhas, setLoadingCampanhas] = useState(false); // já veio do server
   const [loadingPersonagens, setLoadingPersonagens] = useState(false);
   const [dialogAberto, setDialogAberto] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const personagensCache = useRef<Record<number, PersonagemInterface[]>>({});
   // Caso queira revalidar client-side (opcional), você pode implementar refetch.
@@ -57,9 +55,6 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
     setLoadingPersonagens(false);
   }
 }
-
-  if (loadingCampanhas && campanhas.length === 0) return <LoadingSpinner />;
-  if (error) return <div className="text-center mt-10 text-red-500">Erro: {error}</div>;
 
   return (
     <>
@@ -207,18 +202,36 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                     </div>
 
                     {loadingPersonagens ? (
-                      <p className="text-sm text-muted-foreground">Carregando personagens...</p>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        {Array.from({ length: 4 }).map((_, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-3 rounded-md border p-3 bg-background/70"
+                          >
+                            <Skeleton className="h-12 w-12 rounded-md" />
+                            <div className="flex-1 space-y-2">
+                              <Skeleton className="h-4 w-28" />
+                              <Skeleton className="h-3 w-36" />
+                              <Skeleton className="h-3 w-20" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     ) : personagens.length > 0 ? (
                       <motion.div className="grid grid-cols-1 sm:grid-cols-2 gap-4" initial="hidden" animate="visible" variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } }}>
                         {personagens.map((p) => (
                           <motion.div key={p.id} variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="flex items-center gap-3 rounded-md border p-3 bg-background/70 hover:bg-accent/10 transition">
-                            {( (p as any).imagem_pixel ? (p as any).imagem_pixel : p.url_imagem) ? (
-                              <img src={(p as any).imagem_pixel ? (p as any).imagem_pixel : p.url_imagem} alt={p.nome} className="w-12 h-12 rounded-md object-cover" />
-                            ) : (
-                              <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
-                                <User2 className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                            )}
+                            {(() => {
+                              const imageSrc = p.imagem_pixel || p.url_imagem;
+
+                              return imageSrc ? (
+                                <img src={imageSrc} alt={p.nome} className="w-12 h-12 rounded-md object-cover" />
+                              ) : (
+                                <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
+                                  <User2 className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                              );
+                            })()}
                             <div>
                               <p className="font-medium capitalize">{p.nome}</p>
                               <p className="text-xs text-muted-foreground">

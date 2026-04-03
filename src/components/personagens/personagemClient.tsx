@@ -8,8 +8,8 @@ import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Toaster } from "sonner";
 
-import { LoadingSpinner } from "@/components/loadingSpinner";
 import { Card } from "@/components/ui/card";
+import { PersonagemFichaSkeleton } from "@/components/skeletons/personagem-ficha.skeleton";
 
 import { PersonagemInterface } from "@/types";
 
@@ -81,7 +81,7 @@ export default function PersonagemClient() {
   const ElementIcon = elements[elemento].icon;
 
   /* ---------------- Estados de carregamento ---------------- */
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <PersonagemFichaSkeleton />;
   if (error)
     return <div className="text-center text-red-500 mt-6">{error}</div>;
   if (!personagem) return null;

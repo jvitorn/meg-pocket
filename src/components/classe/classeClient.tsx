@@ -13,10 +13,10 @@ import LogoElementalista from "@/components/icons/elementalista";
 import LogoPurificador from "@/components/icons/purificador";
 import LogoArtifice from "@/components/icons/artifice";
 
-import { LoadingSpinner } from "@/components/loadingSpinner";
 import { HelpCircle, Sparkles } from "lucide-react";
 import { ClasseInterface,MagiaPersonagem } from "@/types";
 import { MagiaDetailsDrawer } from "@/components/magia-details-drawer";
+import { ClasseDetailSkeleton } from "@/components/skeletons/classe-detail.skeleton";
 
 
 export default function ClassePage() {
@@ -74,7 +74,7 @@ export default function ClassePage() {
     setSelectedMagia(m);
   }, []);
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <ClasseDetailSkeleton />;
 
   if (error) {
     return (

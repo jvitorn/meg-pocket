@@ -1,14 +1,12 @@
-import { Suspense } from "react";
-import { Navbar } from "@/components/navbar";
-import PersonagemBaileClient from "@/components/personagens/personagemBaileClient";
 import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
 import { PersonagemBaileSkeleton } from "@/components/skeletons/personagem-baile.skeleton";
 
-export default function PersonagemPage() {
+export default function Loading() {
   return (
-     <>
+    <>
       <Navbar />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-5xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <header className="mb-6 text-center">
           <h1 className="text-3xl md:text-4xl font-bold text-foreground">
             Ficha Especial
@@ -17,11 +15,10 @@ export default function PersonagemPage() {
             Informações sobre seu personagem
           </p>
         </header>
-        <Suspense fallback={<PersonagemBaileSkeleton />}>
-          <PersonagemBaileClient />
-        </Suspense>
+
+        <PersonagemBaileSkeleton />
       </main>
-      <Footer/>
+      <Footer />
     </>
   );
 }

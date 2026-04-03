@@ -1,10 +1,8 @@
-import { Suspense } from "react";
-import { Navbar } from "@/components/navbar";
-import CampanhasServer from "./server";
 import { Footer } from "@/components/footer";
+import { Navbar } from "@/components/navbar";
 import { CampanhasGridSkeleton } from "@/components/skeletons/campanhas-grid.skeleton";
 
-export default function CampanhasPage() {
+export default function Loading() {
   return (
     <>
       <Navbar />
@@ -15,17 +13,14 @@ export default function CampanhasPage() {
               Campanhas Ativas
             </h1>
             <p className="text-sm text-muted-foreground mt-2">
-              Explore as campanhas e mergulhe nas histórias — clique em qualquer
-              campanha para ver mais detalhes.
+              Explore as campanhas e mergulhe nas histórias.
             </p>
           </header>
 
-          <Suspense fallback={<CampanhasGridSkeleton />}>
-            <CampanhasServer />
-          </Suspense>
+          <CampanhasGridSkeleton />
         </div>
       </main>
-      <Footer/>
+      <Footer />
     </>
   );
 }

@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 import ClassesListClient from "@/components/classe/classeListClient";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
-import { LoadingSpinner } from "@/components/loadingSpinner";
 import { unstable_noStore as noStore } from "next/cache";
+import { ClassesListSkeleton } from "@/components/skeletons/classes-list.skeleton";
 
 export const metadata = {
   title: "Classes — M&G Pocket",
@@ -66,9 +66,7 @@ export default function ClassesIndexPage() {
 
         <Suspense
           fallback={
-            <div className="flex items-center justify-center py-12">
-              <LoadingSpinner />
-            </div>
+            <ClassesListSkeleton />
           }
         >
           {/* componente async que faz prisma.findMany */}

@@ -4,9 +4,6 @@ import { useParams } from "next/navigation";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { toast, Toaster } from "sonner";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
-import { LoadingSpinner } from "@/components/loadingSpinner";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -16,8 +13,8 @@ import {
   Droplet,
   Flame,
   Wind,
+  type LucideIcon,
   CircleDotDashed,
-  Hammer,
   Skull,
   VenetianMask,
   Bolt,
@@ -25,11 +22,11 @@ import {
 
 import {
   PersonagemInterface,
-  MagiaPersonagem,
   PericiaPersonagem,
 } from "@/types";
 import { setPersonagemValores } from "@/services/personagemService";
 import { StatDrawer } from "@/components/stat-drawer";
+import { PersonagemBaileSkeleton } from "@/components/skeletons/personagem-baile.skeleton";
 
 import {
   Dialog,
@@ -44,10 +41,17 @@ import { cn } from "@/lib/utils";
 
 /* ---------- tipos e dados de elementos ---------- */
 type ElementType = "natureza" | "agua" | "fogo" | "vento";
+type AcaoBaile = NonNullable<PersonagemInterface["actions"]>[number];
+type HabilidadeBaile = {
+  nome: string;
+  descricao: string;
+  custo_nivel?: number | null;
+  custo_mana?: number | null;
+};
 
 interface Element {
   type: ElementType;
-  icon: any;
+  icon: LucideIcon;
   color: string;
   bgColor: string;
 }
@@ -95,9 +99,7 @@ export default function PersonagemUnicoBailePage() {
   const [manaDrawerOpen, setManaDrawerOpen] = useState(false);
 
   // Magia dialog
-  const [selectedMagia, setSelectedMagia] = useState<
-    MagiaPersonagem | any | null
-  >(null);
+  const [selectedMagia, setSelectedMagia] = useState<HabilidadeBaile | null>(null);
   const [magiaDialogOpen, setMagiaDialogOpen] = useState(false);
   const [magiaAtualizando, setMagiaAtualizando] = useState(false);
 
@@ -172,7 +174,7 @@ export default function PersonagemUnicoBailePage() {
   );
 
   /* abrir magia */
-  const handleAbrirMagia = useCallback((magia: MagiaPersonagem) => {
+  const handleAbrirMagia = useCallback((magia: HabilidadeBaile) => {
     setSelectedMagia(magia);
     setMagiaDialogOpen(true);
   }, []);
@@ -256,7 +258,7 @@ export default function PersonagemUnicoBailePage() {
   const currentElement = elements[characterElement];
   const ElementIcon = currentElement.icon;
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <PersonagemBaileSkeleton />;
   if (error)
     return <div className="text-center mt-6 text-red-500">Erro: {error}</div>;
 
@@ -450,9 +452,9 @@ export default function PersonagemUnicoBailePage() {
                 </div>
 
                 <div className="mt-2 space-y-3">
-                  {Array.isArray((personagem as any)?.pericias) &&
-                  (personagem as any).pericias.length > 0 ? (
-                    (personagem as any).pericias.map(
+                  {Array.isArray(personagem?.pericias) &&
+                  personagem.pericias.length > 0 ? (
+                    personagem.pericias.map(
                       (pericia: PericiaPersonagem, idx: number) => (
                         <button
                           key={idx}
@@ -549,7 +551,7 @@ export default function PersonagemUnicoBailePage() {
                   </div>
 
                   <div className="mt-2 space-y-3">
-                    {personagem.actions.map((acao: any, idx: number) => (
+                    {personagem.actions.map((acao: AcaoBaile, idx: number) => (
                       <button
                         key={idx}
                         onClick={() => handleAbrirMagia(acao)}

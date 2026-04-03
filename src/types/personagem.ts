@@ -22,6 +22,7 @@ export interface PersonagemInterface extends BaseInterface {
   sobre: string;
 
   url_imagem?: string;
+  imagem_pixel?: string;
 
   magias?: MagiaPersonagem[];
   pericias?: PericiaPersonagem[];
