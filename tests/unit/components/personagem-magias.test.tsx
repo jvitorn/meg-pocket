@@ -60,6 +60,8 @@ function Wrapper({
   const [personagem, setPersonagem] = useState<PersonagemInterface | null>({
     id: 7,
     nome: "Selene",
+    hp: 10,
+    mana: 8,
     campanhaId: 1,
     racaId: 2,
     classeId: 3,

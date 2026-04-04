@@ -186,6 +186,8 @@ describe("POST /api/personagem/create", () => {
         mana_base: 10,
         hp_atual: 8,
         mana_atual: 10,
+        defesa_atual: 0,
+        defesa_max: 0,
         userId: "user-1",
         slotsDefensivos: {
           create: {},

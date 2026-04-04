@@ -1,6 +1,7 @@
 // src/app/api/campanhas/personagens/[id]/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { resolverBaseAtributo } from "@/lib/personagemAtributos";
 
 export async function GET(
   request: Request,
@@ -33,13 +34,15 @@ export async function GET(
     const mapped = (personagens || []).map((p) => {
       const nomeFinal = (p.apelido && p.apelido.trim() !== "") ? p.apelido : p.nome;
 
-      const hpBase = (p.hp_base !== null && p.hp_base !== undefined)
-        ? p.hp_base
-        : ((p.raca?.hp ?? 0) + (p.classe?.hp ?? 0));
+      const hpBase = resolverBaseAtributo({
+        basePersistida: p.hp_base,
+        baseDerivada: (p.raca?.hp ?? 0) + (p.classe?.hp ?? 0),
+      });
 
-      const manaBase = (p.mana_base !== null && p.mana_base !== undefined)
-        ? p.mana_base
-        : ((p.raca?.mana ?? 0) + (p.classe?.mana ?? 0));
+      const manaBase = resolverBaseAtributo({
+        basePersistida: p.mana_base,
+        baseDerivada: (p.raca?.mana ?? 0) + (p.classe?.mana ?? 0),
+      });
 
       const magias = (p.magiaPersonagem ?? []).map(mp => {
         const catalog = mp.magia;

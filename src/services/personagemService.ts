@@ -8,6 +8,15 @@ import type {
   SlotTipo,
 } from "@/errors/slotsDefensivos";
 
+async function parseResponseError(response: Response) {
+  try {
+    const data = await response.json();
+    return data.error ?? "Erro ao processar a solicitação";
+  } catch {
+    return "Erro ao processar a solicitação";
+  }
+}
+
 /* -------------------------------------------------------
    Personagens na campanha
 ---------------------------------------------------------*/
@@ -106,4 +115,20 @@ export async function resetarSlotsDefensivos(
   }
 
   return res.json();
+}
+
+export async function usarItemInventario(
+  personagemId: number,
+  inventoryItemId: number
+) {
+  const response = await fetch(
+    `${PERSONAGEMROUTE}${personagemId}/inventario/${inventoryItemId}/usar`,
+    { method: "POST" }
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseResponseError(response));
+  }
+
+  return response.json();
 }

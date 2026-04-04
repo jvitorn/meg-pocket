@@ -67,6 +67,8 @@ model Personagem {
   elemento          String
   hp_atual          Int?
   mana_atual        Int?
+  defesa_atual      Int?                @default(0)
+  defesa_max        Int?                @default(0)
   hp_base           Int?
   mana_base         Int?
   imagem_pixel      String?
@@ -75,7 +77,7 @@ model Personagem {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
   especialId        Int?
-  inventarios       Inventorio[]
+  itensInventario   ItemInventario[]
   magiaPersonagem   MagiaPersonagem[]
   periciaPersonagem PericiaPersonagem[]
   especial          Especial?            @relation(fields: [especialId], references: [id])
@@ -154,18 +156,75 @@ model PericiaPersonagem {
   @@index([periciaId])
 }
 
-/// Inventório de Personagem (opcional)
-model Inventorio {
-  id           Int        @id @default(autoincrement())
-  personagemId Int
-  nome         String
-  tipo         String?
-  descricao    String?
-  icon         String?
-  createdAt    DateTime   @default(now())
-  personagem   Personagem @relation(fields: [personagemId], references: [id])
+enum ItemTipo {
+  ARMA
+  CONSUMIVEL
+  MAGICO
+  MATERIAL
+  EQUIPAMENTO
+}
+
+model Item {
+  id                Int              @id @default(autoincrement())
+  nome              String
+  tipo              ItemTipo
+  descricao         String?
+  slots             Float            @default(1)
+  durabilidadeBase  Int?
+  durabilidadeMax   Int?
+  empilhavel        Boolean          @default(true)
+  meta              Json?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  efeito            ItemEfeito?
+  inventarios       ItemInventario[]
+
+  @@index([tipo])
+  @@index([nome])
+}
+
+enum ItemEfeitoModulo {
+  VIDA
+  MANA
+  DEFESA
+}
+
+enum ItemEfeitoOperacao {
+  ADICIONAR
+  REMOVER
+}
+
+model ItemEfeito {
+  id         Int                 @id @default(autoincrement())
+  itemId     Int                 @unique
+  modulo     ItemEfeitoModulo
+  operacao   ItemEfeitoOperacao  @default(ADICIONAR)
+  valor      Int
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  item       Item                @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([modulo])
+}
+
+model ItemInventario {
+  id                Int        @id @default(autoincrement())
+  personagemId      Int
+  itemId            Int
+  quantidade        Int        @default(1)
+  durabilidadeAtual Int?
+  durabilidadeMax   Int?
+  efeitoAtivo       Boolean    @default(false)
+  esgotadoEm        DateTime?
+  observacoes       String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  item              Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  personagem        Personagem @relation(fields: [personagemId], references: [id], onDelete: Cascade)
 
   @@index([personagemId])
+  @@index([itemId])
+  @@unique([personagemId, itemId])
 }
 
 model Especial {

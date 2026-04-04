@@ -12,6 +12,7 @@ import {
   Shield,
   ScrollText,
   CircleDotDashed,
+  Package,
   Sparkles,
   WandSparkles,
   ChevronDown,
@@ -24,6 +25,7 @@ import { PersonagemBarras } from "./ficha/PersonagemBarras";
 import { PersonagemSlotsDefensivos } from "./ficha/PersonagemSlotsDefensivos";
 import { PersonagemSobre } from "./ficha/PersonagemSobre";
 import { PersonagemPericias } from "./ficha/PersonagemPericias";
+import { PersonagemInventario } from "./ficha/PersonagemInventario";
 import { PersonagemMagias } from "./ficha/PersonagemMagias";
 
 type ElementType = "natureza" | "agua" | "fogo" | "vento";
@@ -39,6 +41,7 @@ const sectionIcons = {
   defesa: Shield,
   sobre: ScrollText,
   pericias: CircleDotDashed,
+  inventario: Package,
   magias: Sparkles,
   acoes: WandSparkles,
 } as const;
@@ -58,6 +61,11 @@ const sectionStyles = {
     active: "border-orange-500/50 bg-orange-500/15 text-orange-100",
     inactive: "border-orange-500/25 bg-orange-500/8 text-orange-200/80",
     badge: "bg-orange-500/20 text-orange-100",
+  },
+  inventario: {
+    active: "border-amber-500/50 bg-amber-500/15 text-amber-100",
+    inactive: "border-amber-500/25 bg-amber-500/8 text-amber-200/80",
+    badge: "bg-amber-500/20 text-amber-100",
   },
   magias: {
     active: "border-sky-500/50 bg-sky-500/15 text-sky-100",
@@ -109,6 +117,7 @@ export function PersonagemView({
     defesa: true,
     sobre: true,
     pericias: true,
+    inventario: true,
     magias: true,
     acoes: true,
   });
@@ -125,6 +134,11 @@ export function PersonagemView({
     { id: "defesa", label: "Defesa", count: null },
     { id: "sobre", label: "Sobre", count: null },
     { id: "pericias", label: "Perícias", count: personagem.pericias?.length ?? 0 },
+    {
+      id: "inventario",
+      label: "Inventário",
+      count: personagem.inventarioResumo?.itensTotais ?? 0,
+    },
     { id: "magias", label: "Magias", count: personagem.magias?.length ?? 0 },
     ...(hasActions
       ? [
@@ -290,6 +304,16 @@ export function PersonagemView({
               </SectionTransition>
             ) : null}
 
+            {visibleSections.inventario ? (
+              <SectionTransition key="inventario">
+                <PersonagemInventario
+                  personagem={personagem}
+                  setPersonagem={setPersonagem}
+                  canEdit={canEdit}
+                />
+              </SectionTransition>
+            ) : null}
+
             {visibleSections.magias ? (
               <SectionTransition key="magias">
                 <PersonagemMagias
@@ -306,6 +330,7 @@ export function PersonagemView({
 
             {!visibleSections.sobre &&
             !visibleSections.pericias &&
+            !visibleSections.inventario &&
             !visibleSections.magias &&
             !visibleSections.defesa &&
             !(hasActions && visibleSections.acoes) ? (

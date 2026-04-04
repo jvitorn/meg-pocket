@@ -2,6 +2,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/regras/personagemPermissao";
+import {
+  montarResumoInventario,
+  normalizarItemInventario,
+} from "@/lib/personagemInventario";
+import { resolverBaseAtributo } from "@/lib/personagemAtributos";
 
 export async function GET(
   request: NextRequest,
@@ -41,21 +46,32 @@ export async function GET(
       !!personagem.userId &&
       personagem.userId === sessionUserId;
 
-    // Busca vínculos separadamente
-    const magiaPersonagem = await prisma.magiaPersonagem.findMany({
-      where: { personagemId },
-      include: { magia: true },
-    });
+    const [magiaPersonagem, periciaPersonagem, inventarioRaw] =
+      await Promise.all([
+        prisma.magiaPersonagem.findMany({
+          where: { personagemId },
+          include: { magia: true },
+        }),
+        prisma.periciaPersonagem.findMany({
+          where: { personagemId },
+          include: { pericia: true },
+        }),
+        prisma.itemInventario.findMany({
+          where: { personagemId },
+          include: { item: { include: { efeito: true } } },
+          orderBy: [{ createdAt: "asc" }],
+        }),
+      ]);
 
-    const periciaPersonagem = await prisma.periciaPersonagem.findMany({
-      where: { personagemId },
-      include: { pericia: true },
+    const hpBase = resolverBaseAtributo({
+      basePersistida: personagem.hp_base,
+      baseDerivada: (personagem.raca?.hp ?? 0) + (personagem.classe?.hp ?? 0),
     });
-
-    // Calcula HP e Mana base
-    const hpBase = (personagem.raca?.hp ?? 0) + (personagem.classe?.hp ?? 0);
-    const manaBase =
-      (personagem.raca?.mana ?? 0) + (personagem.classe?.mana ?? 0);
+    const manaBase = resolverBaseAtributo({
+      basePersistida: personagem.mana_base,
+      baseDerivada:
+        (personagem.raca?.mana ?? 0) + (personagem.classe?.mana ?? 0),
+    });
 
     // Map magias
     const magias = (magiaPersonagem ?? [])
@@ -86,6 +102,11 @@ export async function GET(
       })
       .filter((p) => p.nome !== null);
 
+    const inventario = (inventarioRaw ?? [])
+      .map(normalizarItemInventario)
+      .filter((item) => item !== null);
+    const inventarioResumo = montarResumoInventario(inventario);
+
     const result = {
       id: personagem.id,
       nome:
@@ -101,6 +122,8 @@ export async function GET(
       elemento: personagem.elemento,
       hp_atual: personagem.hp_atual ?? null,
       mana_atual: personagem.mana_atual ?? null,
+      defesa_atual: personagem.defesa_atual ?? 0,
+      defesa_max: personagem.defesa_max ?? 0,
       hp: hpBase,
       mana: manaBase,
       sobre: personagem.descricao ?? null,
@@ -108,6 +131,8 @@ export async function GET(
       imagem_pixel: personagem.imagem_pixel ?? null,
       magias,
       pericias,
+      inventario,
+      inventarioResumo,
       statusEspecial: personagem.statusEspecial ?? null,
 
       // 🔥 NOVO — Slots defensivos

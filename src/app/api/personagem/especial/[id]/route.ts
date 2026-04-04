@@ -2,15 +2,18 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validarEdicaoDaFicha } from "@/lib/regras/personagemPermissao";
 import {
+  montarResumoInventario,
+  normalizarItemInventario,
+} from "@/lib/personagemInventario";
+import {
   buildRateLimitHeaders,
   enforceRateLimit,
 } from "@/lib/security/rate-limit";
 import {
-  calcularAtributosEspeciais,
   getAcoesEspeciaisPadrao,
-  parseStatusEspecial,
   type AcaoEspecial,
 } from "@/lib/regras/personagemEspecial";
+import { resolverLimitesPersonagem } from "@/lib/personagemAtributos";
 
 export async function GET(
   request: Request,
@@ -79,10 +82,23 @@ export async function GET(
       );
     }
 
-    const statusEspecial = parseStatusEspecial(personagem.statusEspecial) ?? "vivo";
-
-    const hpBase = (personagem.raca?.hp ?? 0) + (personagem.classe?.hp ?? 0);
-    const manaBase = (personagem.raca?.mana ?? 0) + (personagem.classe?.mana ?? 0);
+    const {
+      statusEspecial: statusEspecialNormalizado,
+      hpBaseEfetivo,
+      manaBaseEfetivo,
+      hpMax,
+      manaMax,
+    } = resolverLimitesPersonagem({
+      hpBasePersistida: personagem.hp_base,
+      manaBasePersistida: personagem.mana_base,
+      hpDerivado: (personagem.raca?.hp ?? 0) + (personagem.classe?.hp ?? 0),
+      manaDerivado:
+        (personagem.raca?.mana ?? 0) + (personagem.classe?.mana ?? 0),
+      hpAtual: personagem.hp_atual,
+      manaAtual: personagem.mana_atual,
+      statusEspecial: personagem.statusEspecial,
+    });
+    const statusEspecial = statusEspecialNormalizado ?? "vivo";
 
     const especialRecord = personagem.especial ?? null;
 
@@ -119,10 +135,22 @@ export async function GET(
       actions = getAcoesEspeciaisPadrao(statusEspecial);
     }
 
-    const magiaPersonagem = await prisma.magiaPersonagem.findMany({
-      where: { personagemId },
-      include: { magia: true },
-    });
+    const [magiaPersonagem, periciaPersonagem, inventarioRaw] =
+      await Promise.all([
+        prisma.magiaPersonagem.findMany({
+          where: { personagemId },
+          include: { magia: true },
+        }),
+        prisma.periciaPersonagem.findMany({
+          where: { personagemId },
+          include: { pericia: true },
+        }),
+        prisma.itemInventario.findMany({
+          where: { personagemId },
+          include: { item: { include: { efeito: true } } },
+          orderBy: [{ createdAt: "asc" }],
+        }),
+      ]);
 
     const magias = (magiaPersonagem ?? [])
       .map((mp) => {
@@ -139,11 +167,6 @@ export async function GET(
       })
       .filter((m) => m.nome !== null);
 
-    const periciaPersonagem = await prisma.periciaPersonagem.findMany({
-      where: { personagemId },
-      include: { pericia: true },
-    });
-
     const pericias = (periciaPersonagem ?? [])
       .map((pp) => {
         const catalog = pp.pericia;
@@ -156,11 +179,10 @@ export async function GET(
       })
       .filter((p) => p.nome !== null);
 
-    const { hpMax, manaMax } = calcularAtributosEspeciais({
-      hpBase,
-      manaBase,
-      statusEspecial,
-    });
+    const inventario = (inventarioRaw ?? [])
+      .map(normalizarItemInventario)
+      .filter((item) => item !== null);
+    const inventarioResumo = montarResumoInventario(inventario);
 
     let apelido = personagem.apelido;
     let sobre = personagem.descricao;
@@ -183,16 +205,20 @@ export async function GET(
       statusEspecial,
       hp: hpMax,
       mana: manaMax,
-      hp_base: hpBase,
-      mana_base: manaBase,
+      hp_base: hpBaseEfetivo,
+      mana_base: manaBaseEfetivo,
       hp_atual: personagem.hp_atual ?? null,
       mana_atual: personagem.mana_atual ?? null,
+      defesa_atual: personagem.defesa_atual ?? 0,
+      defesa_max: personagem.defesa_max ?? 0,
       sobre: sobre ?? null,
       url_imagem: personagem.url_imagem ?? null,
       imagem_pixel: personagem.imagem_pixel ?? null,
       actions,
       magias,
       pericias,
+      inventario,
+      inventarioResumo,
       slotsDefensivos: personagem.slotsDefensivos
         ? {
             esquivaUsada: personagem.slotsDefensivos.esquivaUsada,

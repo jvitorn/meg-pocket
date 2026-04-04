@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type FichaTone = "slate" | "zinc" | "orange" | "sky" | "emerald";
+type FichaTone = "slate" | "zinc" | "orange" | "sky" | "emerald" | "amber";
 
 const toneStyles: Record<
   FichaTone,
@@ -48,6 +48,13 @@ const toneStyles: Record<
     title: "text-emerald-100",
     subtitle: "text-emerald-100/70",
     accent: "bg-emerald-400/90",
+  },
+  amber: {
+    section:
+      "border-amber-500/20 bg-gradient-to-br from-amber-500/[0.10] via-card/92 to-card/82",
+    title: "text-amber-100",
+    subtitle: "text-amber-100/70",
+    accent: "bg-amber-400/90",
   },
 };
 

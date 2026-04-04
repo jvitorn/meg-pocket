@@ -264,6 +264,8 @@ export async function POST(request: Request) {
         mana_base: manaBase,
         hp_atual: hpBase,
         mana_atual: manaBase,
+        defesa_atual: 0,
+        defesa_max: 0,
         userId: session.user.id,
         slotsDefensivos: {
           create: {},

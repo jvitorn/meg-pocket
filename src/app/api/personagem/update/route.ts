@@ -6,10 +6,11 @@ import {
   buildRateLimitHeaders,
   enforceRateLimit,
 } from "@/lib/security/rate-limit";
+import { resolverLimitesPersonagem } from "@/lib/personagemAtributos";
 import {
-  calcularAtributosEspeciais,
-  parseStatusEspecial,
-} from "@/lib/regras/personagemEspecial";
+  montarResumoInventario,
+  normalizarItemInventario,
+} from "@/lib/personagemInventario";
 
 type Body = {
   index?: number | string; // aqui deve vir o ID (pk) do personagem
@@ -17,7 +18,7 @@ type Body = {
   valor: unknown;
 };
 
-const allowedFields = new Set(["sobre", "hp_atual", "mana_atual"]);
+const allowedFields = new Set(["sobre", "hp_atual", "mana_atual", "defesa_atual"]);
 
 function parseNonNegativeInteger(value: unknown) {
   const parsed = Number(value);
@@ -96,24 +97,31 @@ export async function POST(request: Request) {
       );
     }
 
-    const hpBase =
-      personagemAtual.hp_base ??
+    const hpDerivado =
       (personagemAtual.raca?.hp ?? 0) + (personagemAtual.classe?.hp ?? 0);
-    const manaBase =
-      personagemAtual.mana_base ??
+    const manaDerivado =
       (personagemAtual.raca?.mana ?? 0) + (personagemAtual.classe?.mana ?? 0);
-
-    const statusEspecial = parseStatusEspecial(personagemAtual.statusEspecial);
-    const { hpMax, manaMax } = calcularAtributosEspeciais({
-      hpBase,
-      manaBase,
-      statusEspecial,
+    const {
+      hpBaseEfetivo,
+      manaBaseEfetivo,
+      hpMaxSeguro,
+      manaMaxSeguro,
+    } = resolverLimitesPersonagem({
+      hpBasePersistida: personagemAtual.hp_base,
+      manaBasePersistida: personagemAtual.mana_base,
+      hpDerivado,
+      manaDerivado,
+      hpAtual: personagemAtual.hp_atual,
+      manaAtual: personagemAtual.mana_atual,
+      statusEspecial: personagemAtual.statusEspecial,
     });
 
     const updates: {
       descricao?: string;
       hp_atual?: number;
       mana_atual?: number;
+      defesa_atual?: number;
+      defesa_max?: number;
     } = {};
 
     if (campo === "sobre") {
@@ -139,9 +147,9 @@ export async function POST(request: Request) {
         );
       }
 
-      if (novoHp > hpMax) {
+      if (novoHp > hpMaxSeguro) {
         return NextResponse.json(
-          { success: false, error: `HP não pode ultrapassar ${hpMax}.` },
+          { success: false, error: `HP não pode ultrapassar ${hpMaxSeguro}.` },
           { status: 400, headers: rateLimitHeaders }
         );
       }
@@ -159,9 +167,9 @@ export async function POST(request: Request) {
         );
       }
 
-      if (novaMana > manaMax) {
+      if (novaMana > manaMaxSeguro) {
         return NextResponse.json(
-          { success: false, error: `Mana não pode ultrapassar ${manaMax}.` },
+          { success: false, error: `Mana não pode ultrapassar ${manaMaxSeguro}.` },
           { status: 400, headers: rateLimitHeaders }
         );
       }
@@ -169,33 +177,98 @@ export async function POST(request: Request) {
       updates.mana_atual = novaMana;
     }
 
-    const [updated, magiasRaw, periciasRaw] = await prisma.$transaction([
-      prisma.personagem.update({
+    if (campo === "defesa_atual") {
+      const novaDefesa = parseNonNegativeInteger(valor);
+
+      if (novaDefesa === null) {
+        return NextResponse.json(
+          { success: false, error: "Valor numérico inválido para campo defesa_atual" },
+          { status: 400, headers: rateLimitHeaders }
+        );
+      }
+
+      const defesaMaxAtual = personagemAtual.defesa_max ?? 0;
+
+      if (novaDefesa > defesaMaxAtual) {
+        return NextResponse.json(
+          { success: false, error: `Defesa não pode ultrapassar ${defesaMaxAtual}.` },
+          { status: 400, headers: rateLimitHeaders }
+        );
+      }
+
+      updates.defesa_atual = novaDefesa;
+
+      if (novaDefesa === 0) {
+        updates.defesa_max = 0;
+      }
+    }
+
+    const [updated, magiasRaw, periciasRaw, inventarioRaw] = await prisma.$transaction(async (tx) => {
+      const updatedPersonagem = await tx.personagem.update({
         where: { id },
         data: updates,
         include: {
           raca: true,
           classe: true,
         },
-      }),
-      prisma.magiaPersonagem.findMany({
-        where: { personagemId: id },
-        include: { magia: true },
-      }),
-      prisma.periciaPersonagem.findMany({
-        where: { personagemId: id },
-        include: { pericia: true },
-      }),
-    ]);
+      });
 
-    // calcula hp/mana finais (tratando hp_base/mana_base = 0 como valor válido)
-    const finalHpBase = (updated.hp_base !== null && updated.hp_base !== undefined)
-      ? updated.hp_base
-      : ((updated.raca?.hp ?? 0) + (updated.classe?.hp ?? 0));
+      if (campo === "defesa_atual" && (updates.defesa_atual ?? 0) === 0) {
+        await tx.itemInventario.updateMany({
+          where: {
+            personagemId: id,
+            efeitoAtivo: true,
+            durabilidadeAtual: {
+              gt: 0,
+            },
+          },
+          data: {
+            efeitoAtivo: false,
+          },
+        });
 
-    const finalManaBase = (updated.mana_base !== null && updated.mana_base !== undefined)
-      ? updated.mana_base
-      : ((updated.raca?.mana ?? 0) + (updated.classe?.mana ?? 0));
+        await tx.itemInventario.updateMany({
+          where: {
+            personagemId: id,
+            efeitoAtivo: true,
+            OR: [
+              {
+                durabilidadeAtual: 0,
+              },
+              {
+                durabilidadeAtual: null,
+              },
+            ],
+          },
+          data: {
+            efeitoAtivo: false,
+            esgotadoEm: new Date(),
+          },
+        });
+      }
+
+      const [magias, pericias] = await Promise.all([
+        tx.magiaPersonagem.findMany({
+          where: { personagemId: id },
+          include: { magia: true },
+        }),
+        tx.periciaPersonagem.findMany({
+          where: { personagemId: id },
+          include: { pericia: true },
+        }),
+      ]);
+
+      const inventario =
+        campo === "defesa_atual" && (updates.defesa_atual ?? 0) === 0
+          ? await tx.itemInventario.findMany({
+              where: { personagemId: id },
+              include: { item: { include: { efeito: true } } },
+              orderBy: [{ createdAt: "asc" }],
+            })
+          : null;
+
+      return [updatedPersonagem, magias, pericias, inventario] as const;
+    });
 
     const magias = (magiasRaw ?? []).map(mp => {
       const catalog = mp.magia;
@@ -216,6 +289,11 @@ export async function POST(request: Request) {
         descricao: pp.descricao ?? catalog?.descricao ?? '',
       };
     }).filter(p => p.nome !== null);
+    const inventario =
+      inventarioRaw?.map(normalizarItemInventario).filter((item) => item !== null) ?? null;
+    const inventarioResumo = inventario
+      ? montarResumoInventario(inventario)
+      : null;
 
     const result = {
       success: true,
@@ -231,15 +309,23 @@ export async function POST(request: Request) {
         elemento: updated.elemento,
         hp_atual: updated.hp_atual ?? null,
         mana_atual: updated.mana_atual ?? null,
-        hp: finalHpBase,
-        mana: finalManaBase,
+        defesa_atual: updated.defesa_atual ?? 0,
+        defesa_max: updated.defesa_max ?? 0,
+        hp: hpBaseEfetivo,
+        mana: manaBaseEfetivo,
         sobre: updated.descricao ?? null,
         url_imagem: updated.url_imagem ?? null,
         imagem_pixel: updated.imagem_pixel ?? null,
         magias,
         pericias,
         statusEspecial: updated.statusEspecial ?? null,
-      }
+      },
+      ...(inventario
+        ? {
+            inventario,
+            inventarioResumo,
+          }
+        : {}),
     };
 
     return NextResponse.json(result, { headers: rateLimitHeaders });

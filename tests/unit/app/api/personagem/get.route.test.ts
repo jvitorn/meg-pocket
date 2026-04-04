@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   findPersonagem: vi.fn(),
   findMagias: vi.fn(),
   findPericias: vi.fn(),
+  findInventario: vi.fn(),
   getSessionUserId: vi.fn(),
 }));
 
@@ -17,6 +18,9 @@ vi.mock("@/lib/prisma", () => ({
     },
     periciaPersonagem: {
       findMany: mocks.findPericias,
+    },
+    itemInventario: {
+      findMany: mocks.findInventario,
     },
   },
 }));
@@ -32,6 +36,7 @@ describe("GET /api/personagem/[id]", () => {
     mocks.findPersonagem.mockReset();
     mocks.findMagias.mockReset();
     mocks.findPericias.mockReset();
+    mocks.findInventario.mockReset();
     mocks.getSessionUserId.mockReset();
   });
 
@@ -72,6 +77,8 @@ describe("GET /api/personagem/[id]", () => {
       elemento: "fogo",
       hp_atual: 11,
       mana_atual: 9,
+      defesa_atual: 0,
+      defesa_max: 0,
       descricao: "Cronista arcano",
       url_imagem: "https://example.com/arkan.png",
       imagem_pixel: null,
@@ -108,6 +115,31 @@ describe("GET /api/personagem/[id]", () => {
         },
       },
     ]);
+    mocks.findInventario.mockResolvedValue([
+      {
+        id: 15,
+        quantidade: 2,
+        durabilidadeAtual: 1,
+        durabilidadeMax: 1,
+        efeitoAtivo: false,
+        esgotadoEm: null,
+        observacoes: "Uso rápido",
+        item: {
+          id: 4,
+          nome: "Poção de Mana",
+          tipo: "CONSUMIVEL",
+          descricao: "Restaura energia arcana.",
+          slots: 0.25,
+          durabilidadeBase: 1,
+          durabilidadeMax: 1,
+          efeito: {
+            modulo: "MANA",
+            operacao: "ADICIONAR",
+            valor: 3,
+          },
+        },
+      },
+    ]);
     mocks.getSessionUserId.mockResolvedValue("user-1");
 
     const response = await GET(
@@ -127,6 +159,8 @@ describe("GET /api/personagem/[id]", () => {
       elemento: "fogo",
       hp_atual: 11,
       mana_atual: 9,
+      defesa_atual: 0,
+      defesa_max: 0,
       hp: 8,
       mana: 9,
       sobre: "Cronista arcano",
@@ -148,6 +182,34 @@ describe("GET /api/personagem/[id]", () => {
           descricao: "Arte marcial.",
         },
       ],
+      inventario: [
+        {
+          id: 15,
+          itemId: 4,
+          nome: "Poção de Mana",
+          tipo: "CONSUMIVEL",
+          descricao: "Restaura energia arcana.",
+          slots: 0.25,
+          slotsTotal: 0.5,
+          quantidade: 2,
+          durabilidadeAtual: 1,
+          durabilidadeMax: 1,
+          efeitoAtivo: false,
+          esgotado: false,
+          efeito: {
+            modulo: "MANA",
+            operacao: "ADICIONAR",
+            valor: 3,
+          },
+          observacoes: "Uso rápido",
+        },
+      ],
+      inventarioResumo: {
+        slotsMaximos: 5,
+        slotsOcupados: 0.5,
+        slotsDisponiveis: 4.5,
+        itensTotais: 2,
+      },
       statusEspecial: "vivo",
       slotsDefensivos: {
         esquivaUsada: 1,

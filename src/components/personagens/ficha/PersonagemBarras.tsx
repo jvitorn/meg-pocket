@@ -18,6 +18,7 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
   /* Drawers locais */
   const [hpDrawerOpen, setHpDrawerOpen] = useState(false);
   const [manaDrawerOpen, setManaDrawerOpen] = useState(false);
+  const [defesaDrawerOpen, setDefesaDrawerOpen] = useState(false);
 
   /* Atualizar HP — idêntico ao original */
   const handleAtualizarHP = useCallback(
@@ -33,9 +34,18 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
       toast.loading("Atualizando HP...");
 
       try {
-        await setPersonagemValores(personagem.id, "hp_atual", novo);
+        const response = await setPersonagemValores(personagem.id, "hp_atual", novo);
+        setPersonagem((p) =>
+          p
+            ? {
+                ...p,
+                hp_atual: response.personagem?.hp_atual ?? novo,
+                hp: response.personagem?.hp ?? p.hp,
+              }
+            : p
+        );
         toast.dismiss();
-        toast.success(`HP atualizado: ${novo}`);
+        toast.success(`HP atualizado: ${response.personagem?.hp_atual ?? novo}`);
       } catch {
         setPersonagem((p) => (p ? { ...p, hp_atual: antigoHP } : p));
         toast.dismiss();
@@ -58,13 +68,62 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
       toast.loading("Atualizando mana...");
 
       try {
-        await setPersonagemValores(personagem.id, "mana_atual", novo);
+        const response = await setPersonagemValores(personagem.id, "mana_atual", novo);
+        setPersonagem((p) =>
+          p
+            ? {
+                ...p,
+                mana_atual: response.personagem?.mana_atual ?? novo,
+                mana: response.personagem?.mana ?? p.mana,
+              }
+            : p
+        );
         toast.dismiss();
-        toast.success(`Mana atualizada: ${novo}`);
+        toast.success(`Mana atualizada: ${response.personagem?.mana_atual ?? novo}`);
       } catch {
         setPersonagem((p) => (p ? { ...p, mana_atual: antigo } : p));
         toast.dismiss();
         toast.error("Não foi possível atualizar a mana.");
+      }
+    },
+    [canEdit, personagem, setPersonagem]
+  );
+
+  const handleAtualizarDefesa = useCallback(
+    async (novoValor: number) => {
+      if (!canEdit) return;
+      const antigo = personagem.defesa_atual ?? 0;
+      const max = personagem.defesa_max ?? 0;
+      const novo = Math.max(0, Math.min(max, novoValor));
+
+      setPersonagem((p) => (p ? { ...p, defesa_atual: novo, defesa_max: novo === 0 ? 0 : (p.defesa_max ?? 0) } : p));
+
+      toast.loading("Atualizando defesa...");
+
+      try {
+        const response = await setPersonagemValores(personagem.id, "defesa_atual", novo);
+        setPersonagem((p) =>
+          p
+            ? {
+                ...p,
+                defesa_atual: response.personagem?.defesa_atual ?? novo,
+                defesa_max:
+                  response.personagem?.defesa_max ??
+                  (novo === 0 ? 0 : (p.defesa_max ?? 0)),
+                inventario: response.inventario ?? p.inventario,
+                inventarioResumo:
+                  response.inventarioResumo ?? p.inventarioResumo,
+              }
+            : p
+        );
+        toast.dismiss();
+        toast.success(`Defesa atualizada: ${response.personagem?.defesa_atual ?? novo}`);
+      } catch {
+        setPersonagem((p) =>
+          p ? { ...p, defesa_atual: antigo, defesa_max: personagem.defesa_max ?? 0 } : p
+        );
+        toast.dismiss();
+        toast.error("Não foi possível atualizar a defesa.");
       }
     },
     [canEdit, personagem, setPersonagem]
@@ -79,6 +138,10 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
   const manaPercent =
     personagem.mana && personagem.mana > 0
       ? Math.round(((personagem.mana_atual ?? 0) / personagem.mana) * 100)
+      : 0;
+  const defesaPercent =
+    personagem.defesa_max && personagem.defesa_max > 0
+      ? Math.round(((personagem.defesa_atual ?? 0) / personagem.defesa_max) * 100)
       : 0;
 
   return (
@@ -127,6 +190,28 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
           </div>
         </div>
 
+        {(personagem.defesa_max ?? 0) > 0 ? (
+          <div>
+            <div className="flex justify-between items-center text-[12px] text-muted-foreground mb-1">
+              <span className="font-medium">Defesa</span>
+              <span className="text-xs" aria-live="polite">
+                {personagem.defesa_atual ?? 0}/{personagem.defesa_max ?? 0}
+              </span>
+            </div>
+
+            <div className="w-full h-2 rounded bg-white/6 overflow-hidden">
+              <motion.div
+                className="h-full bg-amber-400"
+                initial={false}
+                animate={{
+                  width: `${Math.max(0, Math.min(100, defesaPercent))}%`,
+                }}
+                transition={{ type: "tween", duration: 0.45 }}
+              />
+            </div>
+          </div>
+        ) : null}
+
         {/* AÇÕES RÁPIDAS — idêntico ao original */}
         <div className="mt-2 space-y-2 w-full mb-2">
           <div className="flex gap-2 w-full">
@@ -146,6 +231,18 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
               Atualizar Mana
             </button>
           </div>
+
+          {(personagem.defesa_max ?? 0) > 0 ? (
+            <div className="flex gap-2 w-full">
+              <button
+                onClick={() => setDefesaDrawerOpen(true)}
+                disabled={!canEdit}
+                className="flex-1 rounded-md px-3 py-2 bg-amber-500/10 hover:bg-amber-500/15 focus:outline-none focus:ring-2 focus:ring-amber-400/40 transition text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Atualizar Defesa
+              </button>
+            </div>
+          ) : null}
 
           {personagem.statusEspecial && canEdit && (
             <div className="w-full">
@@ -185,6 +282,17 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
         max={personagem.mana}
         onUpdate={handleAtualizarMana}
         unitLabel="Mana"
+      />
+
+      <StatDrawer
+        title="Atualizar Defesa"
+        description="Ajuste a defesa temporária ativa da ficha."
+        open={defesaDrawerOpen}
+        setOpen={setDefesaDrawerOpen}
+        current={personagem.defesa_atual ?? 0}
+        max={personagem.defesa_max ?? 0}
+        onUpdate={handleAtualizarDefesa}
+        unitLabel="Defesa"
       />
     </>
   );

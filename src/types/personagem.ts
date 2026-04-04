@@ -18,6 +18,8 @@ export interface PersonagemInterface extends BaseInterface {
 
   hp_atual?: number;
   mana_atual?: number;
+  defesa_atual?: number;
+  defesa_max?: number;
 
   sobre: string;
 
@@ -26,6 +28,8 @@ export interface PersonagemInterface extends BaseInterface {
 
   magias?: MagiaPersonagem[];
   pericias?: PericiaPersonagem[];
+  inventario?: PersonagemInventarioItem[];
+  inventarioResumo?: InventarioResumo;
 
   statusEspecial?: StatusEspecial;
   especial?: {
@@ -66,6 +70,46 @@ export interface PericiaPersonagem {
   tipo: string;
   pontuacao: number;
   descricao?: string;
+}
+
+export type ItemTipo =
+  | "ARMA"
+  | "CONSUMIVEL"
+  | "MAGICO"
+  | "MATERIAL"
+  | "EQUIPAMENTO";
+
+export interface PersonagemInventarioItem {
+  id: number;
+  itemId: number;
+  nome: string;
+  tipo: ItemTipo;
+  descricao?: string | null;
+  slots: number;
+  slotsTotal: number;
+  quantidade: number;
+  durabilidadeAtual?: number | null;
+  durabilidadeMax?: number | null;
+  efeitoAtivo?: boolean;
+  esgotado?: boolean;
+  efeito?: ItemEfeito | null;
+  observacoes?: string | null;
+}
+
+export type ItemEfeitoModulo = "VIDA" | "MANA" | "DEFESA";
+export type ItemEfeitoOperacao = "ADICIONAR" | "REMOVER";
+
+export interface ItemEfeito {
+  modulo: ItemEfeitoModulo;
+  operacao: ItemEfeitoOperacao;
+  valor: number;
+}
+
+export interface InventarioResumo {
+  slotsMaximos: number;
+  slotsOcupados: number;
+  slotsDisponiveis: number;
+  itensTotais: number;
 }
 /* -------------------------------------------------------
    Slots Defensivos

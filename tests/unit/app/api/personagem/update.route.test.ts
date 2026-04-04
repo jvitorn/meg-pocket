@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   personagemUpdate: vi.fn(),
   magiaFindMany: vi.fn(),
   periciaFindMany: vi.fn(),
+  itemInventarioFindMany: vi.fn(),
+  itemInventarioUpdateMany: vi.fn(),
   transaction: vi.fn(),
   enforceRateLimit: vi.fn(),
   buildRateLimitHeaders: vi.fn(),
@@ -26,6 +28,10 @@ vi.mock("@/lib/prisma", () => ({
     },
     periciaPersonagem: {
       findMany: mocks.periciaFindMany,
+    },
+    itemInventario: {
+      findMany: mocks.itemInventarioFindMany,
+      updateMany: mocks.itemInventarioUpdateMany,
     },
     $transaction: mocks.transaction,
   },
@@ -53,6 +59,8 @@ describe("POST /api/personagem/update", () => {
     mocks.personagemUpdate.mockReset();
     mocks.magiaFindMany.mockReset();
     mocks.periciaFindMany.mockReset();
+    mocks.itemInventarioFindMany.mockReset();
+    mocks.itemInventarioUpdateMany.mockReset();
     mocks.transaction.mockReset();
     mocks.enforceRateLimit.mockReset();
     mocks.buildRateLimitHeaders.mockReset();
@@ -165,29 +173,46 @@ describe("POST /api/personagem/update", () => {
     mocks.personagemUpdate.mockResolvedValue({});
     mocks.magiaFindMany.mockResolvedValue([]);
     mocks.periciaFindMany.mockResolvedValue([]);
-    mocks.transaction.mockResolvedValue([
-      {
-        id: 7,
-        nome: "Selene",
-        apelido: "A Cronista",
-        campanhaId: 1,
-        classeId: 2,
-        racaId: 3,
-        elemento: "fogo",
-        hp_atual: 12,
-        mana_atual: 9,
-        hp_base: null,
-        mana_base: null,
-        descricao: "Arcanista veterana",
-        url_imagem: "https://example.com/selene.png",
-        imagem_pixel: null,
-        statusEspecial: "vivo",
-        raca: { nome: "Humana", hp: 5, mana: 2 },
-        classe: { nome: "Elementalista", hp: 4, mana: 7 },
-      },
-      [],
-      [],
-    ]);
+    mocks.transaction.mockImplementation(async (callback: any) =>
+      callback({
+        personagem: {
+          update: mocks.personagemUpdate,
+        },
+        magiaPersonagem: {
+          findMany: mocks.magiaFindMany,
+        },
+        periciaPersonagem: {
+          findMany: mocks.periciaFindMany,
+        },
+        itemInventario: {
+          findMany: mocks.itemInventarioFindMany,
+          updateMany: mocks.itemInventarioUpdateMany,
+        },
+      })
+    );
+    mocks.personagemUpdate.mockResolvedValue({
+      id: 7,
+      nome: "Selene",
+      apelido: "A Cronista",
+      campanhaId: 1,
+      classeId: 2,
+      racaId: 3,
+      elemento: "fogo",
+      hp_atual: 12,
+      mana_atual: 9,
+      defesa_atual: 0,
+      defesa_max: 0,
+      hp_base: null,
+      mana_base: null,
+      descricao: "Arcanista veterana",
+      url_imagem: "https://example.com/selene.png",
+      imagem_pixel: null,
+      statusEspecial: "vivo",
+      raca: { nome: "Humana", hp: 5, mana: 2 },
+      classe: { nome: "Elementalista", hp: 4, mana: 7 },
+    });
+    mocks.magiaFindMany.mockResolvedValue([]);
+    mocks.periciaFindMany.mockResolvedValue([]);
 
     const response = await POST(
       makeRequest({
@@ -211,6 +236,8 @@ describe("POST /api/personagem/update", () => {
         elemento: "fogo",
         hp_atual: 12,
         mana_atual: 9,
+        defesa_atual: 0,
+        defesa_max: 0,
         hp: 9,
         mana: 9,
         sobre: "Arcanista veterana",
@@ -228,6 +255,285 @@ describe("POST /api/personagem/update", () => {
       include: {
         raca: true,
         classe: true,
+      },
+    });
+  });
+
+  it("aceita atualizar mana usando o maximo derivado quando a base persistida esta desatualizada", async () => {
+    mocks.validarEdicaoDaFicha.mockResolvedValue({
+      ok: true,
+      userId: "user-1",
+    });
+    mocks.personagemFindUnique.mockResolvedValue({
+      id: 7,
+      hp_atual: 14,
+      mana_atual: 13,
+      hp_base: 1,
+      mana_base: 1,
+      statusEspecial: "vivo",
+      raca: { hp: 4, mana: 9 },
+      classe: { hp: 6, mana: 7 },
+      defesa_max: 0,
+    });
+    mocks.magiaFindMany.mockResolvedValue([]);
+    mocks.periciaFindMany.mockResolvedValue([]);
+    mocks.transaction.mockImplementation(async (callback: any) =>
+      callback({
+        personagem: {
+          update: mocks.personagemUpdate,
+        },
+        magiaPersonagem: {
+          findMany: mocks.magiaFindMany,
+        },
+        periciaPersonagem: {
+          findMany: mocks.periciaFindMany,
+        },
+        itemInventario: {
+          findMany: mocks.itemInventarioFindMany,
+          updateMany: mocks.itemInventarioUpdateMany,
+        },
+      })
+    );
+    mocks.personagemUpdate.mockResolvedValue({
+      id: 7,
+      nome: "Yuna",
+      apelido: null,
+      campanhaId: 1,
+      classeId: 3,
+      racaId: 4,
+      elemento: "vento",
+      hp_atual: 14,
+      mana_atual: 12,
+      defesa_atual: 0,
+      defesa_max: 0,
+      hp_base: 1,
+      mana_base: 1,
+      descricao: "Maga disciplinada",
+      url_imagem: null,
+      imagem_pixel: null,
+      statusEspecial: "vivo",
+      raca: { nome: "Arcana", hp: 4, mana: 9 },
+      classe: { nome: "Feiticeira", hp: 6, mana: 7 },
+    });
+
+    const response = await POST(
+      makeRequest({
+        index: 7,
+        campo: "mana_atual",
+        valor: "12",
+      })
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      personagem: {
+        id: 7,
+        nome: "Yuna",
+        apelido: null,
+        campanhaId: 1,
+        classeId: 3,
+        classe_nome: "Feiticeira",
+        racaId: 4,
+        raca_nome: "Arcana",
+        elemento: "vento",
+        hp_atual: 14,
+        mana_atual: 12,
+        defesa_atual: 0,
+        defesa_max: 0,
+        hp: 10,
+        mana: 16,
+        sobre: "Maga disciplinada",
+        url_imagem: null,
+        imagem_pixel: null,
+        magias: [],
+        pericias: [],
+        statusEspecial: "vivo",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(mocks.personagemUpdate).toHaveBeenCalledWith({
+      where: { id: 7 },
+      data: { mana_atual: 12 },
+      include: {
+        raca: true,
+        classe: true,
+      },
+    });
+  });
+
+  it("ao zerar a defesa devolve o inventario atualizado e oculta item defensivo esgotado", async () => {
+    mocks.validarEdicaoDaFicha.mockResolvedValue({
+      ok: true,
+      userId: "user-1",
+    });
+    mocks.personagemFindUnique.mockResolvedValue({
+      id: 8,
+      hp_atual: 10,
+      mana_atual: 6,
+      hp_base: null,
+      mana_base: null,
+      statusEspecial: null,
+      defesa_atual: 1,
+      defesa_max: 3,
+      raca: { hp: 4, mana: 3 },
+      classe: { hp: 6, mana: 3 },
+    });
+    mocks.magiaFindMany.mockResolvedValue([]);
+    mocks.periciaFindMany.mockResolvedValue([]);
+    mocks.itemInventarioFindMany.mockResolvedValue([
+      {
+        id: 6,
+        quantidade: 1,
+        durabilidadeAtual: 0,
+        durabilidadeMax: 1,
+        efeitoAtivo: false,
+        esgotadoEm: new Date("2026-04-04T18:00:00.000Z"),
+        observacoes: "Equipamento de jornada",
+        item: {
+          id: 6,
+          nome: "Capa Arcana",
+          tipo: "EQUIPAMENTO",
+          descricao: "Manto reforçado para aventuras e viagens longas.",
+          slots: 1,
+          durabilidadeBase: 1,
+          durabilidadeMax: 1,
+          efeito: {
+            modulo: "DEFESA",
+            operacao: "ADICIONAR",
+            valor: 3,
+          },
+        },
+      },
+    ]);
+    mocks.transaction.mockImplementation(async (callback: any) =>
+      callback({
+        personagem: {
+          update: mocks.personagemUpdate,
+        },
+        magiaPersonagem: {
+          findMany: mocks.magiaFindMany,
+        },
+        periciaPersonagem: {
+          findMany: mocks.periciaFindMany,
+        },
+        itemInventario: {
+          findMany: mocks.itemInventarioFindMany,
+          updateMany: mocks.itemInventarioUpdateMany,
+        },
+      })
+    );
+    mocks.personagemUpdate.mockResolvedValue({
+      id: 8,
+      nome: "Robin",
+      apelido: null,
+      campanhaId: 2,
+      classeId: 2,
+      racaId: 2,
+      elemento: "vento",
+      hp_atual: 10,
+      mana_atual: 6,
+      defesa_atual: 0,
+      defesa_max: 0,
+      hp_base: null,
+      mana_base: null,
+      descricao: "Guardiã da guilda.",
+      url_imagem: null,
+      imagem_pixel: null,
+      statusEspecial: null,
+      raca: { nome: "Celestial", hp: 4, mana: 3 },
+      classe: { nome: "Guardiã", hp: 6, mana: 3 },
+    });
+
+    const response = await POST(
+      makeRequest({
+        index: 8,
+        campo: "defesa_atual",
+        valor: "0",
+      })
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      personagem: {
+        id: 8,
+        nome: "Robin",
+        apelido: null,
+        campanhaId: 2,
+        classeId: 2,
+        classe_nome: "Guardiã",
+        racaId: 2,
+        raca_nome: "Celestial",
+        elemento: "vento",
+        hp_atual: 10,
+        mana_atual: 6,
+        defesa_atual: 0,
+        defesa_max: 0,
+        hp: 10,
+        mana: 6,
+        sobre: "Guardiã da guilda.",
+        url_imagem: null,
+        imagem_pixel: null,
+        magias: [],
+        pericias: [],
+        statusEspecial: null,
+      },
+      inventario: [
+        {
+          id: 6,
+          itemId: 6,
+          nome: "Capa Arcana",
+          tipo: "EQUIPAMENTO",
+          descricao: "Manto reforçado para aventuras e viagens longas.",
+          slots: 1,
+          slotsTotal: 0,
+          quantidade: 1,
+          durabilidadeAtual: 0,
+          durabilidadeMax: 1,
+          efeitoAtivo: false,
+          esgotado: true,
+          efeito: {
+            modulo: "DEFESA",
+            operacao: "ADICIONAR",
+            valor: 3,
+          },
+          observacoes: "Equipamento de jornada",
+        },
+      ],
+      inventarioResumo: {
+        slotsMaximos: 5,
+        slotsOcupados: 0,
+        slotsDisponiveis: 5,
+        itensTotais: 0,
+      },
+    });
+    expect(mocks.itemInventarioUpdateMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        personagemId: 8,
+        efeitoAtivo: true,
+        durabilidadeAtual: {
+          gt: 0,
+        },
+      },
+      data: {
+        efeitoAtivo: false,
+      },
+    });
+    expect(mocks.itemInventarioUpdateMany).toHaveBeenNthCalledWith(2, {
+      where: {
+        personagemId: 8,
+        efeitoAtivo: true,
+        OR: [
+          {
+            durabilidadeAtual: 0,
+          },
+          {
+            durabilidadeAtual: null,
+          },
+        ],
+      },
+      data: {
+        efeitoAtivo: false,
+        esgotadoEm: expect.any(Date),
       },
     });
   });

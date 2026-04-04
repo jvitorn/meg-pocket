@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   findRoleActions: vi.fn(),
   findMagias: vi.fn(),
   findPericias: vi.fn(),
+  findInventario: vi.fn(),
   enforceRateLimit: vi.fn(),
   buildRateLimitHeaders: vi.fn(),
 }));
@@ -32,6 +33,9 @@ vi.mock("@/lib/prisma", () => ({
     periciaPersonagem: {
       findMany: mocks.findPericias,
     },
+    itemInventario: {
+      findMany: mocks.findInventario,
+    },
   },
 }));
 
@@ -50,6 +54,7 @@ describe("GET /api/personagem/especial/[id]", () => {
     mocks.findRoleActions.mockReset();
     mocks.findMagias.mockReset();
     mocks.findPericias.mockReset();
+    mocks.findInventario.mockReset();
     mocks.enforceRateLimit.mockReset();
     mocks.buildRateLimitHeaders.mockReset();
 
@@ -109,5 +114,141 @@ describe("GET /api/personagem/especial/[id]", () => {
     expect(response.status).toBe(429);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(mocks.findPersonagem).not.toHaveBeenCalled();
+  });
+
+  it("monta a ficha especial com inventario e acoes", async () => {
+    mocks.validarEdicaoDaFicha.mockResolvedValue({
+      ok: true,
+      userId: "user-1",
+    });
+    mocks.findPersonagem.mockResolvedValue({
+      id: 7,
+      nome: "Arkan",
+      apelido: "O Encoberto",
+      campanhaId: 1,
+      classeId: 2,
+      racaId: 3,
+      elemento: "fogo",
+      hp_atual: 10,
+      mana_atual: 8,
+      defesa_atual: 0,
+      defesa_max: 0,
+      descricao: "Um ritualista marcado.",
+      url_imagem: null,
+      imagem_pixel: null,
+      statusEspecial: "vivo",
+      raca: { nome: "Humano", hp: 5, mana: 2 },
+      classe: { nome: "Mago", hp: 3, mana: 7 },
+      especial: { id: 9, nome: "Mascarado" },
+      slotsDefensivos: {
+        esquivaUsada: 0,
+        bloqueioUsado: 1,
+        contraAtaqueUsado: 0,
+      },
+    });
+    mocks.findRoleActions.mockResolvedValue([
+      {
+        id: 1,
+        acoes: [
+          {
+            nome: "Investida Ritual",
+            descricao: "Avança consumindo mana.",
+            custo_mana: 2,
+          },
+        ],
+      },
+    ]);
+    mocks.findMagias.mockResolvedValue([]);
+    mocks.findPericias.mockResolvedValue([]);
+    mocks.findInventario.mockResolvedValue([
+      {
+        id: 21,
+        quantidade: 1,
+        durabilidadeAtual: 4,
+        durabilidadeMax: 4,
+        efeitoAtivo: false,
+        esgotadoEm: null,
+        observacoes: null,
+        item: {
+          id: 6,
+          nome: "Adaga Rúnica",
+          tipo: "ARMA",
+          descricao: "Canaliza mana em golpes curtos.",
+          slots: 1,
+          durabilidadeBase: 4,
+          durabilidadeMax: 4,
+          efeito: null,
+        },
+      },
+    ]);
+
+    const response = await GET(
+      new Request("http://localhost:3000/api/personagem/especial/7") as never,
+      { params: Promise.resolve({ id: "7" }) }
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      id: 7,
+      nome: "O Encoberto",
+      apelido: "O Encoberto",
+      campanhaId: 1,
+      raca_nome: "Humano",
+      classe_nome: "Mago",
+      racaId: 3,
+      classeId: 2,
+      statusEspecial: "vivo",
+      hp: 8,
+      mana: 9,
+      hp_base: 8,
+      mana_base: 9,
+      hp_atual: 10,
+      mana_atual: 8,
+      defesa_atual: 0,
+      defesa_max: 0,
+      sobre: "Um ritualista marcado.",
+      url_imagem: null,
+      imagem_pixel: null,
+      actions: [
+        {
+          nome: "Investida Ritual",
+          descricao: "Avança consumindo mana.",
+          custo_mana: 2,
+        },
+      ],
+      magias: [],
+      pericias: [],
+      inventario: [
+        {
+          id: 21,
+          itemId: 6,
+          nome: "Adaga Rúnica",
+          tipo: "ARMA",
+          descricao: "Canaliza mana em golpes curtos.",
+          slots: 1,
+          slotsTotal: 1,
+          quantidade: 1,
+          durabilidadeAtual: 4,
+          durabilidadeMax: 4,
+          efeitoAtivo: false,
+          esgotado: false,
+          efeito: null,
+          observacoes: null,
+        },
+      ],
+      inventarioResumo: {
+        slotsMaximos: 5,
+        slotsOcupados: 1,
+        slotsDisponiveis: 4,
+        itensTotais: 1,
+      },
+      slotsDefensivos: {
+        esquivaUsada: 0,
+        bloqueioUsado: 1,
+        contraAtaqueUsado: 0,
+      },
+      canEdit: true,
+      especial: { id: 9, nome: "Mascarado" },
+    });
+    expect(response.status).toBe(200);
   });
 });
