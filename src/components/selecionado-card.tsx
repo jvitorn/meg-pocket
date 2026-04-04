@@ -73,12 +73,12 @@ export default function SelecionadoCard({
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-white/5 border border-red-500 rounded-lg p-3 text-center">
                 <div className="text-[10px] uppercase text-zinc-400">HP</div>
-                <div className="font-semibold text-white">{race.hp_atual ?? "—"}</div>
+                <div className="font-semibold dark:text-white text-black">{race.hp_atual ?? "—"}</div>
               </div>
 
               <div className="bg-white/5 border border-primary rounded-lg p-3 text-center col-span-2">
                 <div className="text-[10px] uppercase text-zinc-400">MANA</div>
-                <div className="font-semibold text-white">{race.mana_atual ?? "—"}</div>
+                <div className="font-semibold dark:text-white text-black">{race.mana_atual ?? "—"}</div>
               </div>
             </div>
 

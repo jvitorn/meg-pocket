@@ -74,10 +74,10 @@ export function PersonagemMagias({ personagem, setPersonagem, canEdit }: Props) 
               <button
                 key={idx}
                 onClick={() => setSelected(magia)}
-                className="flex w-full items-start justify-between gap-4 rounded-xl border border-sky-500/15 bg-sky-500/[0.07] p-4 text-left transition hover:bg-sky-500/12 md:p-5"
+                className="flex w-full items-start justify-between gap-4 rounded-xl border border-sky-200 bg-sky-50/80 p-4 text-left transition hover:bg-sky-100/80 dark:border-sky-500/15 dark:bg-sky-500/[0.07] dark:hover:bg-sky-500/12 md:p-5"
               >
                 <div className="flex items-center gap-4">
-                  <Sparkles className="w-6 h-6 text-blue-600" />
+                  <Sparkles className="w-6 h-6 text-sky-600 dark:text-blue-400" />
 
                   <div className="flex-1">
                     <div className="font-semibold text-sm md:text-base">
@@ -91,14 +91,14 @@ export function PersonagemMagias({ personagem, setPersonagem, canEdit }: Props) 
                 </div>
 
                 <div className="shrink-0 self-start">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-background text-foreground border border-blue-600">
+                  <span className="inline-flex items-center rounded-full border border-sky-300 bg-background px-3 py-1 text-xs font-medium text-sky-700 dark:border-blue-600 dark:text-foreground">
                     {magia.custo_nivel ?? "-"}
                   </span>
                 </div>
               </button>
             ))
           ) : (
-            <div className="rounded-xl border border-dashed border-sky-500/20 bg-sky-500/6 p-4 text-sm text-sky-100/75">
+            <div className="rounded-xl border border-dashed border-sky-200 bg-sky-50/80 p-4 text-sm text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/6 dark:text-sky-100/75">
               Nenhuma magia disponível para este personagem no momento.
             </div>
           )}

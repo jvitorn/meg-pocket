@@ -77,7 +77,7 @@ export function PersonagemPericias({ pericias }: Props) {
                 <button
                   key={idx}
                   onClick={() => handleAbrir(pericia)}
-                  className="flex w-full items-start justify-between gap-4 rounded-xl border border-orange-500/15 bg-orange-500/[0.07] p-4 text-left transition hover:bg-orange-500/12 md:p-5"
+                  className="flex w-full items-start justify-between gap-4 rounded-xl border border-orange-200 bg-orange-50/80 p-4 text-left transition hover:bg-orange-100/80 dark:border-orange-500/15 dark:bg-orange-500/[0.07] dark:hover:bg-orange-500/12 md:p-5"
                 >
                   <div className="flex items-start gap-4">
                     <CircleDotDashed
@@ -106,7 +106,7 @@ export function PersonagemPericias({ pericias }: Props) {
               );
             })
           ) : (
-            <div className="rounded-xl border border-dashed border-orange-500/20 bg-orange-500/6 p-4 text-sm text-orange-100/75">
+            <div className="rounded-xl border border-dashed border-orange-200 bg-orange-50/80 p-4 text-sm text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/6 dark:text-orange-100/75">
               Nenhuma perícia configurada para esta ficha ainda.
             </div>
           )}

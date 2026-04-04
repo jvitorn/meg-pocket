@@ -48,16 +48,16 @@ interface Props {
 ---------------------------------------------------------*/
 const slotStyle = {
   esquiva: {
-    icon: "text-slate-400",
-    text: "text-slate-500",
+    icon: "text-slate-500 dark:text-slate-400",
+    text: "text-slate-700 dark:text-slate-300",
   },
   bloqueio: {
-    icon: "text-zinc-400",
-    text: "text-zinc-500",
+    icon: "text-zinc-500 dark:text-zinc-400",
+    text: "text-zinc-700 dark:text-zinc-300",
   },
   contra: {
-    icon: "text-stone-400",
-    text: "text-stone-500",
+    icon: "text-stone-500 dark:text-stone-400",
+    text: "text-stone-700 dark:text-stone-300",
   },
 };
 
@@ -79,8 +79,8 @@ function SlotsVisual({
           className={cn(
             "w-3 h-3 rounded-sm border transition",
             i < usados
-              ? "border-slate-300 bg-slate-300"
-              : "border-slate-400/35"
+              ? "border-slate-400 bg-slate-400 dark:border-slate-300 dark:bg-slate-300"
+              : "border-slate-300 dark:border-slate-400/35"
           )}
         />
       ))}
@@ -105,16 +105,16 @@ export function PersonagemSlotsDefensivos({
     return (
       <section
         id="defesa"
-        className="scroll-mt-32 space-y-3 rounded-2xl border border-slate-500/20 bg-linear-to-br from-slate-500/10 via-card/92 to-card/82 p-4 shadow-sm backdrop-blur-sm"
+        className="scroll-mt-32 space-y-3 rounded-2xl border border-slate-200 bg-linear-to-br from-slate-100 via-card to-card p-4 shadow-sm backdrop-blur-sm dark:border-slate-500/20 dark:from-slate-500/10 dark:via-card/92 dark:to-card/82"
       >
         <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-slate-200" />
-          <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-100">
+          <Shield className="w-4 h-4 text-slate-500 dark:text-slate-200" />
+          <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-700 dark:text-slate-100">
             Slots Reativos
           </h3>
         </div>
 
-        <p className="rounded-xl border border-dashed border-slate-500/20 bg-slate-500/6 p-4 text-sm italic text-slate-100/75">
+        <p className="rounded-xl border border-dashed border-slate-200 bg-slate-100/80 p-4 text-sm italic text-slate-600 dark:border-slate-500/20 dark:bg-slate-500/6 dark:text-slate-100/75">
           Mecânica de defesa ainda não definida para este personagem.
         </p>
       </section>
@@ -207,17 +207,17 @@ export function PersonagemSlotsDefensivos({
   return (
     <section
       id="defesa"
-      className="mb-3 space-y-4 rounded-2xl border border-slate-500/20 bg-linear-to-br from-slate-500/10 via-card/92 to-card/82 p-4 shadow-sm backdrop-blur-sm"
+      className="mb-3 space-y-4 rounded-2xl border border-slate-200 bg-linear-to-br from-slate-100 via-card to-card p-4 shadow-sm backdrop-blur-sm dark:border-slate-500/20 dark:from-slate-500/10 dark:via-card/92 dark:to-card/82"
     >
       {/* Cabeçalho */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-slate-200" />
+          <Shield className="w-4 h-4 text-slate-500 dark:text-slate-200" />
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-100">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-700 dark:text-slate-100">
               Slots Reativos
             </h3>
-            <p className="text-xs text-slate-100/70">
+            <p className="text-xs text-slate-600 dark:text-slate-100/70">
               {canEdit
                 ? "Usados durante o combate"
                 : "Somente leitura para esta ficha"}
@@ -230,7 +230,7 @@ export function PersonagemSlotsDefensivos({
           size="sm"
           onClick={resetar}
           disabled={!canEdit}
-          className="border-slate-500/30 bg-slate-500/10 text-slate-100 hover:bg-slate-500/15"
+          className="border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-500/30 dark:bg-slate-500/10 dark:text-slate-100 dark:hover:bg-slate-500/15"
         >
           Resetar
         </Button>

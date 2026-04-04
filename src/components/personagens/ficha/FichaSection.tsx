@@ -3,7 +3,14 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type FichaTone = "slate" | "zinc" | "orange" | "sky" | "emerald" | "amber";
+type FichaTone =
+  | "slate"
+  | "zinc"
+  | "orange"
+  | "sky"
+  | "emerald"
+  | "amber"
+  | "violet";
 
 const toneStyles: Record<
   FichaTone,
@@ -16,45 +23,52 @@ const toneStyles: Record<
 > = {
   slate: {
     section:
-      "border-slate-500/20 bg-gradient-to-br from-slate-500/[0.10] via-card/92 to-card/82",
-    title: "text-slate-100",
-    subtitle: "text-slate-200/70",
-    accent: "bg-slate-400/80",
+      "border-slate-200 bg-gradient-to-br from-slate-100 via-card to-card dark:border-slate-500/20 dark:from-slate-500/[0.10] dark:via-card/92 dark:to-card/82",
+    title: "text-slate-700 dark:text-slate-100",
+    subtitle: "text-slate-600 dark:text-slate-200/70",
+    accent: "bg-slate-500 dark:bg-slate-400/80",
   },
   zinc: {
     section:
-      "border-zinc-500/20 bg-gradient-to-br from-zinc-500/[0.08] via-card/92 to-card/82",
-    title: "text-zinc-100",
-    subtitle: "text-zinc-200/70",
-    accent: "bg-zinc-300/80",
+      "border-zinc-200 bg-gradient-to-br from-zinc-100 via-card to-card dark:border-zinc-500/20 dark:from-zinc-500/[0.08] dark:via-card/92 dark:to-card/82",
+    title: "text-zinc-700 dark:text-zinc-100",
+    subtitle: "text-zinc-600 dark:text-zinc-200/70",
+    accent: "bg-zinc-500 dark:bg-zinc-300/80",
   },
   orange: {
     section:
-      "border-orange-500/20 bg-gradient-to-br from-orange-500/[0.10] via-card/92 to-card/82",
-    title: "text-orange-100",
-    subtitle: "text-orange-100/70",
-    accent: "bg-orange-400/90",
+      "border-orange-200 bg-gradient-to-br from-orange-100 via-card to-card dark:border-orange-500/20 dark:from-orange-500/[0.10] dark:via-card/92 dark:to-card/82",
+    title: "text-orange-700 dark:text-orange-100",
+    subtitle: "text-orange-700/80 dark:text-orange-100/70",
+    accent: "bg-orange-500 dark:bg-orange-400/90",
   },
   sky: {
     section:
-      "border-sky-500/20 bg-gradient-to-br from-sky-500/[0.10] via-card/92 to-card/82",
-    title: "text-sky-100",
-    subtitle: "text-sky-100/70",
-    accent: "bg-sky-400/90",
+      "border-sky-200 bg-gradient-to-br from-sky-100 via-card to-card dark:border-sky-500/20 dark:from-sky-500/[0.10] dark:via-card/92 dark:to-card/82",
+    title: "text-sky-700 dark:text-sky-100",
+    subtitle: "text-sky-700/80 dark:text-sky-100/70",
+    accent: "bg-sky-500 dark:bg-sky-400/90",
   },
   emerald: {
     section:
-      "border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.10] via-card/92 to-card/82",
-    title: "text-emerald-100",
-    subtitle: "text-emerald-100/70",
-    accent: "bg-emerald-400/90",
+      "border-emerald-200 bg-gradient-to-br from-emerald-100 via-card to-card dark:border-emerald-500/20 dark:from-emerald-500/[0.10] dark:via-card/92 dark:to-card/82",
+    title: "text-emerald-700 dark:text-emerald-100",
+    subtitle: "text-emerald-700/80 dark:text-emerald-100/70",
+    accent: "bg-emerald-500 dark:bg-emerald-400/90",
   },
   amber: {
     section:
-      "border-amber-500/20 bg-gradient-to-br from-amber-500/[0.10] via-card/92 to-card/82",
-    title: "text-amber-100",
-    subtitle: "text-amber-100/70",
-    accent: "bg-amber-400/90",
+      "border-amber-200 bg-gradient-to-br from-amber-100 via-card to-card dark:border-amber-500/20 dark:from-amber-500/[0.10] dark:via-card/92 dark:to-card/82",
+    title: "text-amber-700 dark:text-amber-100",
+    subtitle: "text-amber-700/80 dark:text-amber-100/70",
+    accent: "bg-amber-500 dark:bg-amber-400/90",
+  },
+  violet: {
+    section:
+      "border-violet-200 bg-gradient-to-br from-violet-100 via-card to-card dark:border-violet-500/20 dark:from-violet-500/[0.10] dark:via-card/92 dark:to-card/82",
+    title: "text-violet-700 dark:text-violet-100",
+    subtitle: "text-violet-700/80 dark:text-violet-100/70",
+    accent: "bg-violet-500 dark:bg-violet-400/90",
   },
 };
 

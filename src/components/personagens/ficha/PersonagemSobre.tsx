@@ -69,18 +69,18 @@ export function PersonagemSobre({ personagem, setPersonagem, canEdit }: Props) {
         title="Sobre"
         subtitle="História, personalidade e detalhes que dão vida à ficha."
         sectionId="sobre"
-        tone="zinc"
+        tone="violet"
         action={
           <button
             onClick={handleAbrir}
             disabled={!canEdit}
-            className="rounded-full border border-zinc-500/30 bg-zinc-500/10 px-3 py-1 text-xs text-zinc-100 transition hover:bg-zinc-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full border border-violet-300 bg-violet-100 px-3 py-1 text-xs text-violet-700 transition hover:bg-violet-200 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-100 dark:hover:bg-violet-500/15"
           >
             Editar
           </button>
         }
       >
-        <div className="rounded-xl border border-dashed border-zinc-500/20 bg-zinc-500/[0.07] p-4">
+        <div className="rounded-xl border border-dashed border-violet-200 bg-violet-50/80 p-4 dark:border-violet-500/20 dark:bg-violet-500/[0.07]">
           <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line">
             {personagem.sobre?.trim()
               ? personagem.sobre

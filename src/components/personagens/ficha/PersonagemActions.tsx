@@ -73,13 +73,13 @@ export function PersonagemActions({
             <button
               key={`${acao.nome}-${idx}`}
               onClick={() => setSelected(acao)}
-              className="flex w-full items-start justify-between gap-4 rounded-xl border border-emerald-500/15 bg-emerald-500/[0.07] p-4 text-left transition hover:bg-emerald-500/12 md:p-5"
+              className="flex w-full items-start justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 text-left transition hover:bg-emerald-100/80 dark:border-emerald-500/15 dark:bg-emerald-500/[0.07] dark:hover:bg-emerald-500/12 md:p-5"
             >
               <div className="flex items-start gap-4">
-                <Bolt className="w-6 h-6 mt-0.5 text-emerald-500" />
+                <Bolt className="w-6 h-6 mt-0.5 text-emerald-600 dark:text-emerald-500" />
 
                 <div className="flex-1">
-                  <div className="font-semibold text-sm md:text-base text-emerald-400">
+                  <div className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 md:text-base">
                     {acao.nome}
                   </div>
                   <div className="text-xs md:text-sm text-muted-foreground line-clamp-2 md:line-clamp-3">
@@ -89,7 +89,7 @@ export function PersonagemActions({
               </div>
 
               <div className="shrink-0 self-start">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-background text-emerald-500 border border-emerald-500">
+                <span className="inline-flex items-center rounded-full border border-emerald-300 bg-background px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-500 dark:text-emerald-500">
                   {acao.custo_mana ?? 0} mana
                 </span>
               </div>

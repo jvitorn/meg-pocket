@@ -4,7 +4,7 @@ export default function SelectedCardSkeleton() {
   return (
     <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 p-6 rounded-xl">
       {/* Imagem */}
-      <Skeleton className="relative w-full h-[280px] md:h-[360px] rounded-xl" />
+      <Skeleton className="relative w-full h-70 md:h-90 rounded-xl" />
       {/* Informações */}
       <div className="flex flex-col justify-center space-y-4">
         <Skeleton className="h-8 w-2/3" /> {/* Nome */}

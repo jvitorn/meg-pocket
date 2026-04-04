@@ -157,7 +157,7 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
             </span>
           </div>
 
-          <div className="w-full h-2 rounded bg-white/6 overflow-hidden">
+          <div className="w-full h-2 overflow-hidden rounded bg-slate-200 dark:bg-white/6">
             <motion.div
               className="h-full bg-red-500"
               initial={false}
@@ -178,7 +178,7 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
             </span>
           </div>
 
-          <div className="w-full h-2 rounded bg-white/6 overflow-hidden">
+          <div className="w-full h-2 overflow-hidden rounded bg-slate-200 dark:bg-white/6">
             <motion.div
               className="h-full bg-purple-600"
               initial={false}
@@ -199,7 +199,7 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
               </span>
             </div>
 
-            <div className="w-full h-2 rounded bg-white/6 overflow-hidden">
+            <div className="w-full h-2 overflow-hidden rounded bg-amber-100 dark:bg-white/6">
               <motion.div
                 className="h-full bg-amber-400"
                 initial={false}
@@ -218,7 +218,7 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
             <button
               onClick={() => setHpDrawerOpen(true)}
               disabled={!canEdit}
-              className="flex-1 rounded-md px-3 py-2 bg-white/4 hover:bg-white/6 focus:outline-none focus:ring-2 focus:ring-primary/40 transition text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex-1 rounded-md bg-slate-100 px-3 py-2 text-sm font-medium transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white/4 dark:hover:bg-white/6"
             >
               Atualizar HP
             </button>
@@ -226,7 +226,7 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
             <button
               onClick={() => setManaDrawerOpen(true)}
               disabled={!canEdit}
-              className="flex-1 rounded-md px-3 py-2 bg-white/4 hover:bg-white/6 focus:outline-none focus:ring-2 focus:ring-primary/40 transition text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex-1 rounded-md bg-slate-100 px-3 py-2 text-sm font-medium transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white/4 dark:hover:bg-white/6"
             >
               Atualizar Mana
             </button>
@@ -237,7 +237,7 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
               <button
                 onClick={() => setDefesaDrawerOpen(true)}
                 disabled={!canEdit}
-                className="flex-1 rounded-md px-3 py-2 bg-amber-500/10 hover:bg-amber-500/15 focus:outline-none focus:ring-2 focus:ring-amber-400/40 transition text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex-1 rounded-md bg-amber-100 px-3 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-400/40 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500/10 dark:text-foreground dark:hover:bg-amber-500/15"
               >
                 Atualizar Defesa
               </button>

@@ -48,34 +48,52 @@ const sectionIcons = {
 
 const sectionStyles = {
   defesa: {
-    active: "border-slate-500/50 bg-slate-500/15 text-slate-100",
-    inactive: "border-slate-500/25 bg-slate-500/8 text-slate-300/80",
-    badge: "bg-slate-500/20 text-slate-200",
+    active:
+      "border-slate-400/60 bg-slate-200 text-slate-700 dark:border-slate-500/50 dark:bg-slate-500/15 dark:text-slate-100",
+    inactive:
+      "border-slate-300 bg-slate-100/90 text-slate-600 dark:border-slate-500/25 dark:bg-slate-500/8 dark:text-slate-300/80",
+    badge:
+      "bg-slate-300 text-slate-700 dark:bg-slate-500/20 dark:text-slate-200",
   },
   sobre: {
-    active: "border-zinc-500/50 bg-zinc-500/15 text-zinc-100",
-    inactive: "border-zinc-500/25 bg-zinc-500/8 text-zinc-300/80",
-    badge: "bg-zinc-500/20 text-zinc-200",
+    active:
+      "border-violet-400/60 bg-violet-100 text-violet-700 dark:border-violet-500/50 dark:bg-violet-500/15 dark:text-violet-100",
+    inactive:
+      "border-violet-300 bg-violet-50 text-violet-600 dark:border-violet-500/25 dark:bg-violet-500/8 dark:text-violet-200/80",
+    badge:
+      "bg-violet-200 text-violet-700 dark:bg-violet-500/20 dark:text-violet-100",
   },
   pericias: {
-    active: "border-orange-500/50 bg-orange-500/15 text-orange-100",
-    inactive: "border-orange-500/25 bg-orange-500/8 text-orange-200/80",
-    badge: "bg-orange-500/20 text-orange-100",
+    active:
+      "border-orange-400/60 bg-orange-100 text-orange-700 dark:border-orange-500/50 dark:bg-orange-500/15 dark:text-orange-100",
+    inactive:
+      "border-orange-300 bg-orange-50 text-orange-600 dark:border-orange-500/25 dark:bg-orange-500/8 dark:text-orange-200/80",
+    badge:
+      "bg-orange-200 text-orange-700 dark:bg-orange-500/20 dark:text-orange-100",
   },
   inventario: {
-    active: "border-amber-500/50 bg-amber-500/15 text-amber-100",
-    inactive: "border-amber-500/25 bg-amber-500/8 text-amber-200/80",
-    badge: "bg-amber-500/20 text-amber-100",
+    active:
+      "border-amber-400/60 bg-amber-100 text-amber-700 dark:border-amber-500/50 dark:bg-amber-500/15 dark:text-amber-100",
+    inactive:
+      "border-amber-300 bg-amber-50 text-amber-600 dark:border-amber-500/25 dark:bg-amber-500/8 dark:text-amber-200/80",
+    badge:
+      "bg-amber-200 text-amber-700 dark:bg-amber-500/20 dark:text-amber-100",
   },
   magias: {
-    active: "border-sky-500/50 bg-sky-500/15 text-sky-100",
-    inactive: "border-sky-500/25 bg-sky-500/8 text-sky-200/80",
-    badge: "bg-sky-500/20 text-sky-100",
+    active:
+      "border-sky-400/60 bg-sky-100 text-sky-700 dark:border-sky-500/50 dark:bg-sky-500/15 dark:text-sky-100",
+    inactive:
+      "border-sky-300 bg-sky-50 text-sky-600 dark:border-sky-500/25 dark:bg-sky-500/8 dark:text-sky-200/80",
+    badge:
+      "bg-sky-200 text-sky-700 dark:bg-sky-500/20 dark:text-sky-100",
   },
   acoes: {
-    active: "border-emerald-500/50 bg-emerald-500/15 text-emerald-100",
-    inactive: "border-emerald-500/25 bg-emerald-500/8 text-emerald-200/80",
-    badge: "bg-emerald-500/20 text-emerald-100",
+    active:
+      "border-emerald-400/60 bg-emerald-100 text-emerald-700 dark:border-emerald-500/50 dark:bg-emerald-500/15 dark:text-emerald-100",
+    inactive:
+      "border-emerald-300 bg-emerald-50 text-emerald-600 dark:border-emerald-500/25 dark:bg-emerald-500/8 dark:text-emerald-200/80",
+    badge:
+      "bg-emerald-200 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-100",
   },
 } as const;
 
@@ -180,7 +198,7 @@ export function PersonagemView({
   return (
     <Card className="overflow-hidden shadow-lg p-4 md:p-6 bg-background border border-border">
       {!canEdit && (
-        <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+        <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
           Modo visualização habilitado.
         </div>
       )}
