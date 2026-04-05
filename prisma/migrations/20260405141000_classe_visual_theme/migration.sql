@@ -1,0 +1,3 @@
+ALTER TABLE "Classe"
+ADD COLUMN "icone" TEXT,
+ADD COLUMN "corTema" TEXT;

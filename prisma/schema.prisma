@@ -12,6 +12,12 @@ model Raca {
   id          Int          @id @default(autoincrement())
   nome        String
   descricao   String?
+  img         String?
+  icone       String?
+  corTema     String?
+  habilidadeDiariaNome          String?
+  habilidadeDiariaCombate      String?
+  habilidadeDiariaForaDeCombate String?
   hp          Int?         @default(0)
   mana        Int?         @default(0)
   createdAt   DateTime     @default(now())
@@ -24,6 +30,8 @@ model Classe {
   id                Int      @id @default(autoincrement())
   slug              String?  @unique // <-- opcional agora
   nome              String
+  icone             String?
+  corTema           String?
   subtitulo         String?
   descricao         String?
   gameplay          String?

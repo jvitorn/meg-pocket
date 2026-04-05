@@ -9,6 +9,7 @@ import { Cormorant_Garamond } from "next/font/google";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { resolveColorThemeName } from "@/lib/utils";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -48,6 +49,8 @@ export default async function NovoPersonagemPage({
         slug: true,
         tags: true,
         nome: true,
+        icone: true,
+        corTema: true,
         subtitulo: true,
         descricao: true,
         hp: true,
@@ -70,6 +73,12 @@ export default async function NovoPersonagemPage({
         id: true,
         nome: true,
         descricao: true,
+        img: true,
+        icone: true,
+        corTema: true,
+        habilidadeDiariaNome: true,
+        habilidadeDiariaCombate: true,
+        habilidadeDiariaForaDeCombate: true,
         hp: true,
         mana: true,
       },
@@ -85,6 +94,29 @@ export default async function NovoPersonagemPage({
       orderBy: { id: "asc" },
     }),
   ]);
+
+  const normalizedClasses = classes.map((classe) => ({
+    ...classe,
+    descricao: classe.descricao ?? undefined,
+    icone: classe.icone ?? undefined,
+    corTema: resolveColorThemeName(classe.corTema),
+    subtitulo: classe.subtitulo ?? undefined,
+    hp: classe.hp ?? 0,
+    mana: classe.mana ?? 0,
+  }));
+
+  const normalizedRacas = racas.map((raca) => ({
+    ...raca,
+    descricao: raca.descricao ?? undefined,
+    img: raca.img ?? undefined,
+    icone: raca.icone ?? undefined,
+    corTema: resolveColorThemeName(raca.corTema),
+    habilidadeDiariaNome: raca.habilidadeDiariaNome ?? undefined,
+    habilidadeDiariaCombate: raca.habilidadeDiariaCombate ?? undefined,
+    habilidadeDiariaForaDeCombate: raca.habilidadeDiariaForaDeCombate ?? undefined,
+    hp: raca.hp ?? 0,
+    mana: raca.mana ?? 0,
+  }));
 
   let initialData: PersonagemFormInitialData | null = null;
 
@@ -159,8 +191,8 @@ export default async function NovoPersonagemPage({
             <div className="mt-6">
               <PersonagemCreateForm
                 campanhas={campanhas}
-                classes={classes}
-                racas={racas}
+                classes={normalizedClasses}
+                racas={normalizedRacas}
                 pericias={pericias}
                 initialData={initialData}
               />

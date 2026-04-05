@@ -1,30 +1,28 @@
-// src/app/api/classes/all/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const classes = await prisma.classe.findMany({
+    const racas = await prisma.raca.findMany({
       select: {
         id: true,
-        slug: true,
         nome: true,
+        descricao: true,
+        img: true,
         icone: true,
         corTema: true,
-        subtitulo: true,
-        descricao: true,
-        img_corpo: true,
-        exemploPersonagem: true,
-        tags: true,
+        habilidadeDiariaNome: true,
+        habilidadeDiariaCombate: true,
+        habilidadeDiariaForaDeCombate: true,
         hp: true,
         mana: true,
       },
       orderBy: { id: "asc" },
     });
 
-    return NextResponse.json({ ok: true, data: classes }, { status: 200 });
+    return NextResponse.json({ ok: true, data: racas }, { status: 200 });
   } catch (error) {
-    console.error("API /classes/all error:", error);
+    console.error("API /racas/all error:", error);
     return NextResponse.json({ ok: false, error: "Erro interno" }, { status: 500 });
   }
 }

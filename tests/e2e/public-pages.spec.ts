@@ -33,3 +33,24 @@ test("pagina de campanhas carrega o cabecalho principal", async ({ page }) => {
     page.getByText("Explore as campanhas e mergulhe nas histórias")
   ).toBeVisible();
 });
+
+test("pagina de classes lista cards e permite buscar", async ({ page }) => {
+  await page.goto("/classe");
+
+  await expect(page.getByRole("heading", { name: "Classes" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Guerreiro" })).toBeVisible();
+
+  await page.getByLabel("Buscar classes").fill("purificador");
+
+  await expect(page.getByRole("heading", { name: "Purificador" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Guerreiro" })).toHaveCount(0);
+});
+
+test("pagina de detalhe da classe carrega atributos, personagens e grimorio", async ({ page }) => {
+  await page.goto("/classe/1");
+
+  await expect(page.getByRole("heading", { name: "Guerreiro" })).toBeVisible();
+  await expect(page.getByText("Base da construção")).toBeVisible();
+  await expect(page.getByText("Fichas vinculadas")).toBeVisible();
+  await expect(page.getByText("Magias da classe")).toBeVisible();
+});

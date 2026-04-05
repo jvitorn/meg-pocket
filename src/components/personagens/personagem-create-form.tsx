@@ -1,36 +1,29 @@
 "use client";
 
-import { type ComponentType, type FormEvent, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { type ComponentType, type CSSProperties, type FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  CircleHelp,
   Droplet,
   Flame,
   Leaf,
-  Mountain,
-  Skull,
-  Sparkles,
-  Sun,
-  Sword,
-  User,
-  UserRound,
   Wind,
   type LucideIcon,
 } from "lucide-react";
 
-import LogoArtifice from "@/components/icons/artifice";
-import LogoElementalista from "@/components/icons/elementalista";
-import LogoGuerreiro from "@/components/icons/guerreiro";
-import LogoPurificador from "@/components/icons/purificador";
-
 import { cn } from "@/lib/utils";
+import type { ColorThemeName } from "@/lib/utils";
 import {
   calcularQuantidadeObrigatoriaPericias,
   formatPericiaTipo,
   isValidExternalUrl,
   normalizePericiaTipo,
 } from "@/lib/regras/personagemCriacao";
+import {
+  getClasseTheme as getStoredClasseTheme,
+  getRacaTheme as getStoredRacaTheme,
+} from "@/lib/fantasyThemes";
 import { Button } from "@/components/ui/button";
 import { MagiaDetailsDrawer } from "@/components/magia-details-drawer";
 import {
@@ -63,6 +56,8 @@ type ClasseOption = {
   slug?: string | null;
   tags?: unknown;
   nome: string;
+  icone?: string | null;
+  corTema?: ColorThemeName | null;
   subtitulo?: string | null;
   descricao?: string | null;
   hp?: number | null;
@@ -74,6 +69,12 @@ type RacaOption = {
   id: number;
   nome: string;
   descricao?: string | null;
+  img?: string | null;
+  icone?: string | null;
+  corTema?: ColorThemeName | null;
+  habilidadeDiariaNome?: string | null;
+  habilidadeDiariaCombate?: string | null;
+  habilidadeDiariaForaDeCombate?: string | null;
   hp?: number | null;
   mana?: number | null;
 };
@@ -129,6 +130,7 @@ type ClasseTheme = {
   selectedRingClass: string;
   chipClass: string;
   glowClass: string;
+  style: CSSProperties;
 };
 
 type RacaTheme = {
@@ -138,6 +140,7 @@ type RacaTheme = {
   chipClass: string;
   surfaceClass: string;
   frameClass: string;
+  style: CSSProperties;
 };
 
 const steps = [
@@ -211,163 +214,29 @@ function isClasseUnica(classe: ClasseOption) {
 }
 
 function getClasseTheme(classe: ClasseOption): ClasseTheme {
-  const key = normalizeText(`${classe.slug ?? ""} ${classe.nome}`);
-
-  if (key.includes("guerrei")) {
-    return {
-      icon: LogoGuerreiro,
-      iconColorClass: "text-rose-600 dark:text-rose-400",
-      selectedRingClass: "ring-2 ring-rose-500/70 border-rose-500/70",
-      chipClass:
-        "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-100",
-      glowClass: "from-rose-500/20 via-rose-500/5 to-transparent",
-    };
-  }
-
-  if (key.includes("element")) {
-    return {
-      icon: LogoElementalista,
-      iconColorClass: "text-sky-600 dark:text-sky-400",
-      selectedRingClass: "ring-2 ring-sky-500/70 border-sky-500/70",
-      chipClass: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-100",
-      glowClass: "from-sky-500/20 via-sky-500/5 to-transparent",
-    };
-  }
-
-  if (key.includes("purific")) {
-    return {
-      icon: LogoPurificador,
-      iconColorClass: "text-emerald-600 dark:text-emerald-400",
-      selectedRingClass: "ring-2 ring-emerald-500/70 border-emerald-500/70",
-      chipClass:
-        "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100",
-      glowClass: "from-emerald-500/20 via-emerald-500/5 to-transparent",
-    };
-  }
-
-  if (key.includes("artifice") || key.includes("artific")) {
-    return {
-      icon: LogoArtifice,
-      iconColorClass: "text-amber-600 dark:text-amber-400",
-      selectedRingClass: "ring-2 ring-amber-500/70 border-amber-500/70",
-      chipClass:
-        "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-100",
-      glowClass: "from-amber-500/20 via-amber-500/5 to-transparent",
-    };
-  }
+  const theme = getStoredClasseTheme(classe);
 
   return {
-    icon: CircleHelp,
-    iconColorClass: "text-zinc-700 dark:text-zinc-300",
-    selectedRingClass: "ring-2 ring-zinc-500/70 border-zinc-500/70",
-    chipClass: "border-zinc-500/40 bg-zinc-500/10 text-zinc-700 dark:text-zinc-200",
-    glowClass: "from-zinc-500/20 via-zinc-500/5 to-transparent",
+    icon: theme.icon as ComponentType<{ className?: string }>,
+    iconColorClass: theme.iconClass,
+    selectedRingClass: `ring-2 ${theme.ringClass}`,
+    chipClass: theme.chipClass,
+    glowClass: theme.softClass,
+    style: theme.style,
   };
 }
 
 function getRacaTheme(raca: RacaOption): RacaTheme {
-  const key = normalizeText(raca.nome);
-
-  if (key.includes("lumis") || key.includes("lumi")) {
-    return {
-      icon: Sun,
-      iconColorClass: "text-amber-600 dark:text-amber-300",
-      selectedRingClass: "ring-2 ring-amber-500/70 border-amber-500/70",
-      chipClass:
-        "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-100",
-      surfaceClass: "from-amber-500/15 via-background/90 to-background",
-      frameClass: "border-amber-500/30",
-    };
-  }
-
-  if (key.includes("umbra")) {
-    return {
-      icon: Skull,
-      iconColorClass: "text-slate-700 dark:text-slate-300",
-      selectedRingClass: "ring-2 ring-slate-500/70 border-slate-500/70",
-      chipClass:
-        "border-slate-500/40 bg-slate-500/10 text-slate-700 dark:text-slate-100",
-      surfaceClass: "from-slate-500/15 via-background/90 to-background",
-      frameClass: "border-slate-500/30",
-    };
-  }
-
-  if (key.includes("humano") || key.includes("human")) {
-    return {
-      icon: User,
-      iconColorClass: "text-sky-600 dark:text-sky-300",
-      selectedRingClass: "ring-2 ring-sky-500/70 border-sky-500/70",
-      chipClass: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-100",
-      surfaceClass: "from-sky-500/15 via-background/90 to-background",
-      frameClass: "border-sky-500/30",
-    };
-  }
-
-  if (key.includes("elf")) {
-    return {
-      icon: Leaf,
-      iconColorClass: "text-emerald-600 dark:text-emerald-300",
-      selectedRingClass: "ring-2 ring-emerald-500/70 border-emerald-500/70",
-      chipClass:
-        "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100",
-      surfaceClass: "from-emerald-500/15 via-background/90 to-background",
-      frameClass: "border-emerald-500/30",
-    };
-  }
-
-  if (key.includes("anao")) {
-    return {
-      icon: Mountain,
-      iconColorClass: "text-amber-600 dark:text-amber-300",
-      selectedRingClass: "ring-2 ring-amber-500/70 border-amber-500/70",
-      chipClass:
-        "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-100",
-      surfaceClass: "from-amber-500/15 via-background/90 to-background",
-      frameClass: "border-amber-500/30",
-    };
-  }
-
-  if (key.includes("orc") || key.includes("ogr") || key.includes("bruto")) {
-    return {
-      icon: Sword,
-      iconColorClass: "text-red-600 dark:text-red-300",
-      selectedRingClass: "ring-2 ring-red-500/70 border-red-500/70",
-      chipClass: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-100",
-      surfaceClass: "from-red-500/15 via-background/90 to-background",
-      frameClass: "border-red-500/30",
-    };
-  }
-
-  if (key.includes("sombr") || key.includes("vamp") || key.includes("nec")) {
-    return {
-      icon: Flame,
-      iconColorClass: "text-violet-600 dark:text-violet-300",
-      selectedRingClass: "ring-2 ring-violet-500/70 border-violet-500/70",
-      chipClass:
-        "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-100",
-      surfaceClass: "from-violet-500/15 via-background/90 to-background",
-      frameClass: "border-violet-500/30",
-    };
-  }
-
-  if (key.includes("espir") || key.includes("fada")) {
-    return {
-      icon: Sparkles,
-      iconColorClass: "text-cyan-600 dark:text-cyan-300",
-      selectedRingClass: "ring-2 ring-cyan-500/70 border-cyan-500/70",
-      chipClass: "border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-100",
-      surfaceClass: "from-cyan-500/15 via-background/90 to-background",
-      frameClass: "border-cyan-500/30",
-    };
-  }
+  const theme = getStoredRacaTheme(raca);
 
   return {
-    icon: UserRound,
-    iconColorClass: "text-zinc-700 dark:text-zinc-200",
-    selectedRingClass: "ring-2 ring-zinc-500/70 border-zinc-500/70",
-    chipClass: "border-zinc-500/40 bg-zinc-500/10 text-zinc-700 dark:text-zinc-100",
-    surfaceClass: "from-zinc-500/15 via-background/90 to-background",
-    frameClass: "border-zinc-500/30",
+    icon: theme.icon as LucideIcon,
+    iconColorClass: theme.iconClass,
+    selectedRingClass: `ring-2 ${theme.ringClass}`,
+    chipClass: theme.chipClass,
+    surfaceClass: theme.softClass,
+    frameClass: theme.frameClass,
+    style: theme.style,
   };
 }
 
@@ -919,6 +788,7 @@ export default function PersonagemCreateForm({
                       return (
                         <article
                           key={classe.id}
+                          style={theme.style}
                           className={cn(
                             "relative overflow-hidden rounded-2xl border bg-background/80 p-4 transition",
                             isSelected
@@ -1008,6 +878,7 @@ export default function PersonagemCreateForm({
                       return (
                         <article
                           key={raca.id}
+                          style={theme.style}
                           className={cn(
                             "relative overflow-hidden rounded-3xl border bg-linear-to-b p-4 transition",
                             theme.surfaceClass,
@@ -1023,8 +894,19 @@ export default function PersonagemCreateForm({
                             onClick={() => setRacaId(String(raca.id))}
                             className="relative z-10 w-full text-left"
                           >
-                            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-black/25">
-                              <Icon className={cn("h-7 w-7", theme.iconColorClass)} />
+                            <div className="mx-auto flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+                              {raca.img ? (
+                                <Image
+                                  src={raca.img}
+                                  alt={raca.nome}
+                                  width={56}
+                                  height={56}
+                                  className="h-full w-full object-cover"
+                                  unoptimized
+                                />
+                              ) : (
+                                <Icon className={cn("h-7 w-7", theme.iconColorClass)} />
+                              )}
                             </div>
 
                             <p className="mt-4 text-center text-base font-semibold">{raca.nome}</p>
@@ -1084,7 +966,10 @@ export default function PersonagemCreateForm({
                   </div>
 
                   {selectedClasse && selectedClasseTheme && (
-                    <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
+                    <div
+                      style={selectedClasseTheme.style}
+                      className="rounded-2xl border border-border/70 bg-background/70 p-3"
+                    >
                       <div className="flex items-center gap-3">
                         {ClasseAtivaIcon && (
                           <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-black/20">
@@ -1124,6 +1009,7 @@ export default function PersonagemCreateForm({
                         return (
                           <article
                             key={magia.id}
+                            style={selectedClasseTheme?.style}
                             className={cn(
                               "relative overflow-hidden rounded-2xl border bg-background/80 p-4 text-left transition",
                               isSelected
@@ -1799,6 +1685,7 @@ export default function PersonagemCreateForm({
                 <>
                   <DialogHeader>
                     <div
+                      style={modalRacaTheme?.style}
                       className={cn(
                         "relative overflow-hidden rounded-3xl border bg-linear-to-b p-4",
                         modalRacaTheme?.surfaceClass,
@@ -1807,13 +1694,19 @@ export default function PersonagemCreateForm({
                     >
                       <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full border border-white/15" />
                       <div className="relative z-10 flex items-center gap-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-black/25">
-                          {ModalRacaIcon ? (
+                        <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+                          {modalRaca.img ? (
+                            <Image
+                              src={modalRaca.img}
+                              alt={modalRaca.nome}
+                              width={56}
+                              height={56}
+                              className="h-full w-full object-cover"
+                              unoptimized
+                            />
+                          ) : ModalRacaIcon ? (
                             <ModalRacaIcon
-                              className={cn(
-                                "h-7 w-7",
-                                modalRacaTheme?.iconColorClass
-                              )}
+                              className={cn("h-7 w-7", modalRacaTheme?.iconColorClass)}
                             />
                           ) : null}
                         </div>

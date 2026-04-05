@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { unstable_noStore as noStore } from "next/cache";
 import { ClassesListSkeleton } from "@/components/skeletons/classes-list.skeleton";
+import { resolveColorThemeName } from "@/lib/utils";
 
 export const metadata = {
   title: "Classes — M&G Pocket",
@@ -23,10 +24,14 @@ async function ClassesFetcher() {
       id: true,
       slug: true,
       nome: true,
+      icone: true,
+      corTema: true,
       subtitulo: true,
       img_corpo: true,
       background: true,
       tags: true,
+      hp: true,
+      mana: true,
     },
     orderBy: { id: "asc" },
   });
@@ -35,10 +40,14 @@ async function ClassesFetcher() {
     id: c.id,
     slug: c.slug ?? null,
     nome: c.nome,
+    icone: c.icone ?? null,
+    corTema: resolveColorThemeName(c.corTema),
     subtitulo: c.subtitulo ?? null,
     img_corpo: c.img_corpo ?? null,
     background: c.background ?? null,
     tags: Array.isArray(c.tags) ? (c.tags as string[]) : [],
+    hp: c.hp ?? 0,
+    mana: c.mana ?? 0,
   }));
 
   return <ClassesListClient initialItems={items} />;
@@ -53,22 +62,7 @@ export default function ClassesIndexPage() {
     <>
       <Navbar />
       <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="max-w-7xl mx-auto">
-          <header className="mb-6 text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-              Classes
-            </h1>
-            <p className="text-sm text-muted-foreground mt-2">
-              Escolha uma classe para ver detalhes e magias.
-            </p>
-          </header>
-        </div>
-
-        <Suspense
-          fallback={
-            <ClassesListSkeleton />
-          }
-        >
+        <Suspense fallback={<ClassesListSkeleton />}>
           {/* componente async que faz prisma.findMany */}
           <ClassesFetcher />
         </Suspense>

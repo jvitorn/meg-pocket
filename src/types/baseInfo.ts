@@ -8,7 +8,8 @@ export interface BaseInterface {
     nome: string;
     descricao?: string;
     img?: string;
-    corTema?: ColorThemeName;
+    corTema?: ColorThemeName | null;
+    icone?: string | null;
     magias?: MagiaPersonagem[];
     imagem_pixel?: string;
 }

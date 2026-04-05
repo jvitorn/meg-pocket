@@ -13,6 +13,10 @@ export const BASE_NAV_LINKS = [
     label: "Classes",
     href: "/classe",
   },
+  {
+    label: "Raças",
+    href: "/raca",
+  },
 ] as const satisfies NavbarInterface[];
 
 export function getNavLinks(isAuthenticated: boolean): NavbarInterface[] {
