@@ -4,33 +4,18 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import {
+  calcularQuantidadeObrigatoriaPericias,
+  isValidExternalUrl,
+  normalizePericiaTipo,
+  PERSONAGEM_PERICIA_PONTUACAO_INICIAL,
+  toPositiveInt,
+} from "@/lib/regras/personagemCriacao";
+import {
   buildRateLimitHeaders,
   enforceRateLimit,
 } from "@/lib/security/rate-limit";
 
 const allowedElements = new Set(["natureza", "agua", "fogo", "vento"]);
-
-function toPositiveInt(value: unknown) {
-  const num = Number(value);
-  if (Number.isNaN(num) || !Number.isInteger(num) || num <= 0) {
-    return null;
-  }
-  return num;
-}
-
-function isValidExternalUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function normalizePericiaTipo(value?: string | null) {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  return normalized || "geral";
-}
 
 export async function POST(request: Request) {
   try {
@@ -189,7 +174,9 @@ export async function POST(request: Request) {
       periciasCatalogo.map((pericia) => normalizePericiaTipo(pericia.tipo))
     );
     const requiredPericiasCount =
-      periciasCatalogo.length > 0 ? (tiposPericiaDisponiveis.size >= 3 ? 2 : 1) : 0;
+      periciasCatalogo.length > 0
+        ? calcularQuantidadeObrigatoriaPericias(tiposPericiaDisponiveis.size)
+        : 0;
 
     if (requiredPericiasCount === 0 && periciaIds.length > 0) {
       return NextResponse.json(
@@ -283,7 +270,7 @@ export async function POST(request: Request) {
             ? {
                 create: periciaIds.map((periciaId) => ({
                   periciaId,
-                  pontuacao: 1,
+                  pontuacao: PERSONAGEM_PERICIA_PONTUACAO_INICIAL,
                 })),
               }
             : undefined,

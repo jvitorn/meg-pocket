@@ -64,7 +64,7 @@ describe("POST /api/personagem/[id]/inventario/[inventoryItemId]/usar", () => {
     mocks.buildRateLimitHeaders.mockReturnValue({
       "X-RateLimit-Limit": "30",
     });
-    mocks.transaction.mockImplementation(async (callback: any) =>
+    mocks.transaction.mockImplementation(async (callback: (tx: unknown) => unknown) =>
       callback({
         personagem: {
           findUnique: mocks.personagemFindUnique,
@@ -188,6 +188,127 @@ describe("POST /api/personagem/[id]/inventario/[inventoryItemId]/usar", () => {
         durabilidadeAtual: 3,
         durabilidadeMax: 4,
         efeitoAtivo: false,
+      },
+    });
+  });
+
+  it("acumula defesa especial ao ativar mais de um item defensivo", async () => {
+    mocks.itemInventarioFindFirst.mockResolvedValue({
+      id: 20,
+      personagemId: 7,
+      quantidade: 1,
+      durabilidadeAtual: 1,
+      durabilidadeMax: 1,
+      efeitoAtivo: false,
+      esgotadoEm: null,
+      item: {
+        id: 40,
+        nome: "Armadura de Escamas",
+        tipo: "EQUIPAMENTO",
+        descricao: "Reforco pesado.",
+        slots: 1,
+        durabilidadeBase: 1,
+        durabilidadeMax: 1,
+        efeito: {
+          modulo: "DEFESA",
+          operacao: "ADICIONAR",
+          valor: 6,
+        },
+      },
+    });
+    mocks.personagemFindUnique.mockResolvedValueOnce({
+      hp_atual: 10,
+      hp_base: 10,
+      mana_atual: 8,
+      mana_base: 8,
+      defesa_atual: 3,
+      defesa_max: 3,
+      statusEspecial: null,
+      raca: { hp: 5, mana: 4 },
+      classe: { hp: 5, mana: 4 },
+    }).mockResolvedValueOnce({
+      hp_atual: 10,
+      mana_atual: 8,
+      defesa_atual: 9,
+      defesa_max: 9,
+    });
+    mocks.itemInventarioFindMany.mockResolvedValue([
+      {
+        id: 20,
+        quantidade: 1,
+        durabilidadeAtual: 0,
+        durabilidadeMax: 1,
+        efeitoAtivo: true,
+        esgotadoEm: null,
+        observacoes: null,
+        item: {
+          id: 40,
+          nome: "Armadura de Escamas",
+          tipo: "EQUIPAMENTO",
+          descricao: "Reforco pesado.",
+          slots: 1,
+          empilhavel: false,
+          durabilidadeBase: 1,
+          durabilidadeMax: 1,
+          efeito: {
+            modulo: "DEFESA",
+            operacao: "ADICIONAR",
+            valor: 6,
+          },
+        },
+      },
+    ]);
+
+    const response = await POST(
+      new Request("http://localhost:3000/api/personagem/7/inventario/20/usar", {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ id: "7", inventoryItemId: "20" }) }
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      message: "Armadura de Escamas usado com sucesso.",
+      personagem: {
+        hp_atual: 10,
+        mana_atual: 8,
+        defesa_atual: 9,
+        defesa_max: 9,
+      },
+      inventario: [
+        {
+          id: 20,
+          itemId: 40,
+          nome: "Armadura de Escamas",
+          tipo: "EQUIPAMENTO",
+          descricao: "Reforco pesado.",
+          slots: 1,
+          slotsTotal: 1,
+          quantidade: 1,
+          durabilidadeAtual: 0,
+          durabilidadeMax: 1,
+          efeitoAtivo: true,
+          esgotado: false,
+          efeito: {
+            modulo: "DEFESA",
+            operacao: "ADICIONAR",
+            valor: 6,
+          },
+          observacoes: null,
+        },
+      ],
+      inventarioResumo: {
+        slotsMaximos: 5,
+        slotsOcupados: 1,
+        slotsDisponiveis: 4,
+        itensTotais: 1,
+      },
+    });
+    expect(mocks.personagemUpdate).toHaveBeenCalledWith({
+      where: { id: 7 },
+      data: {
+        defesa_atual: 9,
+        defesa_max: 9,
       },
     });
   });

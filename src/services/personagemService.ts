@@ -46,7 +46,7 @@ export async function getPersonagensNaCampanha(id: number) {
 export async function setPersonagemValores(
   index: number,
   campo: string,
-  valor: any
+  valor: unknown
 ) {
   const response = await fetch(`${PERSONAGEMROUTE}/update`, {
     method: "POST",
@@ -125,6 +125,21 @@ export async function usarItemInventario(
     `${PERSONAGEMROUTE}${personagemId}/inventario/${inventoryItemId}/usar`,
     { method: "POST" }
   );
+
+  if (!response.ok) {
+    throw new Error(await parseResponseError(response));
+  }
+
+  return response.json();
+}
+
+/**
+ * Remove a ficha do personagem e seus vínculos derivados.
+ */
+export async function deletarPersonagem(personagemId: number) {
+  const response = await fetch(`${PERSONAGEMROUTE}${personagemId}`, {
+    method: "DELETE",
+  });
 
   if (!response.ok) {
     throw new Error(await parseResponseError(response));

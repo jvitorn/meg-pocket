@@ -6,11 +6,12 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import LogoutButton from "./logout-button";
 import Link from "next/link";
-import Image from "next/image";
 import { Cormorant_Garamond } from "next/font/google";
-import { Plus, Settings } from "lucide-react";
+import { Plus } from "lucide-react";
 import { unstable_noStore as noStore } from "next/cache";
 import type { Prisma } from "@prisma/client";
+import { Toaster } from "@/components/ui/sonner";
+import { DashboardPersonagemCard } from "@/components/dashboard-personagem-card";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -48,6 +49,7 @@ export default async function DashboardPage() {
   return (
     <>
       <Navbar />
+      <Toaster position="top-right" />
       <main className="min-h-screen bg-background text-foreground">
         <div className="h-1 w-full bg-linear-to-r from-amber-400 via-emerald-400 to-sky-500" />
 
@@ -132,55 +134,14 @@ export default async function DashboardPage() {
                   personagem.url_imagem || personagem.imagem_pixel || "";
 
                 return (
-                  <div
+                  <DashboardPersonagemCard
                     key={personagem.id}
-                    className="group relative overflow-hidden rounded-2xl border bg-card/80 p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
-                  >
-                    <div className="absolute inset-x-0 top-0 h-0.5 bg-linear-to-r from-amber-400 via-emerald-400 to-sky-500 opacity-70" />
-
-                    <div className="flex gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <h3 className="text-lg font-semibold">{nome}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {detalhe}
-                            </p>
-                          </div>
-                          <div className="rounded-md border border-border/60 bg-background/70 p-1 text-muted-foreground">
-                            <Settings className="h-4 w-4" />
-                          </div>
-                        </div>
-
-                        <p className="text-xs text-muted-foreground mt-3">
-                          Registrado em{" "}
-                          {formatter.format(new Date(personagem.createdAt))}
-                        </p>
-
-                        <Button asChild size="sm" className="mt-4">
-                          <Link href={`/personagens/${personagem.id}`}>
-                            Acessar Ficha
-                          </Link>
-                        </Button>
-                      </div>
-
-                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border bg-muted">
-                        {imageSrc ? (
-                          <Image
-                            src={imageSrc}
-                            alt={nome}
-                            fill
-                            sizes="80px"
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-muted to-muted/40 text-sm font-semibold text-muted-foreground">
-                            {nome.slice(0, 2).toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                    id={personagem.id}
+                    nome={nome}
+                    detalhe={detalhe}
+                    imageSrc={imageSrc}
+                    createdAtLabel={formatter.format(new Date(personagem.createdAt))}
+                  />
                 );
               })}
             </div>

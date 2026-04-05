@@ -197,8 +197,8 @@ describe("POST /api/personagem/create", () => {
         },
         periciaPersonagem: {
           create: [
-            { periciaId: 1, pontuacao: 1 },
-            { periciaId: 2, pontuacao: 1 },
+            { periciaId: 1, pontuacao: 2 },
+            { periciaId: 2, pontuacao: 2 },
           ],
         },
       },

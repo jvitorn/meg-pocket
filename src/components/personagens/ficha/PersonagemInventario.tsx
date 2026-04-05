@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
   Package,
-  ShieldAlert,
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -17,6 +16,7 @@ import {
 } from "@/lib/personagemInventario";
 import { usarItemInventario } from "@/services/personagemService";
 import { Button } from "@/components/ui/button";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   Dialog,
   DialogContent,
@@ -98,20 +98,15 @@ function ItemDetailContent({
   canEdit,
   using,
   onUse,
-  defesaAtivaNaFicha,
 }: {
   item: PersonagemInventarioItem;
   canEdit: boolean;
   using: boolean;
   onUse: () => Promise<void>;
-  defesaAtivaNaFicha: boolean;
 }) {
   const effectLabel = formatModuloLabel(item);
   const defenseActive = item.efeito?.modulo === "DEFESA" && item.efeitoAtivo;
-  const defenseBlocked =
-    item.efeito?.modulo === "DEFESA" && defesaAtivaNaFicha && !item.efeitoAtivo;
-  const disabled =
-    !canEdit || item.esgotado || defenseActive || defenseBlocked || using;
+  const disabled = !canEdit || item.esgotado || defenseActive || using;
 
   return (
     <div className="space-y-5">
@@ -185,14 +180,6 @@ function ItemDetailContent({
           O efeito de defesa deste item já está ativo na ficha.
         </div>
       ) : null}
-
-      {defenseBlocked ? (
-        <div className="rounded-xl border border-sky-200 bg-sky-50/80 px-3 py-3 text-sm text-sky-700 dark:border-sky-500/25 dark:bg-sky-500/6 dark:text-sky-100/80">
-          Já existe outra defesa ativa na ficha. Zere a barra de defesa antes de
-          reutilizar este item.
-        </div>
-      ) : null}
-
       <div className="flex justify-end">
         <Button type="button" onClick={onUse} disabled={disabled}>
           {using ? "Usando..." : item.esgotado ? "Esgotado" : "Usar"}
@@ -210,7 +197,6 @@ function InventoryDetailSurface({
   using,
   onUse,
   useDrawer,
-  defesaAtivaNaFicha,
 }: {
   item: PersonagemInventarioItem | null;
   open: boolean;
@@ -219,7 +205,6 @@ function InventoryDetailSurface({
   using: boolean;
   onUse: () => Promise<void>;
   useDrawer: boolean;
-  defesaAtivaNaFicha: boolean;
 }) {
   if (!item) return null;
 
@@ -229,7 +214,6 @@ function InventoryDetailSurface({
       canEdit={canEdit}
       using={using}
       onUse={onUse}
-      defesaAtivaNaFicha={defesaAtivaNaFicha}
     />
   );
 
@@ -281,29 +265,19 @@ export function PersonagemInventario({
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [showHiddenItems, setShowHiddenItems] = useState(false);
-  const [useDrawer, setUseDrawer] = useState(false);
+  const useDrawer = useMediaQuery("(max-width: 1023px)");
 
-  useEffect(() => {
-    const syncViewport = () => {
-      setUseDrawer(window.innerWidth < 1024);
-    };
-
-    syncViewport();
-    window.addEventListener("resize", syncViewport);
-
-    return () => {
-      window.removeEventListener("resize", syncViewport);
-    };
-  }, []);
-
-  const inventario = personagem.inventario ?? [];
+  const inventario = useMemo(
+    () => personagem.inventario ?? [],
+    [personagem.inventario]
+  );
   const itensAtivos = useMemo(
     () => inventario.filter((item) => !item.esgotado),
-    [inventario],
+    [inventario]
   );
   const itensOcultos = useMemo(
     () => inventario.filter((item) => item.esgotado),
-    [inventario],
+    [inventario]
   );
   const selectedItem =
     inventario.find((item) => item.id === selectedItemId) ?? null;
@@ -317,8 +291,6 @@ export function PersonagemInventario({
     100,
     (resumo.slotsOcupados / resumo.slotsMaximos) * 100,
   );
-  const defesaAtivaNaFicha = (personagem.defesa_atual ?? 0) > 0;
-
   async function handleUsarItem(inventoryItemId: number) {
     if (!canEdit || loadingItemId) return;
 
@@ -362,6 +334,13 @@ export function PersonagemInventario({
         tone="amber"
       >
         <div className="space-y-4">
+          {!canEdit ? (
+            <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/4 dark:text-amber-100/80">
+              Uso e alterações do inventário ficam restritos ao administrador da
+              ficha.
+            </div>
+          ) : null}
+
           <div className="rounded-2xl border border-dashed border-amber-500/20 bg-amber-50/80 p-4 dark:border-amber-500/20 dark:bg-amber-500/[0.07]">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -406,10 +385,6 @@ export function PersonagemInventario({
                 const effectLabel = formatModuloLabel(item);
                 const defenseActive =
                   item.efeito?.modulo === "DEFESA" && item.efeitoAtivo;
-                const defenseBlocked =
-                  item.efeito?.modulo === "DEFESA" &&
-                  defesaAtivaNaFicha &&
-                  !item.efeitoAtivo;
 
                 return (
                   <div
@@ -473,12 +448,6 @@ export function PersonagemInventario({
                         {defenseActive ? (
                           <p className="text-xs text-sky-700 dark:text-sky-100/80">
                             Defesa ativa nesta ficha.
-                          </p>
-                        ) : null}
-
-                        {defenseBlocked ? (
-                          <p className="text-xs text-sky-700 dark:text-sky-100/80">
-                            Outra defesa já está ativa.
                           </p>
                         ) : null}
                       </div>
@@ -578,7 +547,6 @@ export function PersonagemInventario({
           await handleUsarItem(selectedItem.id);
         }}
         useDrawer={useDrawer}
-        defesaAtivaNaFicha={defesaAtivaNaFicha}
       />
     </>
   );

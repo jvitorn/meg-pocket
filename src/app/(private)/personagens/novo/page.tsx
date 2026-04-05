@@ -1,17 +1,35 @@
 import { prisma } from "@/lib/prisma";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import PersonagemCreateForm from "@/components/personagens/personagem-create-form";
+import PersonagemCreateForm, {
+  type PersonagemFormInitialData,
+} from "@/components/personagens/personagem-create-form";
 import { unstable_noStore as noStore } from "next/cache";
 import { Cormorant_Garamond } from "next/font/google";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
   weight: ["600", "700"],
 });
 
-export default async function NovoPersonagemPage() {
+type NovoPersonagemPageProps = {
+  searchParams?: Promise<{
+    id?: string;
+  }>;
+};
+
+export default async function NovoPersonagemPage({
+  searchParams,
+}: NovoPersonagemPageProps) {
   noStore();
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id ?? null;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const editId = Number(resolvedSearchParams?.id);
+  const shouldEdit = Number.isInteger(editId) && editId > 0;
 
   const [campanhas, classes, racas, pericias] = await prisma.$transaction([
     prisma.campanha.findMany({
@@ -68,6 +86,58 @@ export default async function NovoPersonagemPage() {
     }),
   ]);
 
+  let initialData: PersonagemFormInitialData | null = null;
+
+  if (shouldEdit) {
+    if (!userId) {
+      redirect("/login");
+    }
+
+    const personagem = await prisma.personagem.findFirst({
+      where: {
+        id: editId,
+        userId,
+      },
+      select: {
+        id: true,
+        nome: true,
+        apelido: true,
+        descricao: true,
+        url_imagem: true,
+        campanhaId: true,
+        classeId: true,
+        racaId: true,
+        elemento: true,
+        magiaPersonagem: {
+          select: { magiaId: true },
+          orderBy: { id: "asc" },
+        },
+        periciaPersonagem: {
+          select: { periciaId: true },
+          orderBy: { id: "asc" },
+        },
+      },
+    });
+
+    if (!personagem) {
+      redirect("/dashboard");
+    }
+
+    initialData = {
+      id: personagem.id,
+      nome: personagem.nome,
+      apelido: personagem.apelido ?? "",
+      descricao: personagem.descricao ?? "",
+      url_imagem: personagem.url_imagem ?? "",
+      campanhaId: personagem.campanhaId,
+      classeId: personagem.classeId,
+      racaId: personagem.racaId,
+      elemento: personagem.elemento,
+      magiaIds: personagem.magiaPersonagem.map((magia) => magia.magiaId),
+      periciaIds: personagem.periciaPersonagem.map((pericia) => pericia.periciaId),
+    };
+  }
+
   return (
     <>
       <Navbar />
@@ -78,12 +148,12 @@ export default async function NovoPersonagemPage() {
           <div className="w-full px-4 py-10 sm:px-6 lg:px-8 xl:px-10 2xl:px-14">
             <div className="flex flex-col gap-3">
               <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                Nova ficha
+                {initialData ? "Editar ficha" : "Nova ficha"}
               </p>
               <h1
                 className={`${cormorant.className} text-3xl md:text-4xl font-bold`}
               >
-                Criar personagem
+                {initialData ? "Editar personagem" : "Criar personagem"}
               </h1>
             </div>
             <div className="mt-6">
@@ -92,6 +162,7 @@ export default async function NovoPersonagemPage() {
                 classes={classes}
                 racas={racas}
                 pericias={pericias}
+                initialData={initialData}
               />
             </div>
           </div>

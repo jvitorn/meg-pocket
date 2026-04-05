@@ -10,6 +10,7 @@ import {
   normalizarItemInventario,
 } from "@/lib/personagemInventario";
 import { resolverLimitesPersonagem } from "@/lib/personagemAtributos";
+import { acumularDefesaTemporaria } from "@/lib/regras/personagemDefesa";
 
 function jsonError(
   message: string,
@@ -186,20 +187,23 @@ export async function POST(
         }
 
         if (efeito?.modulo === "DEFESA") {
-          if ((personagem.defesa_atual ?? 0) > 0) {
-            throw new Error("Já existe um item de defesa ativo nesta ficha.");
+          if (registro.efeitoAtivo) {
+            throw new Error("O efeito defensivo deste item já está ativo na ficha.");
           }
 
           if (efeito.operacao !== "ADICIONAR") {
             throw new Error("Efeito de defesa inválido para uso na ficha.");
           }
 
+          const defesaAtualizada = acumularDefesaTemporaria({
+            defesaAtual: personagem.defesa_atual,
+            defesaMax: personagem.defesa_max,
+            valorEfeito: efeito.valor,
+          });
+
           await tx.personagem.update({
             where: { id: personagemId },
-            data: {
-              defesa_atual: efeito.valor,
-              defesa_max: efeito.valor,
-            },
+            data: defesaAtualizada,
           });
 
           await tx.itemInventario.update({

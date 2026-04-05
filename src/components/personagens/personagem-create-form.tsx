@@ -25,6 +25,12 @@ import LogoGuerreiro from "@/components/icons/guerreiro";
 import LogoPurificador from "@/components/icons/purificador";
 
 import { cn } from "@/lib/utils";
+import {
+  calcularQuantidadeObrigatoriaPericias,
+  formatPericiaTipo,
+  isValidExternalUrl,
+  normalizePericiaTipo,
+} from "@/lib/regras/personagemCriacao";
 import { Button } from "@/components/ui/button";
 import { MagiaDetailsDrawer } from "@/components/magia-details-drawer";
 import {
@@ -87,11 +93,26 @@ type PericiaOption = {
   descricao?: string | null;
 };
 
+export type PersonagemFormInitialData = {
+  id: number;
+  nome: string;
+  apelido?: string | null;
+  descricao?: string | null;
+  url_imagem?: string | null;
+  campanhaId: number;
+  classeId: number;
+  racaId: number;
+  elemento: string;
+  magiaIds: number[];
+  periciaIds: number[];
+};
+
 type Props = {
   campanhas: CampanhaOption[];
   classes: ClasseOption[];
   racas: RacaOption[];
   pericias: PericiaOption[];
+  initialData?: PersonagemFormInitialData | null;
 };
 
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6;
@@ -370,25 +391,6 @@ function periciaResumoCurto(pericia: PericiaOption) {
   return pericia.descricao?.trim() || "Sem descrição breve para esta perícia.";
 }
 
-function normalizePericiaTipo(tipo?: string | null) {
-  const value = (tipo ?? "").trim().toLowerCase();
-  return value || "geral";
-}
-
-function formatPericiaTipo(tipo?: string | null) {
-  const normalized = normalizePericiaTipo(tipo);
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-}
-
-function isValidExternalUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 function canOpenStep(currentStep: WizardStep, targetStep: WizardStep) {
   return targetStep <= currentStep;
 }
@@ -398,36 +400,58 @@ export default function PersonagemCreateForm({
   classes,
   racas,
   pericias,
+  initialData = null,
 }: Props) {
   const router = useRouter();
   const maxMagias = 3;
+  const isEditMode = Boolean(initialData);
 
   const classesDisponiveis = useMemo(
-    () => classes.filter((classe) => !isClasseUnica(classe)),
-    [classes]
+    () =>
+      classes.filter(
+        (classe) => !isClasseUnica(classe) || classe.id === initialData?.classeId
+      ),
+    [classes, initialData?.classeId]
   );
 
-  const [step, setStep] = useState<WizardStep>(1);
+  const [step, setStep] = useState<WizardStep>(initialData ? 6 : 1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [nome, setNome] = useState("");
-  const [apelido, setApelido] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [urlImagem, setUrlImagem] = useState("");
+  const [nome, setNome] = useState(initialData?.nome ?? "");
+  const [apelido, setApelido] = useState(initialData?.apelido ?? "");
+  const [descricao, setDescricao] = useState(initialData?.descricao ?? "");
+  const [urlImagem, setUrlImagem] = useState(initialData?.url_imagem ?? "");
 
   const [campanhaId, setCampanhaId] = useState(
-    campanhas.length === 1 ? String(campanhas[0].id) : ""
+    initialData?.campanhaId
+      ? String(initialData.campanhaId)
+      : campanhas.length === 1
+        ? String(campanhas[0].id)
+        : ""
   );
   const [classeId, setClasseId] = useState(
-    classesDisponiveis.length === 1 ? String(classesDisponiveis[0].id) : ""
+    initialData?.classeId
+      ? String(initialData.classeId)
+      : classesDisponiveis.length === 1
+        ? String(classesDisponiveis[0].id)
+        : ""
   );
-  const [racaId, setRacaId] = useState(racas.length === 1 ? String(racas[0].id) : "");
-  const [selectedMagiaIds, setSelectedMagiaIds] = useState<string[]>([]);
+  const [racaId, setRacaId] = useState(
+    initialData?.racaId
+      ? String(initialData.racaId)
+      : racas.length === 1
+        ? String(racas[0].id)
+        : ""
+  );
+  const [selectedMagiaIds, setSelectedMagiaIds] = useState<string[]>(
+    initialData?.magiaIds?.map(String) ?? []
+  );
   const [selectedPericiaIds, setSelectedPericiaIds] = useState<string[]>(
-    pericias.length === 1 ? [String(pericias[0].id)] : []
+    initialData?.periciaIds?.map(String) ??
+      (pericias.length === 1 ? [String(pericias[0].id)] : [])
   );
-  const [elemento, setElemento] = useState<string>("natureza");
+  const [elemento, setElemento] = useState<string>(initialData?.elemento ?? "natureza");
 
   const [detailsModal, setDetailsModal] = useState<DetailsModalState | null>(null);
 
@@ -488,9 +512,7 @@ export default function PersonagemCreateForm({
   }, [pericias]);
   const periciaTiposDisponiveisCount = periciasAgrupadasPorTipo.length;
   const requiredPericiasCount = hasPericiasDisponiveis
-    ? periciaTiposDisponiveisCount >= 3
-      ? 2
-      : 1
+    ? calcularQuantidadeObrigatoriaPericias(periciaTiposDisponiveisCount)
     : 0;
   const selectedPericiaTiposCount = useMemo(() => {
     const tipos = new Set(
@@ -571,6 +593,8 @@ export default function PersonagemCreateForm({
   const modalMagia = detailsModal?.kind === "magia" ? detailsModal.item : null;
   const modalPericia = detailsModal?.kind === "pericia" ? detailsModal.item : null;
   const modalClasseTags = modalClasse ? getClasseTags(modalClasse) : [];
+  const modalRacaTheme = modalRaca ? getRacaTheme(modalRaca) : null;
+  const ModalRacaIcon = modalRacaTheme?.icon ?? null;
   const progressoPercentual = Math.round((Number(step) / steps.length) * 100);
   const mobileStepStartIndex = Math.min(
     Math.max(Number(step) - 2, 0),
@@ -707,7 +731,11 @@ export default function PersonagemCreateForm({
     }
 
     if (!canSubmit) {
-      setError("Preencha os campos obrigatórios antes de criar o personagem.");
+      setError(
+        isEditMode
+          ? "Preencha os campos obrigatórios antes de alterar o personagem."
+          : "Preencha os campos obrigatórios antes de criar o personagem."
+      );
       return;
     }
 
@@ -728,8 +756,13 @@ export default function PersonagemCreateForm({
         elemento,
       };
 
-      const res = await fetch("/api/personagem/create", {
-        method: "POST",
+      const endpoint = isEditMode
+        ? `/api/personagem/${initialData?.id}`
+        : "/api/personagem/create";
+      const method = isEditMode ? "PUT" : "POST";
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -737,7 +770,10 @@ export default function PersonagemCreateForm({
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.error ?? "Erro ao criar personagem.");
+        setError(
+          data?.error ??
+            (isEditMode ? "Erro ao alterar personagem." : "Erro ao criar personagem.")
+        );
         return;
       }
 
@@ -750,7 +786,13 @@ export default function PersonagemCreateForm({
       router.push("/dashboard");
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erro ao criar personagem.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : isEditMode
+            ? "Erro ao alterar personagem."
+            : "Erro ao criar personagem."
+      );
     } finally {
       setLoading(false);
     }
@@ -1642,12 +1684,20 @@ export default function PersonagemCreateForm({
                     </Button>
                   ) : (
                     <Button type="submit" disabled={!canSubmit || loading} className="w-full">
-                      {loading ? "Criando..." : "Criar personagem"}
+                      {loading
+                        ? isEditMode
+                          ? "Alterando..."
+                          : "Criando..."
+                        : isEditMode
+                          ? "Alterar personagem"
+                          : "Criar personagem"}
                     </Button>
                   )}
                 </div>
                 <FieldDescription className="mt-3 text-xs">
-                  A maioria dos dados pode ser ajustada depois, direto na ficha.
+                  {isEditMode
+                    ? "Revise os passos acima e salve quando a ficha estiver pronta."
+                    : "A maioria dos dados pode ser ajustada depois, direto na ficha."}
                 </FieldDescription>
               </div>
             </aside>
@@ -1687,7 +1737,13 @@ export default function PersonagemCreateForm({
                     disabled={!canSubmit || loading}
                     className="flex-[1.4]"
                   >
-                    {loading ? "Criando..." : "Criar personagem"}
+                    {loading
+                      ? isEditMode
+                        ? "Alterando..."
+                        : "Criando..."
+                      : isEditMode
+                        ? "Alterar personagem"
+                        : "Criar personagem"}
                   </Button>
                 )}
               </div>
@@ -1742,8 +1798,33 @@ export default function PersonagemCreateForm({
               {modalRaca && (
                 <>
                   <DialogHeader>
-                    <DialogTitle>{modalRaca.nome}</DialogTitle>
-                    <DialogDescription>{racaResumoCurto(modalRaca)}</DialogDescription>
+                    <div
+                      className={cn(
+                        "relative overflow-hidden rounded-3xl border bg-linear-to-b p-4",
+                        modalRacaTheme?.surfaceClass,
+                        modalRacaTheme?.frameClass
+                      )}
+                    >
+                      <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full border border-white/15" />
+                      <div className="relative z-10 flex items-center gap-4">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-black/25">
+                          {ModalRacaIcon ? (
+                            <ModalRacaIcon
+                              className={cn(
+                                "h-7 w-7",
+                                modalRacaTheme?.iconColorClass
+                              )}
+                            />
+                          ) : null}
+                        </div>
+                        <div>
+                          <DialogTitle>{modalRaca.nome}</DialogTitle>
+                          <DialogDescription>
+                            Herança e atributos iniciais da ficha.
+                          </DialogDescription>
+                        </div>
+                      </div>
+                    </div>
                   </DialogHeader>
 
                   <div className="space-y-4 text-sm">
@@ -1772,7 +1853,9 @@ export default function PersonagemCreateForm({
                 <>
                   <DialogHeader>
                     <DialogTitle>{modalPericia.nome}</DialogTitle>
-                    <DialogDescription>{periciaResumoCurto(modalPericia)}</DialogDescription>
+                    <DialogDescription>
+                      Detalhes da perícia selecionável nesta etapa.
+                    </DialogDescription>
                   </DialogHeader>
 
                   <div className="space-y-4 text-sm">

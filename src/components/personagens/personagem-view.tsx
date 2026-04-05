@@ -9,14 +9,6 @@ import {
   Droplet,
   Flame,
   Wind,
-  Shield,
-  ScrollText,
-  CircleDotDashed,
-  Package,
-  Sparkles,
-  WandSparkles,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import { PersonagemInterface } from "@/types";
 import { cn } from "@/lib/utils";
@@ -27,6 +19,10 @@ import { PersonagemSobre } from "./ficha/PersonagemSobre";
 import { PersonagemPericias } from "./ficha/PersonagemPericias";
 import { PersonagemInventario } from "./ficha/PersonagemInventario";
 import { PersonagemMagias } from "./ficha/PersonagemMagias";
+import {
+  PersonagemSectionId,
+  PersonagemSectionNav,
+} from "./ficha/PersonagemSectionNav";
 
 type ElementType = "natureza" | "agua" | "fogo" | "vento";
 
@@ -36,68 +32,6 @@ const elements = {
   fogo: { icon: Flame, bgColor: "bg-red-500", color: "text-red-900" },
   vento: { icon: Wind, bgColor: "bg-gray-300", color: "text-gray-700" },
 };
-
-const sectionIcons = {
-  defesa: Shield,
-  sobre: ScrollText,
-  pericias: CircleDotDashed,
-  inventario: Package,
-  magias: Sparkles,
-  acoes: WandSparkles,
-} as const;
-
-const sectionStyles = {
-  defesa: {
-    active:
-      "border-slate-400/60 bg-slate-200 text-slate-700 dark:border-slate-500/50 dark:bg-slate-500/15 dark:text-slate-100",
-    inactive:
-      "border-slate-300 bg-slate-100/90 text-slate-600 dark:border-slate-500/25 dark:bg-slate-500/8 dark:text-slate-300/80",
-    badge:
-      "bg-slate-300 text-slate-700 dark:bg-slate-500/20 dark:text-slate-200",
-  },
-  sobre: {
-    active:
-      "border-violet-400/60 bg-violet-100 text-violet-700 dark:border-violet-500/50 dark:bg-violet-500/15 dark:text-violet-100",
-    inactive:
-      "border-violet-300 bg-violet-50 text-violet-600 dark:border-violet-500/25 dark:bg-violet-500/8 dark:text-violet-200/80",
-    badge:
-      "bg-violet-200 text-violet-700 dark:bg-violet-500/20 dark:text-violet-100",
-  },
-  pericias: {
-    active:
-      "border-orange-400/60 bg-orange-100 text-orange-700 dark:border-orange-500/50 dark:bg-orange-500/15 dark:text-orange-100",
-    inactive:
-      "border-orange-300 bg-orange-50 text-orange-600 dark:border-orange-500/25 dark:bg-orange-500/8 dark:text-orange-200/80",
-    badge:
-      "bg-orange-200 text-orange-700 dark:bg-orange-500/20 dark:text-orange-100",
-  },
-  inventario: {
-    active:
-      "border-amber-400/60 bg-amber-100 text-amber-700 dark:border-amber-500/50 dark:bg-amber-500/15 dark:text-amber-100",
-    inactive:
-      "border-amber-300 bg-amber-50 text-amber-600 dark:border-amber-500/25 dark:bg-amber-500/8 dark:text-amber-200/80",
-    badge:
-      "bg-amber-200 text-amber-700 dark:bg-amber-500/20 dark:text-amber-100",
-  },
-  magias: {
-    active:
-      "border-sky-400/60 bg-sky-100 text-sky-700 dark:border-sky-500/50 dark:bg-sky-500/15 dark:text-sky-100",
-    inactive:
-      "border-sky-300 bg-sky-50 text-sky-600 dark:border-sky-500/25 dark:bg-sky-500/8 dark:text-sky-200/80",
-    badge:
-      "bg-sky-200 text-sky-700 dark:bg-sky-500/20 dark:text-sky-100",
-  },
-  acoes: {
-    active:
-      "border-emerald-400/60 bg-emerald-100 text-emerald-700 dark:border-emerald-500/50 dark:bg-emerald-500/15 dark:text-emerald-100",
-    inactive:
-      "border-emerald-300 bg-emerald-50 text-emerald-600 dark:border-emerald-500/25 dark:bg-emerald-500/8 dark:text-emerald-200/80",
-    badge:
-      "bg-emerald-200 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-100",
-  },
-} as const;
-
-type SectionId = keyof typeof sectionIcons;
 
 interface Props {
   personagem: PersonagemInterface;
@@ -148,35 +82,70 @@ export function PersonagemView({
 
   const ElementIcon = elements[elemento].icon;
   const hasActions = Boolean(personagem.actions?.length);
-  const navItems: ReadonlyArray<{ id: SectionId; label: string; count: number | null }> = [
-    { id: "defesa", label: "Defesa", count: null },
-    { id: "sobre", label: "Sobre", count: null },
-    { id: "pericias", label: "Perícias", count: personagem.pericias?.length ?? 0 },
+  const navItems: ReadonlyArray<{
+    id: PersonagemSectionId;
+    label: string;
+    count: number | null;
+    isVisible: boolean;
+  }> = [
+    {
+      id: "defesa",
+      label: "Defesa",
+      count: null,
+      isVisible: visibleSections.defesa,
+    },
+    {
+      id: "sobre",
+      label: "Sobre",
+      count: null,
+      isVisible: visibleSections.sobre,
+    },
+    {
+      id: "pericias",
+      label: "Perícias",
+      count: personagem.pericias?.length ?? 0,
+      isVisible: visibleSections.pericias,
+    },
     {
       id: "inventario",
       label: "Inventário",
       count: personagem.inventarioResumo?.itensTotais ?? 0,
+      isVisible: visibleSections.inventario,
     },
-    { id: "magias", label: "Magias", count: personagem.magias?.length ?? 0 },
+    {
+      id: "magias",
+      label: "Magias",
+      count: personagem.magias?.length ?? 0,
+      isVisible: visibleSections.magias,
+    },
     ...(hasActions
       ? [
           {
-            id: "acoes" as SectionId,
+            id: "acoes" as PersonagemSectionId,
             label: "Ações",
             count: personagem.actions?.length ?? 0,
+            isVisible: visibleSections.acoes,
           },
         ]
       : []),
   ];
 
-  const toggleSection = (sectionId: keyof typeof visibleSections) => {
+  const scrollSectionIntoView = (sectionId: PersonagemSectionId) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(sectionId)?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
+    });
+  };
+
+  const navigateToSection = (sectionId: PersonagemSectionId) => {
     const isVisible = visibleSections[sectionId];
 
     if (isVisible) {
-      setVisibleSections((current) => ({
-        ...current,
-        [sectionId]: false,
-      }));
+      scrollSectionIntoView(sectionId);
       return;
     }
 
@@ -184,15 +153,14 @@ export function PersonagemView({
       ...current,
       [sectionId]: true,
     }));
+    scrollSectionIntoView(sectionId);
+  };
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        document.getElementById(sectionId)?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      });
-    });
+  const toggleSection = (sectionId: PersonagemSectionId) => {
+    setVisibleSections((current) => ({
+      ...current,
+      [sectionId]: !current[sectionId],
+    }));
   };
 
   return (
@@ -234,76 +202,33 @@ export function PersonagemView({
         </aside>
 
         <section className="min-w-0 flex flex-col gap-5">
-          <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-background/90 p-3 shadow-sm backdrop-blur supports-backdrop-filter:bg-background/80">
-            <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/60 px-3 py-2">
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-xl shadow-inner",
-                    elements[elemento].bgColor
-                  )}
-                >
-                  <ElementIcon
-                    className={cn("h-4 w-4", elements[elemento].color)}
-                  />
-                </div>
+          <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/90 px-4 py-3 shadow-sm backdrop-blur supports-backdrop-filter:bg-background/80">
+            <div
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-xl shadow-inner",
+                elements[elemento].bgColor
+              )}
+            >
+              <ElementIcon
+                className={cn("h-4 w-4", elements[elemento].color)}
+              />
+            </div>
 
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                    Elemento
-                  </p>
-                  <p className="text-sm font-semibold capitalize text-foreground">
-                    {elemento}
-                  </p>
-                </div>
-              </div>
-
-              <p className="ml-auto hidden max-w-65 text-right text-xs text-muted-foreground lg:block">
-                Clique para mostrar ou ocultar seções da ficha.
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Elemento
+              </p>
+              <p className="text-sm font-semibold capitalize text-foreground">
+                {elemento}
               </p>
             </div>
-
-            <div className="-mx-1 overflow-x-auto px-1 lg:overflow-visible lg:px-0">
-              <div className="flex min-w-max items-center gap-2 lg:min-w-0 lg:flex-wrap">
-                {navItems.map((item) => {
-                  const Icon = sectionIcons[item.id];
-                  const isVisible = visibleSections[item.id];
-                  const style = sectionStyles[item.id];
-
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => toggleSection(item.id)}
-                      aria-pressed={isVisible}
-                      className={cn(
-                        "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition whitespace-nowrap",
-                        isVisible ? style.active : style.inactive
-                      )}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      <span>{item.label}</span>
-                      {item.count !== null ? (
-                        <span
-                          className={cn(
-                            "inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
-                            style.badge
-                          )}
-                        >
-                          {item.count}
-                        </span>
-                      ) : null}
-                      {isVisible ? (
-                        <ChevronUp className="h-3.5 w-3.5 opacity-70" />
-                      ) : (
-                        <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </div>
+
+          <PersonagemSectionNav
+            items={navItems}
+            onNavigate={navigateToSection}
+            onToggle={toggleSection}
+          />
 
           <AnimatePresence initial={false} mode="popLayout">
             {visibleSections.sobre ? (

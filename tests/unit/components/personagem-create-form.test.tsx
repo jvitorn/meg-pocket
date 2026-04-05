@@ -181,4 +181,68 @@ describe("PersonagemCreateForm", () => {
     },
     15000
   );
+
+  it(
+    "entra em modo edicao e envia alteracoes para a rota da ficha",
+    async () => {
+      const user = userEvent.setup();
+      fetchMock.mockResolvedValue(
+        new Response(JSON.stringify({ success: true, id: 42 }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })
+      );
+
+      render(
+        <PersonagemCreateForm
+          {...props}
+          initialData={{
+            id: 42,
+            nome: "Selene",
+            apelido: "A Cronista",
+            descricao: "Observadora dos véus arcanos.",
+            url_imagem: "https://example.com/selene.png",
+            campanhaId: 1,
+            classeId: 2,
+            racaId: 3,
+            magiaIds: [10],
+            periciaIds: [20],
+            elemento: "natureza",
+          }}
+        />
+      );
+
+      const alterarButtons = screen.getAllByRole("button", {
+        name: "Alterar personagem",
+      });
+      expect(alterarButtons.length).toBeGreaterThan(0);
+
+      await user.clear(screen.getByLabelText("Nome do personagem"));
+      await user.type(screen.getByLabelText("Nome do personagem"), "Selene Nova");
+      await user.click(alterarButtons[0]);
+
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith("/api/personagem/42", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nome: "Selene Nova",
+            apelido: "A Cronista",
+            descricao: "Observadora dos véus arcanos.",
+            url_imagem: "https://example.com/selene.png",
+            campanhaId: "1",
+            classeId: "2",
+            racaId: "3",
+            magiaIds: [10],
+            periciaIds: [20],
+            elemento: "natureza",
+          }),
+        });
+      });
+
+      expect(routerMocks.push).toHaveBeenCalledWith("/personagens/42");
+      expect(routerMocks.refresh).toHaveBeenCalledTimes(1);
+    },
+    15000
+  );
 });

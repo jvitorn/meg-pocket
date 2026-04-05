@@ -122,7 +122,7 @@ model MagiaPersonagem {
   descricao    String?
   createdAt    DateTime     @default(now())
   magia        MagiaCatalog @relation(fields: [magiaId], references: [id])
-  personagem   Personagem   @relation(fields: [personagemId], references: [id])
+  personagem   Personagem   @relation(fields: [personagemId], references: [id], onDelete: Cascade)
 
   @@index([personagemId])
   @@index([magiaId])
@@ -150,7 +150,7 @@ model PericiaPersonagem {
   descricao    String?
   createdAt    DateTime       @default(now())
   pericia      PericiaCatalog @relation(fields: [periciaId], references: [id])
-  personagem   Personagem     @relation(fields: [personagemId], references: [id])
+  personagem   Personagem     @relation(fields: [personagemId], references: [id], onDelete: Cascade)
 
   @@index([personagemId])
   @@index([periciaId])
