@@ -4,25 +4,21 @@ import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
-import {
-  Leaf,
-  Droplet,
-  Flame,
-  Wind,
-} from "lucide-react";
+import { Leaf, Droplet, Flame, Wind } from "lucide-react";
 import { PersonagemInterface } from "@/types";
 import { cn } from "@/lib/utils";
-import { PersonagemHeader } from "./ficha/PersonagemHeader";
-import { PersonagemBarras } from "./ficha/PersonagemBarras";
-import { PersonagemSlotsDefensivos } from "./ficha/PersonagemSlotsDefensivos";
-import { PersonagemSobre } from "./ficha/PersonagemSobre";
-import { PersonagemPericias } from "./ficha/PersonagemPericias";
-import { PersonagemInventario } from "./ficha/PersonagemInventario";
-import { PersonagemMagias } from "./ficha/PersonagemMagias";
+import { PersonagemHeader } from "@/components/personagens/ficha/PersonagemHeader";
+import { PersonagemBarras } from "@/components/personagens/ficha/PersonagemBarras";
+import { PersonagemSlotsDefensivos } from "@/components/personagens/ficha/PersonagemSlotsDefensivos";
+import { PersonagemSobre } from "@/components/personagens/ficha/PersonagemSobre";
+import { PersonagemPericias } from "@/components/personagens/ficha/PersonagemPericias";
+import { PersonagemInventario } from "@/components/personagens/ficha/PersonagemInventario";
+import { PersonagemMagias } from "@/components/personagens/ficha/PersonagemMagias";
 import {
   PersonagemSectionId,
   PersonagemSectionNav,
-} from "./ficha/PersonagemSectionNav";
+} from "@/components/personagens/ficha/PersonagemSectionNav";
+import { PersonagemPainelRolagem } from "@/components/personagens/ficha/PersonagemPainelRolagem";
 
 type ElementType = "natureza" | "agua" | "fogo" | "vento";
 
@@ -40,11 +36,7 @@ interface Props {
   extraSection?: ReactNode;
 }
 
-function SectionTransition({
-  children,
-}: {
-  children: ReactNode;
-}) {
+function SectionTransition({ children }: { children: ReactNode }) {
   return (
     <motion.div
       layout
@@ -72,13 +64,16 @@ export function PersonagemView({
     inventario: true,
     magias: true,
     acoes: true,
+    rolagem: true,
   });
 
-  const elemento = (["natureza", "agua", "fogo", "vento"].includes(
-    personagem.elemento as ElementType
-  )
-    ? personagem.elemento
-    : "natureza") as ElementType;
+  const elemento = (
+    ["natureza", "agua", "fogo", "vento"].includes(
+      personagem.elemento as ElementType,
+    )
+      ? personagem.elemento
+      : "natureza"
+  ) as ElementType;
 
   const ElementIcon = elements[elemento].icon;
   const hasActions = Boolean(personagem.actions?.length);
@@ -88,6 +83,12 @@ export function PersonagemView({
     count: number | null;
     isVisible: boolean;
   }> = [
+    {
+      id: "rolagem",
+      label: "Rolagem",
+      count: null,
+      isVisible: visibleSections.rolagem,
+    },
     {
       id: "defesa",
       label: "Defesa",
@@ -198,6 +199,12 @@ export function PersonagemView({
                 />
               </SectionTransition>
             ) : null}
+
+            {visibleSections.rolagem ? (
+              <SectionTransition key="rolagem">
+                <PersonagemPainelRolagem />
+              </SectionTransition>
+            ) : null}
           </AnimatePresence>
         </aside>
 
@@ -206,7 +213,7 @@ export function PersonagemView({
             <div
               className={cn(
                 "flex h-10 w-10 items-center justify-center rounded-xl shadow-inner",
-                elements[elemento].bgColor
+                elements[elemento].bgColor,
               )}
             >
               <ElementIcon
@@ -276,10 +283,12 @@ export function PersonagemView({
             !visibleSections.inventario &&
             !visibleSections.magias &&
             !visibleSections.defesa &&
+            !visibleSections.rolagem &&
             !(hasActions && visibleSections.acoes) ? (
               <SectionTransition key="empty-state">
                 <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-5 text-sm text-muted-foreground">
-                  Todas as seções estão ocultas no momento. Use os botões acima para reabrir a ficha.
+                  Todas as seções estão ocultas no momento. Use os botões acima
+                  para reabrir a ficha.
                 </div>
               </SectionTransition>
             ) : null}

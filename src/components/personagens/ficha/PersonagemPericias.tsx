@@ -13,6 +13,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { RolagemAcao } from "@/components/RolagemDados";
 import { FichaSection } from "./FichaSection";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,13 @@ function getPericiaColor(tipo?: string) {
   return periciaColors[key] ?? periciaColors["conhecimento"];
 }
 
+function buildPericiaNotation(pontuacao?: number) {
+  const quantidade = Math.max(1, pontuacao ?? 1);
+  const bonus = Math.max(0, quantidade - 1);
+
+  return bonus > 0 ? `${quantidade}d20kh1+${bonus}` : `${quantidade}d20kh1`;
+}
+
 /* -------------------------------------------------------
    Componente principal
 ---------------------------------------------------------*/
@@ -58,6 +66,11 @@ export function PersonagemPericias({ pericias }: Props) {
   const handleAbrir = useCallback((p: PericiaPersonagem) => {
     setSelected(p);
   }, []);
+  const quantidadeRolagem = Math.max(1, selected?.pontuacao ?? 1);
+  const bonusRolagem = Math.max(0, quantidadeRolagem - 1);
+  const notacaoRolagem = selected
+    ? buildPericiaNotation(selected.pontuacao)
+    : null;
 
   return (
     <>
@@ -140,8 +153,8 @@ export function PersonagemPericias({ pericias }: Props) {
 
   {/* Descrição */}
   <DialogDescription className="text-sm text-muted-foreground italic text-center sm:text-left">
-    Role {selected?.pontuacao}d20, escolha o maior resultado e adicione +
-    {(selected?.pontuacao ?? 0) - 1} ao valor final.
+    Role {quantidadeRolagem}d20, escolha o maior resultado e adicione +
+    {bonusRolagem} ao valor final.
   </DialogDescription>
 
 </DialogHeader>
@@ -159,6 +172,16 @@ export function PersonagemPericias({ pericias }: Props) {
 
           <DialogFooter>
             <div className="flex justify-end w-full gap-2">
+              {selected && notacaoRolagem ? (
+                <RolagemAcao
+                  notacao={notacaoRolagem}
+                  titulo={`Rolagem de ${selected.nome}`}
+                  descricao={`Confira abaixo o resultado de ${notacaoRolagem}.`}
+                  buttonLabel={`Rolar Pericia`}
+                  buttonVariant="secondary"
+                />
+              ) : null}
+
               <DialogClose asChild>
                 <Button variant="outline">Fechar</Button>
               </DialogClose>

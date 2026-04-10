@@ -85,6 +85,7 @@ export interface PersonagemInventarioItem {
   nome: string;
   tipo: ItemTipo;
   descricao?: string | null;
+  notacaoRolagem?: string | null;
   slots: number;
   slotsTotal: number;
   quantidade: number;

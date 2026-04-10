@@ -33,6 +33,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { RolagemAcao } from "@/components/RolagemDados";
 
 type Props = {
   personagem: PersonagemInterface;
@@ -107,7 +108,8 @@ function ItemDetailContent({
   const effectLabel = formatModuloLabel(item);
   const defenseActive = item.efeito?.modulo === "DEFESA" && item.efeitoAtivo;
   const disabled = !canEdit || item.esgotado || defenseActive || using;
-
+  const notacaoRolagem = item.notacaoRolagem?.trim() || null;
+  debugger;
   return (
     <div className="space-y-5">
       <div className="space-y-2">
@@ -169,6 +171,17 @@ function ItemDetailContent({
         </div>
       ) : null}
 
+      {notacaoRolagem ? (
+        <div className="rounded-xl border border-fuchsia-200 bg-fuchsia-50/80 px-3 py-3 dark:border-fuchsia-500/25 dark:bg-fuchsia-500/6">
+          <p className="text-xs uppercase tracking-[0.18em] text-fuchsia-700/80 dark:text-fuchsia-100/75">
+            Rolagem do item
+          </p>
+          <p className="mt-1 text-sm font-semibold text-fuchsia-700 dark:text-fuchsia-100">
+            {notacaoRolagem}
+          </p>
+        </div>
+      ) : null}
+
       {item.esgotado ? (
         <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50/80 px-3 py-3 text-sm text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/4 dark:text-amber-100/75">
           Este item foi esgotado e permanece oculto apenas como registro.
@@ -180,7 +193,17 @@ function ItemDetailContent({
           O efeito de defesa deste item já está ativo na ficha.
         </div>
       ) : null}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        {notacaoRolagem ? (
+          <RolagemAcao
+            notacao={notacaoRolagem}
+            titulo={`Rolagem de ${item.nome}`}
+            descricao={`Confira abaixo o resultado de ${notacaoRolagem}.`}
+            buttonLabel={`Rolar ${notacaoRolagem}`}
+            buttonVariant="secondary"
+          />
+        ) : null}
+
         <Button type="button" onClick={onUse} disabled={disabled}>
           {using ? "Usando..." : item.esgotado ? "Esgotado" : "Usar"}
         </Button>

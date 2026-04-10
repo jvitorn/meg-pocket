@@ -27,6 +27,7 @@ type ItemInventarioRecord = {
     nome: string;
     tipo: ItemTipo;
     descricao: string | null;
+    notacaoRolagem: string | null;
     slots: number;
     durabilidadeBase: number | null;
     durabilidadeMax: number | null;
@@ -98,6 +99,7 @@ export function normalizarItemInventario(
     nome: entry.item.nome,
     tipo: entry.item.tipo,
     descricao: entry.item.descricao,
+    notacaoRolagem: entry.item.notacaoRolagem,
     slots,
     slotsTotal: esgotado ? 0 : calcularSlotsTotaisItem(slots, quantidade),
     quantidade,

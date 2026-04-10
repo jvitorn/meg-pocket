@@ -177,6 +177,7 @@ model Item {
   nome              String
   tipo              ItemTipo
   descricao         String?
+  notacaoRolagem    String?
   slots             Float            @default(1)
   durabilidadeBase  Int?
   durabilidadeMax   Int?

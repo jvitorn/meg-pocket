@@ -4,6 +4,7 @@ import {
   CircleDotDashed,
   ChevronDown,
   ChevronUp,
+  Dices,
   Package,
   ScrollText,
   Shield,
@@ -18,7 +19,9 @@ export type PersonagemSectionId =
   | "pericias"
   | "inventario"
   | "magias"
-  | "acoes";
+  | "acoes"
+  | "rolagem";
+
 
 type NavItem = {
   id: PersonagemSectionId;
@@ -40,9 +43,18 @@ const sectionIcons = {
   inventario: Package,
   magias: Sparkles,
   acoes: WandSparkles,
+  rolagem: Dices,
 } as const;
 
 const sectionStyles = {
+  rolagem: {
+    active:
+      "border-fuchsia-400/60 bg-fuchsia-100 text-fuchsia-700 dark:border-fuchsia-500/50 dark:bg-fuchsia-500/15 dark:text-fuchsia-100",
+    inactive:
+      "border-fuchsia-300 bg-fuchsia-50 text-fuchsia-600 dark:border-fuchsia-500/25 dark:bg-fuchsia-500/8 dark:text-fuchsia-200/80",
+    badge:
+      "bg-fuchsia-200 text-fuchsia-700 dark:bg-fuchsia-500/20 dark:text-fuchsia-100",
+  },
   defesa: {
     active:
       "border-slate-400/60 bg-slate-200 text-slate-700 dark:border-slate-500/50 dark:bg-slate-500/15 dark:text-slate-100",
