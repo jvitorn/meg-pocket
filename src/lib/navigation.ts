@@ -23,7 +23,7 @@ export function getNavLinks(isAuthenticated: boolean): NavbarInterface[] {
   return [
     ...BASE_NAV_LINKS,
     isAuthenticated
-      ? { label: "Personagens", href: "/dashboard" }
+      ? { label: "Fichas", href: "/dashboard" }
       : { label: "Login", href: "/login" },
   ];
 }

@@ -47,8 +47,8 @@ export default async function Home() {
         subtitle="Desperte seu grimório, domine magias únicas e enfrente os desafios de Valthera — um mundo à beira do colapso."
         primaryCta={{ label: "Ver campanhas", href: "/campanhas" }}
         secondaryCta={{
-          label: isAuthenticated ? "Criar personagem" : "Criar conta",
-          href: isAuthenticated ? "/personagens/novo" : "/cadastro",
+          label: isAuthenticated ? "Criar ficha" : "Criar conta",
+          href: isAuthenticated ? "/fichas/novo" : "/cadastro",
         }}
       />
       <HomeQuickStart featuredCampaigns={featuredCampaigns} />

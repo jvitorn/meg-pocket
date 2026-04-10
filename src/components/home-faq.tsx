@@ -103,7 +103,7 @@ export function HomeFaq({ isAuthenticated }: HomeFaqProps) {
             Ver classes
           </Link>
           <Link
-            href={isAuthenticated ? "/personagens/novo" : "/cadastro"}
+            href={isAuthenticated ? "/fichas/novo" : "/cadastro"}
             className="inline-flex items-center rounded-md border border-white/35 bg-black/30 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
           >
             {isAuthenticated ? "Criar ficha" : "Criar conta"}

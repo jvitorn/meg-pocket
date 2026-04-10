@@ -139,14 +139,25 @@ export default function RacaPage() {
         <section className="relative isolate min-h-[72vh] overflow-hidden">
           <div className="absolute inset-0">
             {raca.img ? (
-              <Image
-                src={raca.img}
-                alt={`${raca.nome} - plano de fundo`}
-                fill
-                priority
-                unoptimized
-                className="object-cover object-center scale-105"
-              />
+              <>
+                <Image
+                  src={raca.img}
+                  alt={`${raca.nome} - plano de fundo`}
+                  fill
+                  priority
+                  unoptimized
+                  className="object-cover object-center scale-105 lg:hidden"
+                />
+                <Image
+                  src={raca.img}
+                  alt=""
+                  fill
+                  priority
+                  unoptimized
+                  aria-hidden="true"
+                  className="hidden object-cover object-center blur-2xl scale-115 lg:block"
+                />
+              </>
             ) : (
               <div
                 className={cn("h-full w-full bg-linear-to-br", theme.softClass)}
@@ -154,7 +165,7 @@ export default function RacaPage() {
             )}
           </div>
 
-          <div className="absolute inset-0 bg-linear-to-t from-black via-black/60 to-black/25" />
+          <div className="absolute inset-0 bg-linear-to-t from-black via-black/60 to-black/25 lg:via-black/70" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.12),transparent_24%),radial-gradient(circle_at_80%_10%,rgba(255,255,255,0.08),transparent_20%),radial-gradient(circle_at_50%_80%,rgba(255,255,255,0.06),transparent_20%)]" />
 
           <motion.div

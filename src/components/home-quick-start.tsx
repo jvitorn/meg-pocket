@@ -134,7 +134,7 @@ export function HomeQuickStart({ featuredCampaigns }: HomeQuickStartProps) {
                 Entender classes
               </Link>
               <Link
-                href="/personagens/novo"
+                href="/fichas/novo"
                 className="inline-flex items-center rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold transition hover:bg-muted"
               >
                 Iniciar criação de ficha

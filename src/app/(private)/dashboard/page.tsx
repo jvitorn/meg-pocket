@@ -63,7 +63,7 @@ export default async function DashboardPage() {
                 <h1
                   className={`${cormorant.className} text-3xl md:text-4xl font-bold`}
                 >
-                  Personagens
+                  Fichas
                 </h1>
                 <p className="text-sm text-muted-foreground mt-3 max-w-xl">
                   Bem-vindo{session?.user?.name ? "," : ""}{" "}
@@ -74,9 +74,9 @@ export default async function DashboardPage() {
 
               <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                 <Button asChild className="gap-2">
-                  <Link href="/personagens/novo">
+                  <Link href="/fichas/novo">
                     <Plus className="h-4 w-4" />
-                    Novo Personagem
+                    Nova Ficha
                   </Link>
                 </Button>
                 <LogoutButton size="sm" className="w-auto" />
@@ -88,7 +88,7 @@ export default async function DashboardPage() {
         <section className="max-w-7xl mx-auto px-6 pb-12">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div className="text-sm text-muted-foreground">
-              Personagens:{" "}
+              Fichas:{" "}
               <span className="text-foreground font-semibold">
                 {personagens.length}
               </span>
@@ -111,11 +111,11 @@ export default async function DashboardPage() {
                   Nenhum personagem criado
                 </h2>
                 <p className="text-sm text-muted-foreground mt-3">
-                  Crie seu primeiro personagem para começar sua jornada em
+                  Crie sua primeira ficha para começar sua jornada em
                   Valthera com estilo.
                 </p>
                 <Button asChild className="mt-6 px-6">
-                  <Link href="/personagens/novo">Criar personagem</Link>
+                  <Link href="/fichas/novo">Criar ficha</Link>
                 </Button>
               </div>
             </div>

@@ -16,15 +16,15 @@ const cormorant = Cormorant_Garamond({
   weight: ["600", "700"],
 });
 
-type NovoPersonagemPageProps = {
+type NovaFichaPageProps = {
   searchParams?: Promise<{
     id?: string;
   }>;
 };
 
-export default async function NovoPersonagemPage({
+export default async function NovaFichaPage({
   searchParams,
-}: NovoPersonagemPageProps) {
+}: NovaFichaPageProps) {
   noStore();
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id ?? null;
@@ -185,7 +185,7 @@ export default async function NovoPersonagemPage({
               <h1
                 className={`${cormorant.className} text-3xl md:text-4xl font-bold`}
               >
-                {initialData ? "Editar personagem" : "Criar personagem"}
+                {initialData ? "Editar ficha" : "Criar ficha"}
               </h1>
             </div>
             <div className="mt-6">

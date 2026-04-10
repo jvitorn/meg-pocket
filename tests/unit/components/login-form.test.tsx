@@ -85,7 +85,7 @@ describe("LoginForm", () => {
     const user = userEvent.setup();
     authServiceMocks.loginComSenha.mockResolvedValue({
       ok: true,
-      url: "http://localhost:3000/personagens/novo?origem=login",
+      url: "http://localhost:3000/fichas/novo?origem=login",
     });
 
     render(<LoginForm />);
@@ -94,7 +94,7 @@ describe("LoginForm", () => {
     await user.type(screen.getByLabelText("Senha"), "senha-correta");
     await user.click(screen.getByRole("button", { name: "Login" }));
 
-    expect(routerMocks.replace).toHaveBeenCalledWith("/personagens/novo");
+    expect(routerMocks.replace).toHaveBeenCalledWith("/fichas/novo");
     expect(routerMocks.refresh).toHaveBeenCalledTimes(1);
   });
 });

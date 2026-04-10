@@ -136,7 +136,7 @@ export function DashboardPersonagemCard({
 
               <div className="grid gap-3">
                 <Button asChild className="justify-start">
-                  <Link href={`/personagens/novo?id=${id}`}>
+                  <Link href={`/fichas/novo?id=${id}`}>
                     <Pencil className="h-4 w-4" />
                     Editar ficha
                   </Link>

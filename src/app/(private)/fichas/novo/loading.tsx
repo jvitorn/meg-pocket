@@ -16,7 +16,7 @@ export default function Loading() {
                 Nova ficha
               </p>
               <h1 className="text-3xl font-bold md:text-4xl">
-                Criar personagem
+                Criar ficha
               </h1>
             </div>
 

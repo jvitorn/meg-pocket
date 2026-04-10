@@ -1575,8 +1575,8 @@ export default function PersonagemCreateForm({
                           ? "Alterando..."
                           : "Criando..."
                         : isEditMode
-                          ? "Alterar personagem"
-                          : "Criar personagem"}
+                          ? "Alterar ficha"
+                          : "Criar ficha"}
                     </Button>
                   )}
                 </div>
@@ -1628,8 +1628,8 @@ export default function PersonagemCreateForm({
                         ? "Alterando..."
                         : "Criando..."
                       : isEditMode
-                        ? "Alterar personagem"
-                        : "Criar personagem"}
+                        ? "Alterar ficha"
+                        : "Criar ficha"}
                   </Button>
                 )}
               </div>
