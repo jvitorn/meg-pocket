@@ -52,6 +52,40 @@ function makeRequest(body: unknown) {
   });
 }
 
+type TransactionInput = {
+  personagem: {
+    update: typeof mocks.personagemUpdate;
+  };
+  magiaPersonagem: {
+    findMany: typeof mocks.magiaFindMany;
+  };
+  periciaPersonagem: {
+    findMany: typeof mocks.periciaFindMany;
+  };
+  itemInventario: {
+    findMany: typeof mocks.itemInventarioFindMany;
+    updateMany: typeof mocks.itemInventarioUpdateMany;
+  };
+};
+
+function createTransactionInput(): TransactionInput {
+  return {
+    personagem: {
+      update: mocks.personagemUpdate,
+    },
+    magiaPersonagem: {
+      findMany: mocks.magiaFindMany,
+    },
+    periciaPersonagem: {
+      findMany: mocks.periciaFindMany,
+    },
+    itemInventario: {
+      findMany: mocks.itemInventarioFindMany,
+      updateMany: mocks.itemInventarioUpdateMany,
+    },
+  };
+}
+
 describe("POST /api/personagem/update", () => {
   beforeEach(() => {
     mocks.validarEdicaoDaFicha.mockReset();
@@ -173,22 +207,9 @@ describe("POST /api/personagem/update", () => {
     mocks.personagemUpdate.mockResolvedValue({});
     mocks.magiaFindMany.mockResolvedValue([]);
     mocks.periciaFindMany.mockResolvedValue([]);
-    mocks.transaction.mockImplementation(async (callback: any) =>
-      callback({
-        personagem: {
-          update: mocks.personagemUpdate,
-        },
-        magiaPersonagem: {
-          findMany: mocks.magiaFindMany,
-        },
-        periciaPersonagem: {
-          findMany: mocks.periciaFindMany,
-        },
-        itemInventario: {
-          findMany: mocks.itemInventarioFindMany,
-          updateMany: mocks.itemInventarioUpdateMany,
-        },
-      })
+    mocks.transaction.mockImplementation(
+      async (callback: (tx: TransactionInput) => unknown) =>
+        callback(createTransactionInput())
     );
     mocks.personagemUpdate.mockResolvedValue({
       id: 7,
@@ -205,6 +226,7 @@ describe("POST /api/personagem/update", () => {
       hp_base: null,
       mana_base: null,
       descricao: "Arcanista veterana",
+      anotacoes: null,
       url_imagem: "https://example.com/selene.png",
       imagem_pixel: null,
       statusEspecial: "vivo",
@@ -241,6 +263,7 @@ describe("POST /api/personagem/update", () => {
         hp: 9,
         mana: 9,
         sobre: "Arcanista veterana",
+        anotacoes: null,
         url_imagem: "https://example.com/selene.png",
         imagem_pixel: null,
         magias: [],
@@ -277,22 +300,9 @@ describe("POST /api/personagem/update", () => {
     });
     mocks.magiaFindMany.mockResolvedValue([]);
     mocks.periciaFindMany.mockResolvedValue([]);
-    mocks.transaction.mockImplementation(async (callback: any) =>
-      callback({
-        personagem: {
-          update: mocks.personagemUpdate,
-        },
-        magiaPersonagem: {
-          findMany: mocks.magiaFindMany,
-        },
-        periciaPersonagem: {
-          findMany: mocks.periciaFindMany,
-        },
-        itemInventario: {
-          findMany: mocks.itemInventarioFindMany,
-          updateMany: mocks.itemInventarioUpdateMany,
-        },
-      })
+    mocks.transaction.mockImplementation(
+      async (callback: (tx: TransactionInput) => unknown) =>
+        callback(createTransactionInput())
     );
     mocks.personagemUpdate.mockResolvedValue({
       id: 7,
@@ -309,6 +319,7 @@ describe("POST /api/personagem/update", () => {
       hp_base: 1,
       mana_base: 1,
       descricao: "Maga disciplinada",
+      anotacoes: null,
       url_imagem: null,
       imagem_pixel: null,
       statusEspecial: "vivo",
@@ -343,6 +354,7 @@ describe("POST /api/personagem/update", () => {
         hp: 10,
         mana: 16,
         sobre: "Maga disciplinada",
+        anotacoes: null,
         url_imagem: null,
         imagem_pixel: null,
         magias: [],
@@ -405,22 +417,9 @@ describe("POST /api/personagem/update", () => {
         },
       },
     ]);
-    mocks.transaction.mockImplementation(async (callback: any) =>
-      callback({
-        personagem: {
-          update: mocks.personagemUpdate,
-        },
-        magiaPersonagem: {
-          findMany: mocks.magiaFindMany,
-        },
-        periciaPersonagem: {
-          findMany: mocks.periciaFindMany,
-        },
-        itemInventario: {
-          findMany: mocks.itemInventarioFindMany,
-          updateMany: mocks.itemInventarioUpdateMany,
-        },
-      })
+    mocks.transaction.mockImplementation(
+      async (callback: (tx: TransactionInput) => unknown) =>
+        callback(createTransactionInput())
     );
     mocks.personagemUpdate.mockResolvedValue({
       id: 8,
@@ -437,6 +436,7 @@ describe("POST /api/personagem/update", () => {
       hp_base: null,
       mana_base: null,
       descricao: "Guardiã da guilda.",
+      anotacoes: null,
       url_imagem: null,
       imagem_pixel: null,
       statusEspecial: null,
@@ -471,6 +471,7 @@ describe("POST /api/personagem/update", () => {
         hp: 10,
         mana: 6,
         sobre: "Guardiã da guilda.",
+        anotacoes: null,
         url_imagem: null,
         imagem_pixel: null,
         magias: [],
@@ -534,6 +535,95 @@ describe("POST /api/personagem/update", () => {
       data: {
         efeitoAtivo: false,
         esgotadoEm: expect.any(Date),
+      },
+    });
+  });
+
+  it("salva anotacoes e devolve o campo no payload normalizado", async () => {
+    mocks.validarEdicaoDaFicha.mockResolvedValue({
+      ok: true,
+      userId: "user-1",
+    });
+    mocks.personagemFindUnique.mockResolvedValue({
+      id: 7,
+      hp_base: null,
+      mana_base: null,
+      statusEspecial: "vivo",
+      raca: { hp: 5, mana: 2 },
+      classe: { hp: 4, mana: 7 },
+      defesa_max: 0,
+    });
+    mocks.magiaFindMany.mockResolvedValue([]);
+    mocks.periciaFindMany.mockResolvedValue([]);
+    mocks.transaction.mockImplementation(
+      async (callback: (tx: TransactionInput) => unknown) =>
+        callback(createTransactionInput())
+    );
+    mocks.personagemUpdate.mockResolvedValue({
+      id: 7,
+      nome: "Selene",
+      apelido: "A Cronista",
+      campanhaId: 1,
+      classeId: 2,
+      racaId: 3,
+      elemento: "fogo",
+      hp_atual: 12,
+      mana_atual: 9,
+      defesa_atual: 0,
+      defesa_max: 0,
+      hp_base: null,
+      mana_base: null,
+      descricao: "Arcanista veterana",
+      anotacoes: "Lembrar de visitar a biblioteca.",
+      url_imagem: "https://example.com/selene.png",
+      imagem_pixel: null,
+      statusEspecial: "vivo",
+      raca: { nome: "Humana", hp: 5, mana: 2 },
+      classe: { nome: "Elementalista", hp: 4, mana: 7 },
+    });
+
+    const response = await POST(
+      makeRequest({
+        index: 7,
+        campo: "anotacoes",
+        valor: "Lembrar de visitar a biblioteca.",
+      })
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      personagem: {
+        id: 7,
+        nome: "A Cronista",
+        apelido: "A Cronista",
+        campanhaId: 1,
+        classeId: 2,
+        classe_nome: "Elementalista",
+        racaId: 3,
+        raca_nome: "Humana",
+        elemento: "fogo",
+        hp_atual: 12,
+        mana_atual: 9,
+        defesa_atual: 0,
+        defesa_max: 0,
+        hp: 9,
+        mana: 9,
+        sobre: "Arcanista veterana",
+        anotacoes: "Lembrar de visitar a biblioteca.",
+        url_imagem: "https://example.com/selene.png",
+        imagem_pixel: null,
+        magias: [],
+        pericias: [],
+        statusEspecial: "vivo",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(mocks.personagemUpdate).toHaveBeenCalledWith({
+      where: { id: 7 },
+      data: { anotacoes: "Lembrar de visitar a biblioteca." },
+      include: {
+        raca: true,
+        classe: true,
       },
     });
   });

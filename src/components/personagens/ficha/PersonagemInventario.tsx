@@ -109,7 +109,6 @@ function ItemDetailContent({
   const defenseActive = item.efeito?.modulo === "DEFESA" && item.efeitoAtivo;
   const disabled = !canEdit || item.esgotado || defenseActive || using;
   const notacaoRolagem = item.notacaoRolagem?.trim() || null;
-  debugger;
   return (
     <div className="space-y-5">
       <div className="space-y-2">

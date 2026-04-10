@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BookText,
   CircleDotDashed,
   ChevronDown,
   ChevronUp,
@@ -14,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export type PersonagemSectionId =
+  | "anotacoes"
   | "defesa"
   | "sobre"
   | "pericias"
@@ -37,6 +39,7 @@ type Props = {
 };
 
 const sectionIcons = {
+  anotacoes: BookText,
   defesa: Shield,
   sobre: ScrollText,
   pericias: CircleDotDashed,
@@ -47,6 +50,14 @@ const sectionIcons = {
 } as const;
 
 const sectionStyles = {
+  anotacoes: {
+    active:
+      "border-cyan-400/60 bg-cyan-100 text-cyan-700 dark:border-cyan-500/50 dark:bg-cyan-500/15 dark:text-cyan-100",
+    inactive:
+      "border-cyan-300 bg-cyan-50 text-cyan-600 dark:border-cyan-500/25 dark:bg-cyan-500/8 dark:text-cyan-200/80",
+    badge:
+      "bg-cyan-200 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-100",
+  },
   rolagem: {
     active:
       "border-fuchsia-400/60 bg-fuchsia-100 text-fuchsia-700 dark:border-fuchsia-500/50 dark:bg-fuchsia-500/15 dark:text-fuchsia-100",

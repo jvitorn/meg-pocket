@@ -93,7 +93,16 @@ test("ficha básica cobre recursos críticos do personagem", async ({ page }) =>
     await page.getByRole("button", { name: "Diminuir Defesa" }).click();
     await page.getByRole("button", { name: "Diminuir Defesa" }).click();
     await page.getByRole("button", { name: "Diminuir Defesa" }).click();
+
+    const defesaResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/personagem/update") &&
+        response.request().method() === "POST"
+    );
     await page.getByRole("button", { name: "Confirmar" }).click();
+    const defesaResponse = await defesaResponsePromise;
+
+    expect(defesaResponse.ok()).toBeTruthy();
 
     await expect(
       page.getByRole("button", { name: "Atualizar Defesa" })

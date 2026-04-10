@@ -19,6 +19,7 @@ import {
   PersonagemSectionNav,
 } from "@/components/personagens/ficha/PersonagemSectionNav";
 import { PersonagemPainelRolagem } from "@/components/personagens/ficha/PersonagemPainelRolagem";
+import { PersonagemAnotacoes } from "@/components/personagens/ficha/PersonagemAnotacoes";
 
 type ElementType = "natureza" | "agua" | "fogo" | "vento";
 
@@ -58,6 +59,7 @@ export function PersonagemView({
   extraSection,
 }: Props) {
   const [visibleSections, setVisibleSections] = useState({
+    anotacoes: true,
     defesa: true,
     sobre: true,
     pericias: true,
@@ -83,6 +85,12 @@ export function PersonagemView({
     count: number | null;
     isVisible: boolean;
   }> = [
+    {
+      id: "anotacoes",
+      label: "Anotações",
+      count: null,
+      isVisible: visibleSections.anotacoes,
+    },
     {
       id: "rolagem",
       label: "Rolagem",
@@ -164,6 +172,36 @@ export function PersonagemView({
     }));
   };
 
+  const fichaOverview = (
+    <>
+      <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/90 px-4 py-3 shadow-sm backdrop-blur supports-backdrop-filter:bg-background/80">
+        <div
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-xl shadow-inner",
+            elements[elemento].bgColor,
+          )}
+        >
+          <ElementIcon className={cn("h-4 w-4", elements[elemento].color)} />
+        </div>
+
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            Elemento
+          </p>
+          <p className="text-sm font-semibold capitalize text-foreground">
+            {elemento}
+          </p>
+        </div>
+      </div>
+
+      <PersonagemSectionNav
+        items={navItems}
+        onNavigate={navigateToSection}
+        onToggle={toggleSection}
+      />
+    </>
+  );
+
   return (
     <Card className="overflow-hidden shadow-lg p-4 md:p-6 bg-background border border-border">
       {!canEdit && (
@@ -187,6 +225,8 @@ export function PersonagemView({
             canEdit={canEdit}
           />
 
+          <div className="flex flex-col gap-5 lg:hidden">{fichaOverview}</div>
+
           <AnimatePresence initial={false} mode="popLayout">
             {visibleSections.defesa ? (
               <SectionTransition key="defesa">
@@ -205,37 +245,21 @@ export function PersonagemView({
                 <PersonagemPainelRolagem />
               </SectionTransition>
             ) : null}
+
+            {visibleSections.anotacoes ? (
+              <SectionTransition key="anotacoes">
+                <PersonagemAnotacoes
+                  personagem={personagem}
+                  setPersonagem={setPersonagem}
+                  canEdit={canEdit}
+                />
+              </SectionTransition>
+            ) : null}
           </AnimatePresence>
         </aside>
 
         <section className="min-w-0 flex flex-col gap-5">
-          <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/90 px-4 py-3 shadow-sm backdrop-blur supports-backdrop-filter:bg-background/80">
-            <div
-              className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-xl shadow-inner",
-                elements[elemento].bgColor,
-              )}
-            >
-              <ElementIcon
-                className={cn("h-4 w-4", elements[elemento].color)}
-              />
-            </div>
-
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                Elemento
-              </p>
-              <p className="text-sm font-semibold capitalize text-foreground">
-                {elemento}
-              </p>
-            </div>
-          </div>
-
-          <PersonagemSectionNav
-            items={navItems}
-            onNavigate={navigateToSection}
-            onToggle={toggleSection}
-          />
+          <div className="hidden lg:flex lg:flex-col lg:gap-5">{fichaOverview}</div>
 
           <AnimatePresence initial={false} mode="popLayout">
             {visibleSections.sobre ? (
@@ -282,6 +306,7 @@ export function PersonagemView({
             !visibleSections.pericias &&
             !visibleSections.inventario &&
             !visibleSections.magias &&
+            !visibleSections.anotacoes &&
             !visibleSections.defesa &&
             !visibleSections.rolagem &&
             !(hasActions && visibleSections.acoes) ? (

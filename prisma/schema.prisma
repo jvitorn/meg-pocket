@@ -68,6 +68,7 @@ model Personagem {
   nome              String
   apelido           String?
   descricao         String?
+  anotacoes         String?
   userId            String?
   campanhaId        Int
   classeId          Int

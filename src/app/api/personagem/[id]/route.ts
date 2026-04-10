@@ -146,6 +146,7 @@ export async function GET(
       hp: hpBase,
       mana: manaBase,
       sobre: personagem.descricao ?? null,
+      anotacoes: personagem.anotacoes ?? null,
       url_imagem: personagem.url_imagem ?? null,
       imagem_pixel: personagem.imagem_pixel ?? null,
       magias,
@@ -290,6 +291,11 @@ export async function PUT(
     const nome = String(body?.nome ?? "").trim();
     const apelido = String(body?.apelido ?? "").trim();
     const descricao = String(body?.descricao ?? "").trim();
+    const hasAnotacoes = Object.prototype.hasOwnProperty.call(
+      body ?? {},
+      "anotacoes"
+    );
+    const anotacoes = String(body?.anotacoes ?? "").replace(/\r\n/g, "\n");
     const urlImagem = String(body?.url_imagem ?? "").trim();
     const elemento = String(body?.elemento ?? "").trim().toLowerCase();
 
@@ -318,7 +324,12 @@ export async function PUT(
       );
     }
 
-    if (nome.length > 80 || apelido.length > 80 || descricao.length > 2000) {
+    if (
+      nome.length > 80 ||
+      apelido.length > 80 ||
+      descricao.length > 2000 ||
+      (hasAnotacoes && anotacoes.length > 20000)
+    ) {
       return NextResponse.json(
         { success: false, error: "Dados do personagem excedem o limite permitido." },
         { status: 400, headers: rateLimitHeaders }
@@ -512,6 +523,11 @@ export async function PUT(
         nome,
         apelido: apelido || null,
         descricao: descricao || null,
+        ...(hasAnotacoes
+          ? {
+              anotacoes: anotacoes.trim() ? anotacoes : null,
+            }
+          : {}),
         campanhaId,
         classeId,
         racaId,

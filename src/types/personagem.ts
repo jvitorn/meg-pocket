@@ -22,6 +22,7 @@ export interface PersonagemInterface extends BaseInterface {
   defesa_max?: number;
 
   sobre: string;
+  anotacoes?: string | null;
 
   url_imagem?: string;
   imagem_pixel?: string;

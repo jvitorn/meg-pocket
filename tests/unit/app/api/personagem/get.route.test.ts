@@ -80,6 +80,7 @@ describe("GET /api/personagem/[id]", () => {
       defesa_atual: 0,
       defesa_max: 0,
       descricao: "Cronista arcano",
+      anotacoes: "Investigar a torre ao amanhecer.",
       url_imagem: "https://example.com/arkan.png",
       imagem_pixel: null,
       statusEspecial: "vivo",
@@ -164,6 +165,7 @@ describe("GET /api/personagem/[id]", () => {
       hp: 8,
       mana: 9,
       sobre: "Cronista arcano",
+      anotacoes: "Investigar a torre ao amanhecer.",
       url_imagem: "https://example.com/arkan.png",
       imagem_pixel: null,
       magias: [

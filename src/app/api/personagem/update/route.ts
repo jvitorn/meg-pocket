@@ -18,7 +18,13 @@ type Body = {
   valor: unknown;
 };
 
-const allowedFields = new Set(["sobre", "hp_atual", "mana_atual", "defesa_atual"]);
+const allowedFields = new Set([
+  "sobre",
+  "anotacoes",
+  "hp_atual",
+  "mana_atual",
+  "defesa_atual",
+]);
 
 function parseNonNegativeInteger(value: unknown) {
   const parsed = Number(value);
@@ -118,6 +124,7 @@ export async function POST(request: Request) {
 
     const updates: {
       descricao?: string;
+      anotacoes?: string | null;
       hp_atual?: number;
       mana_atual?: number;
       defesa_atual?: number;
@@ -135,6 +142,22 @@ export async function POST(request: Request) {
       }
 
       updates.descricao = descricao;
+    }
+
+    if (campo === "anotacoes") {
+      const anotacoes = String(valor ?? "").replace(/\r\n/g, "\n");
+
+      if (anotacoes.length > 20000) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "O campo de anotações excede o limite permitido.",
+          },
+          { status: 400, headers: rateLimitHeaders }
+        );
+      }
+
+      updates.anotacoes = anotacoes.trim() ? anotacoes : null;
     }
 
     if (campo === "hp_atual") {
@@ -314,6 +337,7 @@ export async function POST(request: Request) {
         hp: hpBaseEfetivo,
         mana: manaBaseEfetivo,
         sobre: updated.descricao ?? null,
+        anotacoes: updated.anotacoes ?? null,
         url_imagem: updated.url_imagem ?? null,
         imagem_pixel: updated.imagem_pixel ?? null,
         magias,
