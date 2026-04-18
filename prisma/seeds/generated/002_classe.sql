@@ -9,7 +9,7 @@ Seu corpo é um grimório vivo de movimentos rituais: cada estocada, cada guarda
 • COMBATE CORPO A CORPO VERSÁTIL: Utiliza punhos, espadas, martelos, lanças e outras armas pesadas com eficiência.
 • MAGIA MARCIAL: Conjura técnicas através dos próprios movimentos de combate — golpes que liberam energia, armas rúnicas e posturas fortalecedoras.
 • SUSTENTAÇÃO EM BATALHA: Mantém desempenho constante mesmo em confrontos longos graças à disciplina física e às técnicas rúnicas.
-",/imgs/backgrounds/classe_guerreiro.jpg,https://krxuafiolrihvoajvmnc.supabase.co/storage/v1/object/public/assets/background/guerreiro.png,Ragnar Forja,"[""Corpo a Corpo"",""Tanque"",""Alta Resistência"",""Iniciante-Friendly""]",12,6,2025-11-29 18:50:40,2025-12-07 09:12:51
+",/imgs/backgrounds/classe_guerreiro.jpg,https://krxuafiolrihvoajvmnc.supabase.co/storage/v1/object/public/assets/background/guerreiro.png,Ragnar Forja,"[""Corpo a Corpo"",""Tanque"",""Iniciante-Friendly""]",12,6,2025-11-29 18:50:40,2025-12-07 09:12:51
 2,purificador,Purificador,purificador,emerald,Suporte,"Os Purificadores são uma classe frequentemente subestimada por aqueles que enxergam apenas suas artes de cura. No entanto, essa é apenas a superfície do que realmente representam. São estudiosos dedicados, observadores atentos e profundos conhecedores das forças que regem o equilíbrio entre vida, doença, energia e decadência. Sua magia vai muito além da restauração: dominam técnicas de ataque a média e longa distância, capazes de manipular toxinas, venenos alquímicos e feitiços debilitantes que enfraquecem inimigos sem necessariamente destruí-los.
 
 Mesmo sem causar grandes quantidades de dano bruto, seu impacto tático é enorme. Eles compreendem a fisiologia, o fluxo de mana e as fragilidades do corpo — seja para curar, fortalecer ou minar as defesas de um oponente. Não é surpresa que muitos Purificadores sejam tímidos ou reservados, pois passam anos imersos em estudos, manuscritos e experimentos. Ainda assim, carregam uma calma e precisão impressionantes durante o combate, como se cada ação fosse calculada com serenidade absoluta.
@@ -31,7 +31,15 @@ Essa força, porém, tem um custo. No corpo a corpo, os Elementalistas são vuln
 • FRAGILIDADE FÍSICA: Ruins em combate próximo; sofrem penalidade de -3 em ataques corpo a corpo.  
 • ESTILO ESTRATÉGICO: Jogadores precisam pensar antes de agir, aproveitando alcance, posicionamento e timing.
 ",/imgs/backgrounds/classe_elementalista.jpg,https://krxuafiolrihvoajvmnc.supabase.co/storage/v1/object/public/assets/background/elementalista.png,Amelia,"[""Alto Dano"",""Longo Alcance"",""Alta Mana"",""Estratégico""]",8,10,2025-11-29 18:51:29,2025-12-07 10:31:27
-4,artifice,Artifice,artifice,amber,Estratégia,null,null,null,null,null,null,11,7,2025-11-29 18:51:46,2025-12-06 20:36:37
+4,artifice,Artifice,artifice,amber,Estratégia,"Os Artífices enxergam a mana de forma diferente da maioria. Para eles, poder não está apenas em destruir ou dominar, mas em entender, adaptar e criar soluções. Sua magia ganha forma em recursos práticos: armas curtas feitas de energia, bombas de fumaça, flechas elementais, cargas de impacto, selos e dispositivos arcanos moldados para cada situação. Onde outros repetem técnicas conhecidas, o Artífice prefere improvisar e surpreender.
+
+Mais do que combatentes, são mentes inquietas e observadoras. Costumam analisar o campo de batalha antes de agir, procurando a melhor abertura, a ferramenta certa ou o momento exato para virar o confronto. Essa postura estratégica, porém, não os torna frios ou distantes. Muitos Artífices valorizam o trabalho em equipe e se destacam por apoiar aliados, reparar equipamentos e encontrar saídas quando tudo parece perdido.
+
+Em combate, lutam com eficiência tanto no corpo a corpo quanto à média distância, alternando entre ofensiva, utilidade e controle conforme a necessidade. Não possuem a brutalidade direta de um Guerreiro, mas compensam com versatilidade, preparo e criatividade. Quando surge um problema impossível, é comum que alguém procure um Artífice — porque quase sempre eles encontram uma resposta.","• CRIAÇÕES: Criam a magia em forma de armas, cartas, selos, armadilhas e objetos temporários durante o combate.
+• COMBOS E SINERGIA: Muitas habilidades funcionam melhor em sequência, preparação ou interação com aliados.
+• VERSÁTIL EM COMBATE: Diferente das outras classes, conseguem lutar bem em curta distância e media distância  
+• FRAGILIDADE FÍSICA: Ruins em combate próximo; sofrem penalidade de -3 em ataques corpo a corpo.  
+• ESTILO ESTRATÉGICO: Classe que recompensa criatividade, leitura de batalha e uso inteligente dos recursos.",/imgs/backgrounds/classe_artifice.jpg,https://krxuafiolrihvoajvmnc.supabase.co/storage/v1/object/public/assets/background/artifice.png,Ahtis,"[""Estratégico"",""Versátil"",""Corpo a Corpo""]",11,7,2025-11-29 18:51:46,2025-12-06 20:36:37
 5,null,Unico,null,null,Magias Especificas,null,null,null,null,null,null,1,1,2025-11-29 18:51:58,2025-11-29 18:51:59
 \.
 SELECT setval(pg_get_serial_sequence('"Classe"', 'id'), COALESCE((SELECT MAX("id") FROM "Classe"), 1), true);
