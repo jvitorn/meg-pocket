@@ -89,11 +89,11 @@ export default function PersonagemCampanhaPage() {
           >
             {showCarousel ? (
               <>
-                <ChevronsDown className="w-5 h-5" /> Ocultar Raças
+                <ChevronsDown className="w-5 h-5" /> Ocultar Personagens
               </>
             ) : (
               <>
-                <ChevronsUp className="w-5 h-5" /> Mostrar Raças
+                <ChevronsUp className="w-5 h-5" /> Mostrar Personagens
               </>
             )}
           </Button>

@@ -1,5 +1,3 @@
-import { Redis } from "@upstash/redis";
-
 type RequestLike = Request | { headers: Headers };
 
 type RateLimitOptions = {
@@ -24,25 +22,6 @@ export type RateLimitResult = {
 
 const memoryStore = new Map<string, StoredRateLimit>();
 
-let cachedRedis: Redis | null | undefined;
-
-function getRedisClient() {
-  if (cachedRedis !== undefined) {
-    return cachedRedis;
-  }
-
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-  if (!url || !token) {
-    cachedRedis = null;
-    return cachedRedis;
-  }
-
-  cachedRedis = new Redis({ url, token });
-  return cachedRedis;
-}
-
 export function getClientIp(request: RequestLike) {
   const forwardedFor = request.headers.get("x-forwarded-for");
   if (forwardedFor) {
@@ -66,6 +45,14 @@ async function applyMemoryRateLimit(
 ): Promise<RateLimitResult> {
   const now = Date.now();
   const current = memoryStore.get(key);
+
+  if (memoryStore.size > 5000) {
+    for (const [storedKey, value] of memoryStore.entries()) {
+      if (value.resetAt <= now) {
+        memoryStore.delete(storedKey);
+      }
+    }
+  }
 
   if (!current || current.resetAt <= now) {
     const resetAt = now + windowMs;
@@ -92,41 +79,6 @@ async function applyMemoryRateLimit(
   };
 }
 
-async function applyRedisRateLimit(
-  key: string,
-  limit: number,
-  windowMs: number
-): Promise<RateLimitResult> {
-  const redis = getRedisClient();
-
-  if (!redis) {
-    return applyMemoryRateLimit(key, limit, windowMs);
-  }
-
-  try {
-    const now = Date.now();
-    const count = await redis.incr(key);
-
-    if (count === 1) {
-      await redis.pexpire(key, windowMs);
-    }
-
-    const ttl = await redis.pttl(key);
-    const retryAfterMs = ttl > 0 ? ttl : windowMs;
-    const resetAt = now + retryAfterMs;
-
-    return {
-      allowed: count <= limit,
-      limit,
-      remaining: Math.max(0, limit - count),
-      retryAfter: Math.max(1, Math.ceil(retryAfterMs / 1000)),
-      resetAt,
-    };
-  } catch {
-    return applyMemoryRateLimit(key, limit, windowMs);
-  }
-}
-
 export async function enforceRateLimit(
   request: RequestLike,
   options: RateLimitOptions
@@ -134,7 +86,7 @@ export async function enforceRateLimit(
   const identifier = options.identifier?.trim() || getClientIp(request);
   const storageKey = `rate-limit:${options.key}:${identifier}`;
 
-  return applyRedisRateLimit(storageKey, options.limit, options.windowMs);
+  return applyMemoryRateLimit(storageKey, options.limit, options.windowMs);
 }
 
 export function buildRateLimitHeaders(result: RateLimitResult) {

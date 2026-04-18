@@ -1,14 +1,15 @@
 // src/components/campanhas/CampanhasClient.tsx
 'use client';
 
-import { useState, useRef } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User2 } from 'lucide-react';
+import { Search, User2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { CampanhaInterface, PersonagemInterface } from '@/types';
 import { getPersonagensNaCampanha } from '@/services/personagemService';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 
 type Props = {
   initialCampanhas: CampanhaInterface[];
@@ -20,6 +21,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
   const [personagens, setPersonagens] = useState<PersonagemInterface[]>([]);
   const [loadingPersonagens, setLoadingPersonagens] = useState(false);
   const [dialogAberto, setDialogAberto] = useState(false);
+  const [busca, setBusca] = useState('');
 
   const personagensCache = useRef<Record<number, PersonagemInterface[]>>({});
   // Caso queira revalidar client-side (opcional), você pode implementar refetch.
@@ -56,10 +58,45 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
   }
 }
 
+  const campanhasFiltradas = useMemo(() => {
+    const query = busca.trim().toLowerCase();
+
+    if (!query) return campanhas;
+
+    return campanhas.filter((campanha) =>
+      [
+        campanha.nome,
+        campanha.mestre,
+        campanha.sinopse,
+        ...(campanha.tags ?? []),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [busca, campanhas]);
+
   return (
     <>
+      <div className="grid gap-3 rounded-lg border bg-card/60 p-3 sm:grid-cols-[1fr_auto]">
+        <label className="relative block">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={busca}
+            onChange={(event) => setBusca(event.target.value)}
+            placeholder="Buscar campanha, mestre, tag..."
+            className="pl-9"
+          />
+        </label>
+        <div className="flex h-9 items-center rounded-md border bg-background px-3 text-sm text-muted-foreground">
+          {campanhasFiltradas.length} campanha{campanhasFiltradas.length !== 1 ? 's' : ''}
+        </div>
+      </div>
+
       {/* Lista de campanhas animada */}
-      <motion.section
+      {campanhasFiltradas.length > 0 ? (
+        <motion.section
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-8"
         initial="hidden"
         animate="visible"
@@ -72,7 +109,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
           },
         }}
       >
-        {campanhas.map((campanha) => (
+        {campanhasFiltradas.map((campanha) => (
           <motion.div
             key={campanha.id}
             whileHover={{ scale: 1.03 }}
@@ -101,9 +138,10 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                 <h2 id={`camp-${campanha.id}-title`} className="text-lg font-semibold text-white truncate">
                   {campanha.nome}
                 </h2>
-                <p className="text-xs text-white/70 mt-1">
-                  {campanha.count_jogadores} jogador{campanha.count_jogadores !== 1 ? 'es' : ''}
-                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/75">
+                  <span>{campanha.count_jogadores} personagem{campanha.count_jogadores !== 1 ? 's' : ''}</span>
+                  {campanha.mestre ? <span>Mestre: {campanha.mestre}</span> : null}
+                </div>
               </div>
             </div>
 
@@ -143,7 +181,15 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-linear-to-t from-purple-600/6 via-transparent to-transparent" />
           </motion.div>
         ))}
-      </motion.section>
+        </motion.section>
+      ) : (
+        <div className="mt-8 rounded-lg border border-dashed bg-card/40 px-6 py-10 text-center">
+          <h2 className="text-lg font-semibold">Nenhuma campanha encontrada</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Tente buscar por outro nome, mestre ou tag.
+          </p>
+        </div>
+      )}
 
       {/* Modal com animação suave */}
       <AnimatePresence>
@@ -220,7 +266,8 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                     ) : personagens.length > 0 ? (
                       <motion.div className="grid grid-cols-1 sm:grid-cols-2 gap-4" initial="hidden" animate="visible" variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } }}>
                         {personagens.map((p) => (
-                          <motion.div key={p.id} variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="flex items-center gap-3 rounded-md border p-3 bg-background/70 hover:bg-accent/10 transition">
+                          <motion.div key={p.id} variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
+                            <Link href={`/personagens/${p.id}`} onClick={() => setDialogAberto(false)} className="flex items-center gap-3 rounded-md border p-3 bg-background/70 hover:bg-accent/10 transition">
                             {(() => {
                               const imageSrc = p.imagem_pixel || p.url_imagem;
 
@@ -239,6 +286,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                               </p>
                               <p className="text-xs text-primary mt-1 capitalize">{p.elemento}</p>
                             </div>
+                            </Link>
                           </motion.div>
                         ))}
                       </motion.div>
@@ -251,7 +299,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
 
                 {/* Footer sticky */}
                 <div className="sticky bottom-0 border-t bg-background/95 p-4 flex flex-col sm:flex-row justify-between items-center gap-3">
-                  <div className="text-sm text-muted-foreground">{campanhaSelecionada.count_jogadores ?? 0} jogadores registrados</div>
+                  <div className="text-sm text-muted-foreground">{campanhaSelecionada.count_jogadores ?? 0} personagens registrados</div>
                   <div className="flex items-center gap-3">
                     <Link href={`/personagens/campanha/${campanhaSelecionada.id}`} onClick={() => setDialogAberto(false)} className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-purple-600 text-white shadow hover:opacity-95 transition">
                       Ver todos os personagens

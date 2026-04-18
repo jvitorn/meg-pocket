@@ -2,16 +2,22 @@
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Users } from 'lucide-react';
+import type { CampanhaInterface } from '@/types';
 
 export interface CampaignCardProps {
-  campanha: any; // substitua por CampanhaInterface se quiser
+  campanha: CampanhaInterface & {
+    _id?: string | number;
+    ultima_atualizacao?: string | Date | null;
+  };
 }
 
 export function CampaignCard({ campanha }: CampaignCardProps) {
+  const campanhaId = campanha._id ?? campanha.id;
+
   return (
     <article className="group rounded-lg overflow-hidden border bg-background/50 hover:shadow-lg transition-shadow">
       {/* Link principal para a página de detalhes */}
-      <Link href={`/campanhas/${campanha._id}`} className="block focus:outline-none focus:ring-2 focus:ring-ring">
+      <Link href={`/campanhas/${campanhaId}`} className="block focus:outline-none focus:ring-2 focus:ring-ring">
         <div className="w-full h-44 sm:h-40 md:h-44 bg-muted overflow-hidden">
           {campanha.capa ? (
             <img
@@ -58,7 +64,7 @@ export function CampaignCard({ campanha }: CampaignCardProps) {
 
             <div className="mt-4 flex items-center gap-3">
               <Link
-                href={`/personagens/campanha/${campanha._id}`}
+                href={`/personagens/campanha/${campanhaId}`}
                 className="inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium shadow-sm hover:shadow active:scale-95 transition-transform bg-primary text-primary-foreground"
                 aria-label={`Ver personagens da campanha ${campanha.nome}`}
               >
@@ -66,7 +72,7 @@ export function CampaignCard({ campanha }: CampaignCardProps) {
               </Link>
 
               <Link
-                href={`/campanhas/${campanha._id}`}
+                href={`/campanhas/${campanhaId}`}
                 className="inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium border hover:bg-accent/5 transition"
               >
                 Detalhes

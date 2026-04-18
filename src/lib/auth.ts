@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 
 export const authOptions: NextAuthOptions = {
@@ -25,8 +26,24 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        const email = credentials.email.trim().toLowerCase();
+
+        const rateLimit = await enforceRateLimit(
+          { headers: new Headers() },
+          {
+            key: "auth:nextauth:credentials",
+            limit: 8,
+            windowMs: 60_000,
+            identifier: email,
+          }
+        );
+
+        if (!rateLimit.allowed) {
+          throw new Error("Muitas tentativas. Aguarde e tente novamente.");
+        }
+
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email },
           include: {
             accounts: true,
           },
@@ -55,6 +72,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           email: user.email,
           image: user.image,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -79,11 +97,32 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.sessionVersion =
+          typeof user.sessionVersion === "number" ? user.sessionVersion : 0;
+        token.sessionInvalid = false;
+        return token;
       }
+
+      if (token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: String(token.id) },
+          select: { sessionVersion: true },
+        });
+
+        if (
+          !dbUser ||
+          Number(token.sessionVersion ?? 0) !== dbUser.sessionVersion
+        ) {
+          return {
+            sessionInvalid: true,
+          };
+        }
+      }
+
       return token;
     },
     session({ session, token }) {
-      if (session.user && token?.id) {
+      if (session.user && token?.id && !token.sessionInvalid) {
         session.user.id = token.id as string;
       }
       return session;

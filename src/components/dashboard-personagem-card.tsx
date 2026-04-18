@@ -23,7 +23,44 @@ type Props = {
   detalhe: string;
   imageSrc: string;
   createdAtLabel: string;
+  updatedAtLabel: string;
+  campanhaNome: string;
+  elemento: string;
+  hpAtual: number | null;
+  hpMax: number;
+  manaAtual: number | null;
+  manaMax: number;
+  defesaAtual: number;
+  defesaMax: number;
 };
+
+function StatBar({
+  label,
+  value,
+  max,
+  tone,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  tone: string;
+}) {
+  const percent = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>{label}</span>
+        <span>
+          {value}/{max}
+        </span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className={`h-full rounded-full ${tone}`} style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}
 
 export function DashboardPersonagemCard({
   id,
@@ -31,6 +68,15 @@ export function DashboardPersonagemCard({
   detalhe,
   imageSrc,
   createdAtLabel,
+  updatedAtLabel,
+  campanhaNome,
+  elemento,
+  hpAtual,
+  hpMax,
+  manaAtual,
+  manaMax,
+  defesaAtual,
+  defesaMax,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -89,7 +135,33 @@ export function DashboardPersonagemCard({
             </div>
 
             <p className="text-xs text-muted-foreground mt-3">
-              Registrado em {createdAtLabel}
+              {campanhaNome} • {elemento}
+            </p>
+
+            <div className="mt-4 grid gap-2">
+              <StatBar
+                label="HP"
+                value={hpAtual ?? hpMax}
+                max={hpMax}
+                tone="bg-rose-500"
+              />
+              <StatBar
+                label="Mana"
+                value={manaAtual ?? manaMax}
+                max={manaMax}
+                tone="bg-sky-500"
+              />
+              { defesaAtual > 0 &&
+              <StatBar
+                label="Defesa"
+                value={defesaAtual}
+                max={defesaMax}
+                tone="bg-emerald-500"
+              />}
+            </div>
+
+            <p className="text-xs text-muted-foreground mt-3">
+              Criado em {createdAtLabel} • Atualizado em {updatedAtLabel}
             </p>
 
             <Button asChild size="sm" className="mt-4">

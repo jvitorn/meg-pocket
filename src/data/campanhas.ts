@@ -14,6 +14,9 @@ export const getCampanhas = unstable_cache(async function (): Promise<CampanhaIn
         count_jogadores: true,
         mestre: true,
         tags: true,
+        _count: {
+          select: { personagens: true },
+        },
       },
     });
 
@@ -22,7 +25,7 @@ export const getCampanhas = unstable_cache(async function (): Promise<CampanhaIn
       nome: r.nome,
       sinopse: r.sinopse ?? undefined,
       capa: r.capa ?? undefined,
-      count_jogadores: r.count_jogadores ?? 0,
+      count_jogadores: r._count.personagens,
       mestre: r.mestre ?? "",
       tags: Array.isArray(r.tags)
         ? (r.tags as unknown as Array<unknown>).filter((t): t is string => typeof t === "string")

@@ -42,9 +42,9 @@ export async function POST(req: Request) {
     );
   }
 
-  if (password.length < 6 || password.length > 72) {
+  if (password.length < 1 || password.length > 72) {
     return NextResponse.json(
-      { error: "A senha deve ter entre 8 e 72 caracteres." },
+      { error: "A senha deve ter entre 1 e 72 caracteres." },
       { status: 400, headers }
     );
   }

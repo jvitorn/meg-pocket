@@ -155,7 +155,7 @@ describe("PersonagemCreateForm", () => {
         "https://example.com/selene.png"
       );
 
-      await user.click(getActionButton("Criar personagem"));
+      await user.click(getActionButton("Criar ficha"));
 
       await waitFor(() => {
         expect(fetchMock).toHaveBeenCalledWith("/api/personagem/create", {
@@ -213,7 +213,7 @@ describe("PersonagemCreateForm", () => {
       );
 
       const alterarButtons = screen.getAllByRole("button", {
-        name: "Alterar personagem",
+        name: "Alterar ficha",
       });
       expect(alterarButtons.length).toBeGreaterThan(0);
 

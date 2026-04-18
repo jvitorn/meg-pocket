@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Github } from "lucide-react";
 import { Cormorant_Garamond } from "next/font/google";
-import { useEffect, useState } from "react";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -11,11 +10,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export function Footer() {
-  const [year, setYear] = useState<number | null>(null);
-
-  useEffect(() => {
-    setYear(new Date().getFullYear());
-  }, []);
+  const year = new Date().getFullYear();
 
   return (
     <footer className="text-foreground border-t border-border py-10 px-6">
@@ -45,7 +40,7 @@ export function Footer() {
           </div>
 
           <p className="text-muted-foreground text-xs mt-3 text-center">
-            © {year ?? ""} Magos & Grimórios, Todos os direitos reservados
+            © {year} Magos & Grimórios, Todos os direitos reservados
           </p>
         </div>
       </div>

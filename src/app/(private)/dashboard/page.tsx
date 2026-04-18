@@ -11,7 +11,11 @@ import { Plus } from "lucide-react";
 import { unstable_noStore as noStore } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { Toaster } from "@/components/ui/sonner";
-import { DashboardPersonagemCard } from "@/components/dashboard-personagem-card";
+import {
+  DashboardPersonagensGrid,
+  type DashboardPersonagemGridItem,
+} from "@/components/dashboard-personagens-grid";
+import { resolverBaseAtributo } from "@/lib/personagemAtributos";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -19,7 +23,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 type PersonagemListItem = Prisma.PersonagemGetPayload<{
-  include: { classe: true; raca: true };
+  include: { classe: true; raca: true; campanha: true };
 }>;
 
 export default async function DashboardPage() {
@@ -36,6 +40,7 @@ export default async function DashboardPage() {
         include: {
           classe: true,
           raca: true,
+          campanha: true,
         },
       })
     : [];
@@ -120,8 +125,8 @@ export default async function DashboardPage() {
               </div>
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {personagens.map((personagem: PersonagemListItem) => {
+            <DashboardPersonagensGrid
+              personagens={personagens.map((personagem: PersonagemListItem): DashboardPersonagemGridItem => {
                 const nome =
                   personagem.apelido?.trim() || personagem.nome || "Sem nome";
                 const classe = personagem.classe?.nome ?? null;
@@ -132,19 +137,38 @@ export default async function DashboardPage() {
                     : classe || raca || "Origem não definida";
                 const imageSrc =
                   personagem.url_imagem || personagem.imagem_pixel || "";
+                const hpMax = resolverBaseAtributo({
+                  basePersistida: personagem.hp_base,
+                  baseDerivada:
+                    (personagem.raca?.hp ?? 0) + (personagem.classe?.hp ?? 0),
+                });
+                const manaMax = resolverBaseAtributo({
+                  basePersistida: personagem.mana_base,
+                  baseDerivada:
+                    (personagem.raca?.mana ?? 0) +
+                    (personagem.classe?.mana ?? 0),
+                });
 
-                return (
-                  <DashboardPersonagemCard
-                    key={personagem.id}
-                    id={personagem.id}
-                    nome={nome}
-                    detalhe={detalhe}
-                    imageSrc={imageSrc}
-                    createdAtLabel={formatter.format(new Date(personagem.createdAt))}
-                  />
-                );
+                return {
+                  id: personagem.id,
+                  nome,
+                  detalhe,
+                  imageSrc,
+                  createdAtLabel: formatter.format(new Date(personagem.createdAt)),
+                  updatedAtLabel: formatter.format(new Date(personagem.updatedAt)),
+                  campanhaNome: personagem.campanha?.nome ?? "Sem campanha",
+                  classeNome: classe ?? "",
+                  racaNome: raca ?? "",
+                  elemento: personagem.elemento || "sem elemento",
+                  hpAtual: personagem.hp_atual,
+                  hpMax,
+                  manaAtual: personagem.mana_atual,
+                  manaMax,
+                  defesaAtual: personagem.defesa_atual ?? 0,
+                  defesaMax: personagem.defesa_max ?? 0,
+                };
               })}
-            </div>
+            />
           )}
         </section>
       </main>

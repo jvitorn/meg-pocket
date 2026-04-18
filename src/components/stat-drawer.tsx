@@ -36,6 +36,7 @@ export function StatDrawer({
   const [localValue, setLocalValue] = useState<number>(Math.max(0, current));
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) setLocalValue(Math.max(0, current));
   }, [open, current]);
 

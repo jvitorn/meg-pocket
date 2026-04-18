@@ -9,7 +9,7 @@ import {
 export async function POST(req: Request) {
   const body = await req.json();
   const email = String(body?.email ?? "").trim().toLowerCase();
-  const senha = String(body?.senha ?? "").trim();
+  const senha = String(body?.senha ?? "");
 
   const rateLimit = await enforceRateLimit(req, {
     key: "auth:login",

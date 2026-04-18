@@ -32,6 +32,13 @@ interface MultiCardItemProps {
   onButtonClick?: () => void; // ação ao clicar no botão interno
 }
 
+type MultiCardCarouselProps<T extends dataMulticardInterface> = {
+  items: T[]; // lista de classes/personagens
+  selectedId: number; // ID do item atualmente selecionado
+  onSelect: (item: T) => void; // callback ao clicar num card
+  onButtonClick?: (item: T) => void; // callback ao clicar no botão "ver mais"
+};
+
 // Componente visual de um card individual
 export function MultiCardItem({
   data,
@@ -96,17 +103,12 @@ MultiCardItem.Button = function ButtonComponent({
 };
 
 // Componente de carrossel que renderiza vários MultiCardItem
-MultiCardItem.Carousel = function CarouselComponent({
+MultiCardItem.Carousel = function CarouselComponent<T extends dataMulticardInterface>({
   items,
   selectedId,
   onSelect,
   onButtonClick,
-}: {
-  items: BaseInterface[]; // lista de classes
-  selectedId: number; // ID do item atualmente selecionado
-  onSelect: (item: any) => void; // callback ao clicar num card
-  onButtonClick?: (item: any) => void; // callback ao clicar no botão "ver mais"
-}) {
+}: MultiCardCarouselProps<T>) {
   return (
     <Carousel
       opts={{ align: "start" }}
