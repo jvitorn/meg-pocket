@@ -6,7 +6,9 @@ export default function Loading() {
   return (
     <>
       <Navbar />
-      <PersonagemCampanhaPageSkeleton />
+      <main className="relative overflow-hidden">
+        <PersonagemCampanhaPageSkeleton />
+      </main>
       <Footer />
     </>
   );

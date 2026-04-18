@@ -25,10 +25,17 @@ async function parseResponseError(response: Response) {
  */
 export async function getPersonagensNaCampanha(id: number) {
   const res = await fetch(`${CAMPANHAPERSONAGEMROUTE}/${id}`);
+  const data = await res.json().catch(() => null);
+
   if (!res.ok) {
-    throw new Error("Erro ao buscar os personagens da campanha");
+    const error = new Error(
+      data?.error ?? "Erro ao buscar os personagens da campanha"
+    ) as Error & { status?: number };
+    error.status = res.status;
+    throw error;
   }
-  return res.json();
+
+  return data;
 }
 
 /* -------------------------------------------------------

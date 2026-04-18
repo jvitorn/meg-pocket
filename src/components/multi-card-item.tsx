@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
+import { User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -19,7 +20,7 @@ import {
 
 import { BaseInterface } from "@/types";
 import { cn } from "@/lib/utils";
-import { getColorClasses } from "@/lib/utils";
+import { getThemeByColor } from "@/lib/fantasyThemes";
 
 // Props para o componente de item de card reutilizável
 interface dataMulticardInterface extends BaseInterface{
@@ -46,30 +47,49 @@ export function MultiCardItem({
   onClick,
   onButtonClick,
 }: MultiCardItemProps) {
+  const theme = getThemeByColor(data.corTema, "zinc");
+  const imageSrc = data.imagem_pixel || data.url_imagem || data.img || "";
+  const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
+  const imageFailed = Boolean(imageSrc && failedImageSrc === imageSrc);
+
   return (
     <Card
+      style={theme.style}
       onClick={onClick}
-      className={`relative h-55 w-full cursor-pointer overflow-hidden rounded-xl border border-zinc-700 hover:ring-2 hover:ring-inset hover:ring-offset-0transition-all duration-200 ease-in-out group
-        ${isSelected ? "ring-2 ring-purple-500 ring-offset-0 ring-inset" : ""}`}
+      className={cn(
+        "group relative h-55 w-full cursor-pointer overflow-hidden rounded-xl border bg-linear-to-b from-[var(--theme-soft-from)] via-background/85 to-background transition duration-200 ease-in-out hover:ring-2 hover:ring-inset hover:ring-offset-0",
+        theme.frameClass,
+        isSelected && "ring-2 ring-[color:var(--theme-ring)] ring-inset ring-offset-0"
+      )}
     >
+      <div className="pointer-events-none absolute -right-9 -top-10 h-28 w-28 rounded-full border border-[color:var(--theme-ring)] opacity-40 transition-colors duration-300" />
+      <div className="pointer-events-none absolute left-1/2 top-14 h-20 w-20 -translate-x-1/2 rounded-full border border-[color:var(--theme-chip-border)] opacity-30 transition-colors duration-300" />
+
       {/* Degradê de sombra na base do card */}
       <div className="absolute bottom-0 left-0 right-0 h-20 bg-linear-to-t dark:from-black/80 from-white/80 to-transparent z-10 pointer-events-none" />
 
       {/* Cabeçalho com nome e título da classe */}
-      <CardHeader className="relative flex flex-col items-center justify-center gap-4 transition-all duration-200 ease-in-out group-hover:-translate-y-1">
+      <CardHeader className="relative z-20 flex flex-col items-center justify-center gap-4 transition-all duration-200 ease-in-out group-hover:-translate-y-1">
         <CardTitle className="text-xl text-center uppercase">
           {data.nome}
         </CardTitle>
       </CardHeader>
       {/* Imagem central da classe */}
       <CardContent className="relative z-20 flex justify-center -mt-1 overflow-visible">
-        <div className="relative w-25 h-25 z-30 transition-transform duration-200 ease-in-out group-hover:scale-[1.5] will-change-transform">
-          <Image
-        src={data.imagem_pixel || data.url_imagem || ""}
-        alt={data.nome}
-        fill
-        className="object-contain drop-shadow-md"
-          />
+        <div className="relative z-30 flex h-25 w-25 items-center justify-center transition-transform duration-200 ease-in-out will-change-transform group-hover:scale-[1.5]">
+          {imageSrc && !imageFailed ? (
+            <Image
+              src={imageSrc}
+              alt={data.nome}
+              fill
+              className="object-contain drop-shadow-md"
+              onError={() => setFailedImageSrc(imageSrc)}
+            />
+          ) : (
+            <div className="flex h-18 w-18 items-center justify-center rounded-full border border-[color:var(--theme-chip-border)] bg-[var(--theme-chip-bg)] text-[var(--theme-icon)] shadow-sm backdrop-blur-sm">
+              <User className="h-9 w-9" aria-hidden="true" />
+            </div>
+          )}
         </div>
       </CardContent>
 

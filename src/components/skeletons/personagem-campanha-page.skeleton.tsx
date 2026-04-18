@@ -4,9 +4,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function PersonagemCampanhaPageSkeleton() {
   return (
-    <div className="min-h-screen space-y-10 px-6 py-10">
-      <div className="flex flex-col items-center gap-3">
-        <Skeleton className="h-10 w-80 max-w-full" />
+    <div className="min-h-screen space-y-10 px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
+          <Skeleton className="h-10 w-80 max-w-full" />
+          <Skeleton className="h-4 w-96 max-w-full" />
+        </div>
       </div>
 
       <SelectedCardSkeleton />

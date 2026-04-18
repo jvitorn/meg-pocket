@@ -8,15 +8,33 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-     const { id } = await params;
+    const { id } = await params;
     const idParam = id;
     if (!idParam) {
-      return NextResponse.json({ error: "ID da campanha inválido" }, { status: 400 });
+      return NextResponse.json(
+        { error: "ID da campanha inválido" },
+        { status: 400 }
+      );
     }
 
     const campanhaId = Number(idParam);
     if (Number.isNaN(campanhaId)) {
-      return NextResponse.json({ error: "ID da campanha inválido" }, { status: 400 });
+      return NextResponse.json(
+        { error: "ID da campanha inválido" },
+        { status: 400 }
+      );
+    }
+
+    const campanha = await prisma.campanha.findUnique({
+      where: { id: campanhaId },
+      select: { id: true },
+    });
+
+    if (!campanha) {
+      return NextResponse.json(
+        { error: "Campanha não encontrada" },
+        { status: 404 }
+      );
     }
 
     const personagens = await prisma.personagem.findMany({
@@ -74,6 +92,8 @@ export async function GET(
         classe_nome: p.classe?.nome ?? null,
         raca_id: p.racaId,
         raca_nome: p.raca?.nome ?? null,
+        corTema: p.raca?.corTema ?? null,
+        icone: p.raca?.icone ?? null,
         elemento: p.elemento,
         hp_atual: p.hp_atual ?? null,
         mana_atual: p.mana_atual ?? null,

@@ -6,12 +6,14 @@ import { PersonagemCampanhaPageSkeleton } from "@/components/skeletons/personage
 
 export default function PersonagemCampanhaPage() {
   return (
-     <>
+    <>
       <Navbar />
-      <Suspense fallback={<PersonagemCampanhaPageSkeleton />}>
-        <PersonagemCampanhaClient />
-      </Suspense>
-      <Footer/>
+      <main className="relative overflow-hidden">
+        <Suspense fallback={<PersonagemCampanhaPageSkeleton />}>
+          <PersonagemCampanhaClient />
+        </Suspense>
+      </main>
+      <Footer />
     </>
   );
 }
