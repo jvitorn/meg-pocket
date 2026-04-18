@@ -133,8 +133,8 @@ export function RegisterForm({
 
       <FieldDescription className="px-6 text-center text-sm">
         Ao criar uma conta, você concorda com nossos{" "}
-        <a href="#">Termos de Uso</a> e{" "}
-        <a href="#">Política de Privacidade</a>.
+        <Link href="/termos">Termos de Uso</Link> e{" "}
+        <Link href="/privacidade">Política de Privacidade</Link>.
       </FieldDescription>
     </div>
   );

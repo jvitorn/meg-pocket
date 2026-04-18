@@ -60,10 +60,7 @@ export function LoginForm({
       }
 
       if (result?.ok) {
-        const targetUrl = result.url
-          ? new URL(result.url, window.location.origin).pathname
-          : "/dashboard";
-        router.replace(targetUrl);
+        router.replace("/dashboard");
         router.refresh();
         return;
       }
@@ -168,8 +165,9 @@ export function LoginForm({
       </Card>
 
       <FieldDescription className="px-6 text-center text-sm">
-        Ao continuar, você concorda com nossos <a href="#">Termos de Uso</a> e{" "}
-        <a href="#">Política de Privacidade</a>.
+        Ao continuar, você concorda com nossos{" "}
+        <Link href="/termos">Termos de Uso</Link> e{" "}
+        <Link href="/privacidade">Política de Privacidade</Link>.
       </FieldDescription>
     </div>
   );

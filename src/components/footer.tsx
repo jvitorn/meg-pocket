@@ -26,15 +26,19 @@ export function Footer() {
         <div className="flex flex-col items-center gap-3">
           <div className="flex flex-wrap justify-center gap-6 text-sm font-medium text-yellow-600">
             <Link href="/" className="hover:underline">
-              Projeto
+              Inicio
             </Link>
-            <Link href="/" className="hover:underline">
-              Documentação
+            <Link href="/termos" className="hover:underline">
+              Termos
             </Link>
-            <Link href="/" className="hover:underline">
-              Contato
+            <Link href="/privacidade" className="hover:underline">
+              Privacidade
             </Link>
-            <Link href="https://github.com" target="_blank">
+            <Link
+              href="https://github.com/jvitorn/meg-pocket"
+              target="_blank"
+              aria-label="Repositório do Meg Pocket no GitHub"
+            >
               <Github className="w-5 h-5 hover:text-yellow-500 transition" />
             </Link>
           </div>

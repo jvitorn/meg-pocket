@@ -81,7 +81,7 @@ describe("LoginForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("redireciona para a rota retornada pelo login bem-sucedido", async () => {
+  it("redireciona para o dashboard quando o login e bem-sucedido", async () => {
     const user = userEvent.setup();
     authServiceMocks.loginComSenha.mockResolvedValue({
       ok: true,
@@ -94,7 +94,7 @@ describe("LoginForm", () => {
     await user.type(screen.getByLabelText("Senha"), "senha-correta");
     await user.click(screen.getByRole("button", { name: "Login" }));
 
-    expect(routerMocks.replace).toHaveBeenCalledWith("/fichas/novo");
+    expect(routerMocks.replace).toHaveBeenCalledWith("/dashboard");
     expect(routerMocks.refresh).toHaveBeenCalledTimes(1);
   });
 });

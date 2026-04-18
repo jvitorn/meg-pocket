@@ -45,6 +45,31 @@ if (!rawDbUrl) {
   process.exit(1);
 }
 
+function isLocalDatabaseUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    return ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+const isSeedFile = sqlArg.startsWith("prisma/seeds/");
+
+if (
+  isSeedFile &&
+  !isLocalDatabaseUrl(rawDbUrl) &&
+  process.env.ALLOW_NON_LOCAL_DB_SEED !== "1"
+) {
+  console.error(
+    "Seed bloqueada: DATABASE_URL/DIRECT_URL nao aponta para banco local."
+  );
+  console.error(
+    "Use npm run env:local antes de semear localmente. Para override consciente, defina ALLOW_NON_LOCAL_DB_SEED=1."
+  );
+  process.exit(1);
+}
+
 const dbUrl = rawDbUrl.split("?")[0];
 const result = spawnSync("psql", [dbUrl, "-v", "ON_ERROR_STOP=1", "-f", sqlPath], {
   stdio: "inherit",

@@ -1,12 +1,16 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
+const baseURL =
+  process.env.PLAYWRIGHT_BASE_URL ??
+  process.env.NEXTAUTH_URL ??
+  "http://localhost:3000";
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
+  workers: process.env.MEG_E2E === "1" ? 1 : undefined,
   reporter: "list",
   use: {
     baseURL,
@@ -15,7 +19,7 @@ export default defineConfig({
   webServer: {
     command: "npm run dev -- --hostname 127.0.0.1 --port 3000",
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && process.env.MEG_E2E !== "1",
     timeout: 120_000,
   },
   projects: [
