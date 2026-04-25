@@ -1,10 +1,14 @@
 import { Suspense } from "react";
+import { unstable_noStore as noStore } from "next/cache";
 import { Navbar } from "@/components/navbar";
 import CampanhasServer from "./server";
 import { Footer } from "@/components/footer";
 import { CampanhasGridSkeleton } from "@/components/skeletons/campanhas-grid.skeleton";
 
+export const dynamic = "force-dynamic";
+
 export default function CampanhasPage() {
+  noStore();
   return (
     <>
       <Navbar />

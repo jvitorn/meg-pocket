@@ -42,6 +42,10 @@ vi.mock("@/lib/security/rate-limit", () => ({
   buildRateLimitHeaders: mocks.buildRateLimitHeaders,
 }));
 
+vi.mock("@/lib/cache/revalidate", () => ({
+  revalidateCampanhasData: vi.fn(),
+}));
+
 import { POST } from "@/app/api/personagem/create/route";
 
 function makeRequest(body: unknown) {

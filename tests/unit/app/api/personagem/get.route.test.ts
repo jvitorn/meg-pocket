@@ -29,6 +29,10 @@ vi.mock("@/lib/regras/personagemPermissao", () => ({
   getSessionUserId: mocks.getSessionUserId,
 }));
 
+vi.mock("@/lib/cache/revalidate", () => ({
+  revalidateCampanhasData: vi.fn(),
+}));
+
 import { GET } from "@/app/api/personagem/[id]/route";
 
 describe("GET /api/personagem/[id]", () => {

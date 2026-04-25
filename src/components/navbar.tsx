@@ -13,15 +13,9 @@ import { Github, Menu, X, Lightbulb } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Cormorant_Garamond } from "next/font/google";
 import { getNavLinks } from "@/lib/navigation";
 import { authService } from "@/services/authService";
 import { cn } from "@/lib/utils";
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["700"],
-});
 
 function isLinkActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -54,13 +48,13 @@ export function Navbar() {
       className={cn(
         "sticky top-0 z-50 w-full backdrop-blur transition-colors duration-200",
         hasScrolled
-          ? "border-b border-border/60 bg-background/85 shadow-md supports-[backdrop-filter]:bg-background/75"
+          ? "border-b border-border/60 bg-background/85 shadow-md supports-backdrop-filter:bg-background/75"
           : "border-b border-transparent bg-transparent"
       )}
     >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo */}
-        <div className={`${cormorant.className} font-bold text-lg`}>
+        <div className="font-display font-bold text-lg">
           M&G
         </div>
 

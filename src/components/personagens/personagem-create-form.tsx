@@ -17,7 +17,6 @@ import type { ColorThemeName } from "@/lib/utils";
 import {
   calcularQuantidadeObrigatoriaPericias,
   formatPericiaTipo,
-  isValidExternalUrl,
   normalizePericiaTipo,
 } from "@/lib/regras/personagemCriacao";
 import {
@@ -42,6 +41,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  PersonagemImageUpload,
+  type ImageUploadDraft,
+} from "@/components/personagens/personagem-image-upload";
 
 type CampanhaOption = {
   id: number;
@@ -290,7 +293,14 @@ export default function PersonagemCreateForm({
   const [nome, setNome] = useState(initialData?.nome ?? "");
   const [apelido, setApelido] = useState(initialData?.apelido ?? "");
   const [descricao, setDescricao] = useState(initialData?.descricao ?? "");
-  const [urlImagem, setUrlImagem] = useState(initialData?.url_imagem ?? "");
+  const [imageDraft, setImageDraft] = useState<ImageUploadDraft | null>(
+    initialData?.url_imagem
+      ? {
+          previewUrl: initialData.url_imagem,
+          file: null,
+        }
+      : null
+  );
 
   const [campanhaId, setCampanhaId] = useState(
     initialData?.campanhaId
@@ -397,10 +407,6 @@ export default function PersonagemCreateForm({
     const selectedSet = new Set(selectedMagiaIds);
     return selectedClasseMagias.filter((magia) => selectedSet.has(String(magia.id)));
   }, [selectedClasseMagias, selectedMagiaIds]);
-  const normalizedUrlImagem = urlImagem.trim();
-  const hasUrlImagem = normalizedUrlImagem.length > 0;
-  const isUrlImagemValida = !hasUrlImagem || isValidExternalUrl(normalizedUrlImagem);
-
   useEffect(() => {
     if (selectedMagiaIds.length === 0) return;
     const magiaIdsValidos = new Set(selectedClasseMagias.map((magia) => String(magia.id)));
@@ -454,8 +460,7 @@ export default function PersonagemCreateForm({
     Boolean(classeId) &&
     Boolean(racaId) &&
     Boolean(canAdvanceStep3) &&
-    Boolean(canAdvanceStep4) &&
-    Boolean(isUrlImagemValida);
+    Boolean(canAdvanceStep4);
 
   const modalClasse = detailsModal?.kind === "classe" ? detailsModal.item : null;
   const modalRaca = detailsModal?.kind === "raca" ? detailsModal.item : null;
@@ -594,11 +599,6 @@ export default function PersonagemCreateForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!isUrlImagemValida) {
-      setError("Informe uma URL válida com http:// ou https://.");
-      return;
-    }
-
     if (!canSubmit) {
       setError(
         isEditMode
@@ -612,11 +612,34 @@ export default function PersonagemCreateForm({
     setLoading(true);
 
     try {
+      let uploadedImageUrl: string | null = imageDraft?.previewUrl ?? null;
+
+      if (imageDraft?.file) {
+        const formData = new FormData();
+        formData.append("file", imageDraft.file);
+
+        const uploadResponse = await fetch("/api/storage/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadData = await uploadResponse.json().catch(() => null);
+
+        if (!uploadResponse.ok) {
+          setError(
+            uploadData?.error ?? "Nao foi possivel enviar a imagem para o storage."
+          );
+          return;
+        }
+
+        uploadedImageUrl = String(uploadData?.url ?? "").trim() || null;
+      }
+
       const payload = {
         nome: nome.trim(),
         apelido: apelido.trim() || null,
         descricao: descricao.trim() || null,
-        url_imagem: urlImagem.trim() || null,
+        url_imagem: uploadedImageUrl,
         campanhaId,
         classeId,
         racaId,
@@ -652,7 +675,7 @@ export default function PersonagemCreateForm({
         return;
       }
 
-      router.push("/dashboard");
+      router.push("/fichas");
       router.refresh();
     } catch (err: unknown) {
       setError(
@@ -1333,31 +1356,11 @@ export default function PersonagemCreateForm({
                     />
                   </Field>
 
-                  <Field>
-                    <FieldLabel htmlFor="url_imagem">URL da imagem (opcional)</FieldLabel>
-                    <Input
-                      id="url_imagem"
-                      name="url_imagem"
-                      type="url"
-                      inputMode="url"
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                      spellCheck={false}
-                      value={urlImagem}
-                      onChange={(e) => setUrlImagem(e.target.value)}
-                      aria-invalid={!isUrlImagemValida}
-                      className={cn(
-                        !isUrlImagemValida &&
-                          "border-destructive focus-visible:ring-destructive/50"
-                      )}
-                      placeholder="https://..."
-                    />
-                    <FieldDescription className={cn(!isUrlImagemValida && "text-destructive")}>
-                      {isUrlImagemValida
-                        ? "Apenas links válidos (http:// ou https://)."
-                        : "Informe uma URL válida iniciando com http:// ou https://."}
-                    </FieldDescription>
-                  </Field>
+                  <PersonagemImageUpload
+                    value={imageDraft}
+                    onChange={setImageDraft}
+                    disabled={loading}
+                  />
 
                   {(selectedClasse || selectedRaca || selectedCampanha) && (
                     <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-linear-to-br from-background via-background/95 to-muted/40 p-5">
@@ -1555,7 +1558,7 @@ export default function PersonagemCreateForm({
               <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
                 <div className="space-y-2">
                   <Button asChild variant="outline" className="w-full">
-                    <Link href="/dashboard">Cancelar</Link>
+                    <Link href="/fichas">Cancelar</Link>
                   </Button>
 
                   {step > 1 && (
@@ -1604,7 +1607,7 @@ export default function PersonagemCreateForm({
                   </Button>
                 ) : (
                   <Button asChild variant="outline" className="flex-1">
-                    <Link href="/dashboard">Cancelar</Link>
+                    <Link href="/fichas">Cancelar</Link>
                   </Button>
                 )}
 

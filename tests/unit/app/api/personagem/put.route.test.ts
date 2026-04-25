@@ -24,6 +24,10 @@ vi.mock("@/lib/security/rate-limit", () => ({
   buildRateLimitHeaders: mocks.buildRateLimitHeaders,
 }));
 
+vi.mock("@/lib/cache/revalidate", () => ({
+  revalidateCampanhasData: vi.fn(),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     personagem: {

@@ -34,6 +34,29 @@ vi.mock("@/components/magia-details-drawer", () => ({
   MagiaDetailsDrawer: () => null,
 }));
 
+vi.mock("@/components/personagens/personagem-image-upload", () => ({
+  PersonagemImageUpload: ({
+    onChange,
+    disabled,
+  }: {
+    onChange: (value: { previewUrl: string; file: File | null } | null) => void;
+    disabled?: boolean;
+  }) => (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() =>
+        onChange({
+          previewUrl: "blob:personagem-upload-preview",
+          file: new File(["imagem"], "avatar.png", { type: "image/png" }),
+        })
+      }
+    >
+      Simular upload de imagem
+    </button>
+  ),
+}));
+
 vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogClose: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -150,10 +173,6 @@ describe("PersonagemCreateForm", () => {
         screen.getByLabelText("Descrição curta"),
         "Observadora dos véus arcanos."
       );
-      await user.type(
-        screen.getByLabelText("URL da imagem (opcional)"),
-        "https://example.com/selene.png"
-      );
 
       await user.click(getActionButton("Criar ficha"));
 
@@ -165,7 +184,7 @@ describe("PersonagemCreateForm", () => {
             nome: "Selene",
             apelido: "A Cronista",
             descricao: "Observadora dos véus arcanos.",
-            url_imagem: "https://example.com/selene.png",
+            url_imagem: null,
             campanhaId: "1",
             classeId: "2",
             racaId: "3",
@@ -177,6 +196,78 @@ describe("PersonagemCreateForm", () => {
       });
 
       expect(routerMocks.push).toHaveBeenCalledWith("/personagens/42");
+      expect(routerMocks.refresh).toHaveBeenCalledTimes(1);
+    },
+    15000
+  );
+
+  it(
+    "envia a imagem para o storage antes de criar a ficha",
+    async () => {
+      const user = userEvent.setup();
+
+      fetchMock
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ url: "http://localhost:9323/personagens/selene.png" }), {
+            status: 201,
+            headers: { "content-type": "application/json" },
+          })
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 77 }), {
+            status: 201,
+            headers: { "content-type": "application/json" },
+          })
+        );
+
+      render(<PersonagemCreateForm {...props} />);
+
+      await user.click(getActionButton("Continuar"));
+      await user.click(getActionButton("Continuar"));
+
+      const magiaCardButton = screen.getByText("Chama Astral").closest("button");
+      expect(magiaCardButton).not.toBeNull();
+      await user.click(magiaCardButton!);
+
+      await user.click(getActionButton("Continuar"));
+      await user.click(getActionButton("Continuar"));
+      await user.click(getActionButton("Continuar"));
+
+      await user.type(screen.getByLabelText("Nome do personagem"), "Selene");
+      await user.type(
+        screen.getByLabelText("Descrição curta"),
+        "Observadora dos véus arcanos."
+      );
+      await user.click(screen.getByRole("button", { name: "Simular upload de imagem" }));
+      await user.click(getActionButton("Criar ficha"));
+
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/storage/upload", {
+          method: "POST",
+          body: expect.any(FormData),
+        });
+      });
+
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/personagem/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nome: "Selene",
+            apelido: null,
+            descricao: "Observadora dos véus arcanos.",
+            url_imagem: "http://localhost:9323/personagens/selene.png",
+            campanhaId: "1",
+            classeId: "2",
+            racaId: "3",
+            magiaIds: [10],
+            periciaIds: [20],
+            elemento: "natureza",
+          }),
+        });
+      });
+
+      expect(routerMocks.push).toHaveBeenCalledWith("/personagens/77");
       expect(routerMocks.refresh).toHaveBeenCalledTimes(1);
     },
     15000

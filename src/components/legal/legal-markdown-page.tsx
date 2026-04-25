@@ -1,14 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { Cormorant_Garamond } from "next/font/google";
 import { Footer } from "@/components/footer";
 import { MarkdownContent } from "@/components/world/markdown-content";
 import { Navbar } from "@/components/navbar";
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["600", "700"],
-});
 
 type LegalMarkdownPageProps = {
   filename: string;
@@ -34,9 +28,7 @@ export async function LegalMarkdownPage({
             <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
               {eyebrow}
             </p>
-            <h1
-              className={`${cormorant.className} mt-3 text-3xl font-bold md:text-5xl`}
-            >
+            <h1 className="font-display mt-3 text-3xl font-bold md:text-5xl">
               {title}
             </h1>
             <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">

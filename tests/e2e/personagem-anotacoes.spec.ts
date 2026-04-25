@@ -19,10 +19,10 @@ test("login com credenciais renderiza o dashboard do jogador", async ({
   await loginAsSeedUser(page);
 
   await expect(
-    page.getByRole("heading", { name: "Fichas", exact: true })
+    page.getByRole("heading", { name: "Dashboard", exact: true })
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Nova Ficha" })
+    page.getByRole("link", { name: "Nova ficha" })
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Acessar Ficha" }).first()

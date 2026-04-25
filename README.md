@@ -95,6 +95,12 @@ npm run env:local
 npm run db:up
 ```
 
+Esse comando sobe:
+
+- `postgres` na porta `5433`
+- `storage` local na porta `9323`
+- `adminer` na porta `8081`
+
 5. Aplique as migrations e gere o Prisma Client:
 
 ```bash
@@ -124,6 +130,93 @@ O banco local fica disponivel em:
 ```text
 postgresql://meg:meg@localhost:5433/meg_pocket
 ```
+
+## Infra Local e Acessos
+
+### PostgreSQL
+
+- Host no seu computador: `localhost`
+- Porta: `5433`
+- Database: `meg_pocket`
+- Usuario: `meg`
+- Senha: `meg`
+
+String de conexao local:
+
+```text
+postgresql://meg:meg@localhost:5433/meg_pocket
+```
+
+### Adminer
+
+Para acessar o banco pelo navegador:
+
+```text
+http://localhost:8081
+```
+
+Preencha assim na tela inicial do Adminer:
+
+- Sistema: `PostgreSQL`
+- Servidor: `postgres`
+- Usuario: `meg`
+- Senha: `meg`
+- Base de dados: `meg_pocket`
+
+Passo a passo:
+
+1. Rode `npm run db:up`
+2. Abra `http://localhost:8081`
+3. Escolha `PostgreSQL`
+4. Informe `postgres` no campo servidor
+5. Informe `meg` e `meg`
+6. Informe `meg_pocket`
+7. Clique em `Entrar`
+
+Observacao:
+
+- dentro do Docker, o hostname correto e `postgres`
+- se voce tentar `localhost` dentro do Adminer, a conexao pode falhar
+
+### Storage Local de Imagens
+
+As imagens enviadas no fluxo de ficha sao salvas localmente e servidas por um container nginx.
+
+- URL base publica: `http://localhost:9323`
+- Pasta local: `storage/local/public`
+
+Exemplo de arquivo servido:
+
+```text
+http://localhost:9323/personagens/personagens/2026/04/arquivo.webp
+```
+
+Observacao:
+
+- essa pasta esta no `.gitignore`
+- ela existe apenas para desenvolvimento local
+- `npm run db:up` tambem sobe esse storage
+
+### Storage de Producao
+
+Em producao, o upload de imagem usa um bucket S3 compativel via `@aws-sdk/client-s3`.
+
+Variaveis esperadas:
+
+- `STORAGE_DRIVER="s3"`
+- `STORAGE_BUCKET`
+- `STORAGE_ENDPOINT`
+- `STORAGE_REGION`
+- `STORAGE_PUBLIC_URL`
+- `STORAGE_ACCESS_ID`
+- `STORAGE_ACCESS_KEY`
+- `STORAGE_FORCE_PATH_STYLE`
+
+Observacoes:
+
+- `STORAGE_PUBLIC_URL` e a base publica usada para montar a URL final da imagem
+- `STORAGE_FORCE_PATH_STYLE="true"` costuma ser o ajuste certo para provedores S3 compativeis
+- o projeto ainda aceita o alias legado `STIRAGE_ACCESS_ID`, mas o nome correto e `STORAGE_ACCESS_ID`
 
 ## Usuarios Locais de Seed
 
@@ -214,9 +307,9 @@ Os e2e sempre forcam ambiente local, reseedam o banco local antes e depois da su
 - `npm run test:e2e:install`: instala o Chromium do Playwright.
 - `npm run test:e2e`: executa e2e com ambiente local protegido.
 - `npm run test:all`: executa unitarios e e2e.
-- `npm run db:up`: sobe o PostgreSQL local.
+- `npm run db:up`: sobe PostgreSQL, storage local e Adminer.
 - `npm run db:down`: derruba o Docker Compose local.
-- `npm run db:logs`: mostra logs do PostgreSQL local.
+- `npm run db:logs`: mostra logs de PostgreSQL, storage e Adminer.
 - `npm run db:generate`: gera Prisma Client.
 - `npm run db:migrate`: cria/aplica migrations no banco ativo.
 - `npm run db:deploy`: aplica migrations existentes no banco ativo.

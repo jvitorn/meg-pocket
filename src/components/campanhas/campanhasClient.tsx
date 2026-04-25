@@ -15,6 +15,8 @@ type Props = {
   initialCampanhas: CampanhaInterface[];
 };
 
+const PERSONAGENS_CACHE_TTL_MS = 30_000;
+
 export default function CampanhasClient({ initialCampanhas }: Props) {
   const [campanhas] = useState<CampanhaInterface[]>(initialCampanhas || []);
   const [campanhaSelecionada, setCampanhaSelecionada] = useState<CampanhaInterface | null>(null);
@@ -23,40 +25,45 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
   const [dialogAberto, setDialogAberto] = useState(false);
   const [busca, setBusca] = useState('');
 
-  const personagensCache = useRef<Record<number, PersonagemInterface[]>>({});
-  // Caso queira revalidar client-side (opcional), você pode implementar refetch.
-  // Por ora, confiamos no cache server + revalidateTag depois do update.
+  const personagensCache = useRef<
+    Record<number, { data: PersonagemInterface[]; fetchedAt: number }>
+  >({});
 
-  // Abre detalhes e carrega personagens (fetch dinâmico)
   async function abrirDetalhes(campanha: CampanhaInterface) {
-  setCampanhaSelecionada(campanha);
-  setDialogAberto(true);
+    setCampanhaSelecionada(campanha);
+    setDialogAberto(true);
 
-  // SE JÁ TEM NO CACHE → usa diretamente
-  if (personagensCache.current[campanha.id]) {
-    setPersonagens(personagensCache.current[campanha.id]);
-    setLoadingPersonagens(false);
-    return;
-  }
+    const cachedEntry = personagensCache.current[campanha.id];
 
-  // CASO CONTRÁRIO → faz fetch e salva no cache
-  setLoadingPersonagens(true);
-  setPersonagens([]);
+    if (
+      cachedEntry &&
+      Date.now() - cachedEntry.fetchedAt < PERSONAGENS_CACHE_TTL_MS
+    ) {
+      setPersonagens(cachedEntry.data);
+      setLoadingPersonagens(false);
+      return;
+    }
 
-  try {
-    const dataPersonagens: PersonagemInterface[] =
-      await getPersonagensNaCampanha(campanha.id);
-
-    personagensCache.current[campanha.id] = dataPersonagens || []; // salva no cache
-
-    setPersonagens(dataPersonagens || []);
-  } catch (err) {
-    console.error("Erro ao carregar personagens:", err);
+    setLoadingPersonagens(true);
     setPersonagens([]);
-  } finally {
-    setLoadingPersonagens(false);
+
+    try {
+      const dataPersonagens: PersonagemInterface[] =
+        await getPersonagensNaCampanha(campanha.id);
+
+      personagensCache.current[campanha.id] = {
+        data: dataPersonagens || [],
+        fetchedAt: Date.now(),
+      };
+
+      setPersonagens(dataPersonagens || []);
+    } catch (err) {
+      console.error("Erro ao carregar personagens:", err);
+      setPersonagens([]);
+    } finally {
+      setLoadingPersonagens(false);
+    }
   }
-}
 
   const campanhasFiltradas = useMemo(() => {
     const query = busca.trim().toLowerCase();

@@ -14,6 +14,7 @@ import {
   buildRateLimitHeaders,
   enforceRateLimit,
 } from "@/lib/security/rate-limit";
+import { revalidateCampanhasData } from "@/lib/cache/revalidate";
 
 const allowedElements = new Set(["natureza", "agua", "fogo", "vento"]);
 
@@ -276,6 +277,8 @@ export async function POST(request: Request) {
             : undefined,
       },
     });
+
+    revalidateCampanhasData();
 
     return NextResponse.json(
       { ok: true, id: personagem.id },

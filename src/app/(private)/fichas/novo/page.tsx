@@ -5,16 +5,10 @@ import PersonagemCreateForm, {
   type PersonagemFormInitialData,
 } from "@/components/personagens/personagem-create-form";
 import { unstable_noStore as noStore } from "next/cache";
-import { Cormorant_Garamond } from "next/font/google";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { resolveColorThemeName } from "@/lib/utils";
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["600", "700"],
-});
 
 type NovaFichaPageProps = {
   searchParams?: Promise<{
@@ -152,7 +146,7 @@ export default async function NovaFichaPage({
     });
 
     if (!personagem) {
-      redirect("/dashboard");
+      redirect("/fichas");
     }
 
     initialData = {
@@ -182,9 +176,7 @@ export default async function NovaFichaPage({
               <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
                 {initialData ? "Editar ficha" : "Nova ficha"}
               </p>
-              <h1
-                className={`${cormorant.className} text-3xl md:text-4xl font-bold`}
-              >
+              <h1 className="font-display text-3xl md:text-4xl font-bold">
                 {initialData ? "Editar ficha" : "Criar ficha"}
               </h1>
             </div>

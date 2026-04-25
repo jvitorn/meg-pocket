@@ -6,21 +6,16 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import LogoutButton from "./logout-button";
 import Link from "next/link";
-import { Cormorant_Garamond } from "next/font/google";
-import { Plus } from "lucide-react";
+import { LayoutDashboard, Plus, ScrollText } from "lucide-react";
 import { unstable_noStore as noStore } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { Toaster } from "@/components/ui/sonner";
-import {
-  DashboardPersonagensGrid,
-  type DashboardPersonagemGridItem,
-} from "@/components/dashboard-personagens-grid";
 import { resolverBaseAtributo } from "@/lib/personagemAtributos";
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["600", "700"],
-});
+import { DashboardPersonagemCard } from "@/components/dashboard-personagem-card";
+import {
+  DashboardCampaignsSection,
+  type DashboardCampanhaItem,
+} from "@/components/dashboard-campaigns-section";
 
 type PersonagemListItem = Prisma.PersonagemGetPayload<{
   include: { classe: true; raca: true; campanha: true };
@@ -29,18 +24,78 @@ type PersonagemListItem = Prisma.PersonagemGetPayload<{
 export default async function DashboardPage() {
   noStore();
   const session = await getServerSession(authOptions);
-  const MAX_PERSONAGENS = 15;
   const userId = session?.user?.id;
+  const userName = session?.user?.name?.trim();
+  const userEmail = session?.user?.email?.trim();
+  const campaignFilters: Prisma.CampanhaWhereInput[] = [];
+
+  if (userId) {
+    campaignFilters.push({
+      user: {
+        is: {
+          id: userId,
+        },
+      },
+    });
+  }
+
+  if (userName) {
+    campaignFilters.push({
+      user: null,
+      mestre: {
+        equals: userName,
+        mode: "insensitive",
+      },
+    });
+  }
+
+  if (userEmail) {
+    campaignFilters.push({
+      user: null,
+      mestre: {
+        equals: userEmail,
+        mode: "insensitive",
+      },
+    });
+  }
 
   const personagens: PersonagemListItem[] = userId
     ? await prisma.personagem.findMany({
         where: { userId },
         orderBy: { updatedAt: "desc" },
-        take: MAX_PERSONAGENS,
+        take: 6,
         include: {
           classe: true,
           raca: true,
           campanha: true,
+        },
+      })
+    : [];
+
+  const campanhas = campaignFilters.length
+    ? await prisma.campanha.findMany({
+        where: {
+          OR: campaignFilters,
+        },
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+        select: {
+          id: true,
+          nome: true,
+          sinopse: true,
+          capa: true,
+          mestre: true,
+          user: {
+            select: {
+              id: true,
+            },
+          },
+          createdAt: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              personagens: true,
+            },
+          },
         },
       })
     : [];
@@ -50,6 +105,25 @@ export default async function DashboardPage() {
     month: "2-digit",
     year: "2-digit",
   });
+
+  const campanhasNormalizadas: DashboardCampanhaItem[] = campanhas.map(
+    (campanha) => ({
+      id: campanha.id,
+      nome: campanha.nome,
+      sinopse: campanha.sinopse ?? null,
+      capa: campanha.capa ?? null,
+      mestre: campanha.mestre ?? null,
+      countPersonagens: campanha._count.personagens,
+      createdAtLabel: formatter.format(new Date(campanha.createdAt)),
+      updatedAtLabel: formatter.format(new Date(campanha.updatedAt)),
+      isOwner: campanha.user?.id === userId,
+    })
+  );
+
+  const totalCampanhas = campanhasNormalizadas.length;
+  const totalPersonagens = personagens.length;
+  const ultimaAtualizacao =
+    personagens[0]?.updatedAt ?? campanhas[0]?.updatedAt ?? null;
 
   return (
     <>
@@ -63,25 +137,30 @@ export default async function DashboardPage() {
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                  Seu grimório
+                  Painel do mestre
                 </p>
-                <h1
-                  className={`${cormorant.className} text-3xl md:text-4xl font-bold`}
-                >
-                  Fichas
+                <h1 className="font-display text-3xl md:text-4xl font-bold">
+                  Dashboard
                 </h1>
                 <p className="text-sm text-muted-foreground mt-3 max-w-xl">
                   Bem-vindo{session?.user?.name ? "," : ""}{" "}
-                  {session?.user?.name ?? "aventureiro"} — aqui estão as fichas
-                  que você já criou e seus próximos passos.
+                  {session?.user?.name ?? "mestre"} — daqui voce acompanha suas
+                  campanhas e as fichas mais recentes sem misturar tudo numa
+                  unica tela.
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                 <Button asChild className="gap-2">
+                  <Link href="/fichas">
+                    <ScrollText className="h-4 w-4" />
+                    Ver fichas
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="gap-2">
                   <Link href="/fichas/novo">
                     <Plus className="h-4 w-4" />
-                    Nova Ficha
+                    Nova ficha
                   </Link>
                 </Button>
                 <LogoutButton size="sm" className="w-auto" />
@@ -90,86 +169,139 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="max-w-7xl mx-auto px-6 pb-12">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            <div className="text-sm text-muted-foreground">
-              Fichas:{" "}
-              <span className="text-foreground font-semibold">
-                {personagens.length}
-              </span>
-              /{MAX_PERSONAGENS}
+        <section className="max-w-7xl mx-auto px-6 pb-12 space-y-8">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-border/60 bg-card/80 p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-500/10 text-amber-600">
+                  <LayoutDashboard className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Campanhas
+                  </p>
+                  <p className="text-2xl font-semibold">{totalCampanhas}</p>
+                </div>
+              </div>
             </div>
-            <div className="text-xs text-muted-foreground">
-              {personagens.length >= MAX_PERSONAGENS
-                ? "Limite alcançado — arquive um personagem para criar outro."
-                : "Você pode criar mais personagens quando quiser."}
+
+            <div className="rounded-2xl border border-border/60 bg-card/80 p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+                  <ScrollText className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Fichas recentes
+                  </p>
+                  <p className="text-2xl font-semibold">{totalPersonagens}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border/60 bg-card/80 p-5 shadow-sm">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Ultima atividade
+              </p>
+              <p className="mt-2 text-2xl font-semibold">
+                {ultimaAtualizacao
+                  ? formatter.format(new Date(ultimaAtualizacao))
+                  : "Sem atividade"}
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Considera a ficha ou campanha atualizada mais recentemente.
+              </p>
             </div>
           </div>
 
-          {personagens.length === 0 ? (
-            <div className="flex min-h-[55vh] items-center justify-center">
-              <div className="w-full max-w-xl rounded-3xl border border-border/60 bg-card/70 p-10 text-center shadow-sm">
-                <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full border border-border/60 bg-background/80">
+          <DashboardCampaignsSection
+            initialCampanhas={campanhasNormalizadas}
+            defaultMestre={userName || userEmail || ""}
+          />
+
+          <section className="rounded-3xl border border-border/60 bg-card/70 p-6 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                  Fichas recentes
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold">
+                  Seus ultimos personagens
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Uma visao rapida do que foi atualizado por ultimo, com atalho
+                  direto para a lista completa.
+                </p>
+              </div>
+              <Button asChild variant="outline">
+                <Link href="/fichas">Abrir todas as fichas</Link>
+              </Button>
+            </div>
+
+            {personagens.length > 0 ? (
+              <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {personagens.map((personagem) => {
+                  const nome =
+                    personagem.apelido?.trim() || personagem.nome || "Sem nome";
+                  const classe = personagem.classe?.nome ?? null;
+                  const raca = personagem.raca?.nome ?? null;
+                  const detalhe =
+                    classe && raca
+                      ? `${classe} • ${raca}`
+                      : classe || raca || "Origem nao definida";
+                  const imageSrc =
+                    personagem.url_imagem || personagem.imagem_pixel || "";
+                  const hpMax = resolverBaseAtributo({
+                    basePersistida: personagem.hp_base,
+                    baseDerivada:
+                      (personagem.raca?.hp ?? 0) + (personagem.classe?.hp ?? 0),
+                  });
+                  const manaMax = resolverBaseAtributo({
+                    basePersistida: personagem.mana_base,
+                    baseDerivada:
+                      (personagem.raca?.mana ?? 0) +
+                      (personagem.classe?.mana ?? 0),
+                  });
+
+                  return (
+                    <DashboardPersonagemCard
+                      key={personagem.id}
+                      id={personagem.id}
+                      nome={nome}
+                      detalhe={detalhe}
+                      imageSrc={imageSrc}
+                      createdAtLabel={formatter.format(new Date(personagem.createdAt))}
+                      updatedAtLabel={formatter.format(new Date(personagem.updatedAt))}
+                      campanhaNome={personagem.campanha?.nome ?? "Sem campanha"}
+                      elemento={personagem.elemento || "sem elemento"}
+                      hpAtual={personagem.hp_atual}
+                      hpMax={hpMax}
+                      manaAtual={personagem.mana_atual}
+                      manaMax={manaMax}
+                      defesaAtual={personagem.defesa_atual ?? 0}
+                      defesaMax={personagem.defesa_max ?? 0}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-background/60 p-8 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-border/60 bg-background">
                   <Plus className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <h2 className="text-2xl font-semibold">
-                  Nenhum personagem criado
-                </h2>
-                <p className="text-sm text-muted-foreground mt-3">
-                  Crie sua primeira ficha para começar sua jornada em
-                  Valthera com estilo.
+                <h3 className="mt-4 text-xl font-semibold">
+                  Nenhuma ficha criada ainda
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Quando suas fichas nascerem, elas aparecem aqui como atalho
+                  rapido para a mesa.
                 </p>
-                <Button asChild className="mt-6 px-6">
+                <Button asChild className="mt-5">
                   <Link href="/fichas/novo">Criar ficha</Link>
                 </Button>
               </div>
-            </div>
-          ) : (
-            <DashboardPersonagensGrid
-              personagens={personagens.map((personagem: PersonagemListItem): DashboardPersonagemGridItem => {
-                const nome =
-                  personagem.apelido?.trim() || personagem.nome || "Sem nome";
-                const classe = personagem.classe?.nome ?? null;
-                const raca = personagem.raca?.nome ?? null;
-                const detalhe =
-                  classe && raca
-                    ? `${classe} • ${raca}`
-                    : classe || raca || "Origem não definida";
-                const imageSrc =
-                  personagem.url_imagem || personagem.imagem_pixel || "";
-                const hpMax = resolverBaseAtributo({
-                  basePersistida: personagem.hp_base,
-                  baseDerivada:
-                    (personagem.raca?.hp ?? 0) + (personagem.classe?.hp ?? 0),
-                });
-                const manaMax = resolverBaseAtributo({
-                  basePersistida: personagem.mana_base,
-                  baseDerivada:
-                    (personagem.raca?.mana ?? 0) +
-                    (personagem.classe?.mana ?? 0),
-                });
-
-                return {
-                  id: personagem.id,
-                  nome,
-                  detalhe,
-                  imageSrc,
-                  createdAtLabel: formatter.format(new Date(personagem.createdAt)),
-                  updatedAtLabel: formatter.format(new Date(personagem.updatedAt)),
-                  campanhaNome: personagem.campanha?.nome ?? "Sem campanha",
-                  classeNome: classe ?? "",
-                  racaNome: raca ?? "",
-                  elemento: personagem.elemento || "sem elemento",
-                  hpAtual: personagem.hp_atual,
-                  hpMax,
-                  manaAtual: personagem.mana_atual,
-                  manaMax,
-                  defesaAtual: personagem.defesa_atual ?? 0,
-                  defesaMax: personagem.defesa_max ?? 0,
-                };
-              })}
-            />
-          )}
+            )}
+          </section>
         </section>
       </main>
       <Footer />

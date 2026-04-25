@@ -24,6 +24,7 @@ import {
   buildRateLimitHeaders,
   enforceRateLimit,
 } from "@/lib/security/rate-limit";
+import { revalidateCampanhasData } from "@/lib/cache/revalidate";
 
 const allowedElements = new Set(["natureza", "agua", "fogo", "vento"]);
 
@@ -231,6 +232,8 @@ export async function DELETE(
         where: { id: personagemId },
       });
     });
+
+    revalidateCampanhasData();
 
     return NextResponse.json(
       { success: true },
@@ -564,6 +567,8 @@ export async function PUT(
       },
       select: { id: true },
     });
+
+    revalidateCampanhasData();
 
     return NextResponse.json(
       { success: true, id: personagem.id },

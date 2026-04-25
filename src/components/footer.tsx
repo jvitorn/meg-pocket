@@ -2,12 +2,6 @@
 
 import Link from "next/link";
 import { Github } from "lucide-react";
-import { Cormorant_Garamond } from "next/font/google";
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["700"],
-});
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -17,7 +11,7 @@ export function Footer() {
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
         {/* Logo */}
         <div
-          className={`${cormorant.className} text-xl md:text-2xl font-bold text-center md:text-left`}
+          className="font-display text-xl md:text-2xl font-bold text-center md:text-left"
         >
           MAGOS &<br />GRIMORIOS
         </div>

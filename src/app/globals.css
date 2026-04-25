@@ -44,6 +44,9 @@
 }
 
  :root {
+   --font-geist-sans: "Segoe UI", "Helvetica Neue", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+   --font-geist-mono: "SFMono-Regular", "Cascadia Code", "JetBrains Mono", ui-monospace, monospace;
+   --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
    --radius: 0.65rem;
    --background: oklch(1 0 0);
    --foreground: oklch(0.141 0.005 285.823);
@@ -118,5 +121,11 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
   }
 }

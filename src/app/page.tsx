@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
+import { unstable_noStore as noStore } from "next/cache";
 import { BackgroundHome } from "@/components/background-home";
 import { HomeFaq } from "@/components/home-faq";
 import { HomeQuickStart } from "@/components/home-quick-start";
 import { Navbar } from "@/components/navbar";
 import { authOptions } from "@/lib/auth";
 import { getCampanhas } from "@/data/campanhas";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Magos & Grimórios | Crie personagens e campanhas em Valthera",
@@ -35,6 +38,7 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
+  noStore();
   const session = await getServerSession(authOptions);
   const isAuthenticated = Boolean(session?.user);
   const featuredCampaigns = (await getCampanhas()).slice(0, 3);

@@ -35,4 +35,4 @@ export const getCampanhas = unstable_cache(async function (): Promise<CampanhaIn
     console.error("Erro ao buscar campanhas no DB:", err);
     return [];
   }
-}, ["campanhas"], { revalidate: 300 });
+}, ["campanhas"], { revalidate: 60, tags: ["campanhas"] });

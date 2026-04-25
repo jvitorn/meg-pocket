@@ -66,7 +66,7 @@ export default function SelecionadoCard({
                 onError={() => setFailedImageSrc(imageSrc)}
               />
             ) : (
-              <div className="relative z-10 flex h-28 w-28 items-center justify-center rounded-full border border-[color:var(--theme-chip-border)] bg-[var(--theme-chip-bg)] text-[var(--theme-icon)] shadow-sm backdrop-blur-sm md:h-36 md:w-36">
+              <div className="relative z-10 flex h-28 w-28 items-center justify-center rounded-full border border-(--theme-chip-border) bg-(--theme-chip-bg) text-(--theme-icon) shadow-sm backdrop-blur-sm md:h-36 md:w-36">
                 <User className="h-14 w-14 md:h-18 md:w-18" aria-hidden="true" />
               </div>
             )}

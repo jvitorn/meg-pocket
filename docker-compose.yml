@@ -17,5 +17,23 @@ services:
       timeout: 5s
       retries: 5
 
+  storage:
+    image: nginx:1.29-alpine
+    container_name: meg-pocket-storage
+    restart: unless-stopped
+    ports:
+      - "9323:80"
+    volumes:
+      - ./storage/local/public:/usr/share/nginx/html:ro
+
+  adminer:
+    image: adminer:4.8.1
+    container_name: meg-pocket-adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+
 volumes:
   meg-pocket-postgres-data:

@@ -124,18 +124,18 @@ export default function PersonagemCampanhaPage() {
       style={selectedTheme.style}
       className={cn(
         "relative isolate min-h-screen overflow-hidden px-4 py-10 transition-colors duration-700 sm:px-6 lg:px-8",
-        "bg-linear-to-br from-[var(--theme-soft-from)] via-background/95 to-background"
+        "bg-linear-to-br from-(--theme-soft-from) via-background/95 to-background"
       )}
     >
-      <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-[color:var(--theme-ring)] opacity-60 transition-colors duration-700 dark:opacity-45" />
-      <div className="pointer-events-none absolute right-[12%] top-24 h-28 w-28 rounded-full border border-[color:var(--theme-chip-border)] opacity-50 transition-colors duration-700 dark:opacity-35" />
-      <div className="pointer-events-none absolute left-[6%] top-28 h-40 w-40 rounded-full border border-[color:var(--theme-ring)] opacity-45 transition-colors duration-700 dark:opacity-30" />
-      <div className="pointer-events-none absolute left-[22%] top-[42%] h-24 w-24 rounded-full border border-[color:var(--theme-chip-border)] opacity-40 transition-colors duration-700 dark:opacity-25" />
-      <div className="pointer-events-none absolute right-[18%] top-[48%] h-44 w-44 rounded-full border border-[color:var(--theme-ring)] opacity-40 transition-colors duration-700 dark:opacity-25" />
-      <div className="pointer-events-none absolute -bottom-36 left-1/3 h-96 w-96 rounded-full border border-[color:var(--theme-ring)] opacity-40 transition-colors duration-700 dark:opacity-25" />
-      <div className="pointer-events-none absolute -bottom-20 -left-24 h-64 w-64 rounded-full border border-[color:var(--theme-chip-border)] opacity-45 transition-colors duration-700 dark:opacity-30" />
-      <div className="pointer-events-none absolute inset-x-6 top-1/3 h-32 rounded-full bg-[var(--theme-glow)] opacity-85 blur-3xl transition-colors duration-700 dark:opacity-70" />
-      <div className="pointer-events-none absolute inset-x-24 bottom-20 h-24 rounded-full bg-[var(--theme-glow)] opacity-60 blur-3xl transition-colors duration-700 dark:opacity-45" />
+      <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-(--theme-ring) opacity-60 transition-colors duration-700 dark:opacity-45" />
+      <div className="pointer-events-none absolute right-[12%] top-24 h-28 w-28 rounded-full border border-(--theme-chip-border) opacity-50 transition-colors duration-700 dark:opacity-35" />
+      <div className="pointer-events-none absolute left-[6%] top-28 h-40 w-40 rounded-full border border-(--theme-ring) opacity-45 transition-colors duration-700 dark:opacity-30" />
+      <div className="pointer-events-none absolute left-[22%] top-[42%] h-24 w-24 rounded-full border border-(--theme-chip-border) opacity-40 transition-colors duration-700 dark:opacity-25" />
+      <div className="pointer-events-none absolute right-[18%] top-[48%] h-44 w-44 rounded-full border border-(--theme-ring) opacity-40 transition-colors duration-700 dark:opacity-25" />
+      <div className="pointer-events-none absolute -bottom-36 left-1/3 h-96 w-96 rounded-full border border-(--theme-ring) opacity-40 transition-colors duration-700 dark:opacity-25" />
+      <div className="pointer-events-none absolute -bottom-20 -left-24 h-64 w-64 rounded-full border border-(--theme-chip-border) opacity-45 transition-colors duration-700 dark:opacity-30" />
+      <div className="pointer-events-none absolute inset-x-6 top-1/3 h-32 rounded-full bg-(--theme-glow) opacity-85 blur-3xl transition-colors duration-700 dark:opacity-70" />
+      <div className="pointer-events-none absolute inset-x-24 bottom-20 h-24 rounded-full bg-(--theme-glow) opacity-60 blur-3xl transition-colors duration-700 dark:opacity-45" />
 
       <div className="relative z-10 mx-auto max-w-7xl">
         <header className="text-center">
@@ -169,7 +169,7 @@ export default function PersonagemCampanhaPage() {
                 setShowCarousel((current) => !current);
               }}
               variant="ghost"
-              className="flex items-center gap-2 border border-[color:var(--theme-chip-border)] bg-background/40 text-sm text-muted-foreground backdrop-blur-sm transition hover:bg-background/70 hover:text-foreground"
+              className="flex items-center gap-2 border border-(--theme-chip-border) bg-background/40 text-sm text-muted-foreground backdrop-blur-sm transition hover:bg-background/70 hover:text-foreground"
             >
               {showCarousel ? (
                 <>

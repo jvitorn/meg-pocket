@@ -56,10 +56,14 @@ model Campanha {
   capa            String?
   count_jogadores Int?
   mestre          String?
+  userId          String?
   tags            Json?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   personagens     Personagem[]
+  user            User?        @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 /// Personagem
@@ -284,6 +288,7 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
+  campanhas     Campanha[]
   personagens   Personagem[]
   passwordResetTokens PasswordResetToken[]
 }

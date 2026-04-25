@@ -50,7 +50,7 @@ export async function GET(
 
     // mapeia para formato do frontend (compatível com PersonagemInterface)
     const mapped = (personagens || []).map((p) => {
-      const nomeFinal = (p.apelido && p.apelido.trim() !== "") ? p.apelido : p.nome;
+      const nomeFinal = p.nome;
 
       const hpBase = resolverBaseAtributo({
         basePersistida: p.hp_base,
@@ -87,11 +87,11 @@ export async function GET(
         id: p.id,
         nome: nomeFinal,
         apelido: p.apelido ?? null,
-        campanha_id: p.campanhaId,
-        classe_id: p.classeId,
+        campanhaId: p.campanhaId,
         classe_nome: p.classe?.nome ?? null,
-        raca_id: p.racaId,
+        classeId: p.classeId,
         raca_nome: p.raca?.nome ?? null,
+        racaId: p.racaId,
         corTema: p.raca?.corTema ?? null,
         icone: p.raca?.icone ?? null,
         elemento: p.elemento,
