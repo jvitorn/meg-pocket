@@ -33,9 +33,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  experimental: {
-    webpackBuildWorker: false,
-  },
+  output: 'standalone',
   images: {
     dangerouslyAllowLocalIP: true,
     remotePatterns: [
