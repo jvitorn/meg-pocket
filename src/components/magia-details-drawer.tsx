@@ -99,17 +99,17 @@ export function MagiaDetailsDrawer({
             </div>
 
             <div className="relative">
-              <div className="max-h-[min(52svh,420px)] overflow-y-auto overscroll-contain rounded-2xl border border-border/60 bg-muted/20 px-4 py-4 pr-3 text-sm leading-6 shadow-inner scrollbar-thin scrollbar-thumb-foreground/20 scrollbar-track-transparent">
+              <div className="max-h-[min(52svh,420px)] overflow-y-auto overscroll-contain rounded-2xl border border-border/60 bg-muted/20 px-4 pb-12 pt-4 pr-3 text-sm leading-6 shadow-inner scrollbar-thin scrollbar-thumb-foreground/20 scrollbar-track-transparent">
                 <p className="whitespace-pre-wrap">{descricao}</p>
               </div>
 
               {shouldSuggestScroll && (
-                <div className="pointer-events-none absolute inset-x-1 bottom-0 h-10 rounded-b-2xl bg-linear-to-t from-background via-background/80 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-1 bottom-0 h-8 rounded-b-2xl bg-linear-to-t from-background via-background/75 to-transparent" />
               )}
             </div>
           </div>
 
-          <DrawerFooter className="border-t border-border/60 bg-background">
+          <DrawerFooter className="border-t border-border/60 bg-background pb-[calc(env(safe-area-inset-bottom)+1rem)]">
             <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 {closeLabel}

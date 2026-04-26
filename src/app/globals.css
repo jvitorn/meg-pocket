@@ -128,4 +128,114 @@
   .font-display {
     font-family: var(--font-display);
   }
+
+  .animate-soft-pulse {
+    animation: soft-pulse 6s ease-in-out infinite;
+  }
+
+  .animate-border-glow {
+    animation: border-glow 7s ease-in-out infinite;
+  }
+
+  .hover-shimmer-card {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .hover-shimmer-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    padding: 1px;
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      115deg,
+      transparent 0%,
+      transparent 28%,
+      color-mix(in srgb, var(--shimmer-color, var(--primary)) 78%, transparent) 45%,
+      transparent 62%,
+      transparent 100%
+    );
+    background-size: 240% 100%;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    transition: opacity 220ms ease;
+  }
+
+  .hover-shimmer-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        circle at 20% 0%,
+        color-mix(in srgb, var(--shimmer-color, var(--primary)) 22%, transparent),
+        transparent 34%
+      ),
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--shimmer-color, var(--primary)) 12%, transparent),
+        transparent 46%
+      );
+    transform: scale(0.985);
+    transition: opacity 260ms ease, transform 260ms ease;
+  }
+
+  .hover-shimmer-card:hover::before,
+  .hover-shimmer-card:focus-within::before {
+    opacity: 1;
+    animation: shimmer-sweep 1.35s ease forwards;
+  }
+
+  .hover-shimmer-card:hover::after,
+  .hover-shimmer-card:focus-within::after {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: var(--pulse-opacity-min, 0.24);
+    transform: scale(0.98);
+  }
+
+  50% {
+    opacity: var(--pulse-opacity-max, 0.58);
+    transform: scale(1.04);
+  }
+}
+
+@keyframes border-glow {
+  0%,
+  100% {
+    opacity: 0.32;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 20%, transparent);
+  }
+
+  50% {
+    opacity: 0.72;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 42%, transparent),
+      0 0 34px color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+}
+
+@keyframes shimmer-sweep {
+  from {
+    background-position: 180% 0;
+  }
+
+  to {
+    background-position: -80% 0;
+  }
 }

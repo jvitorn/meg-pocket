@@ -77,7 +77,7 @@ export function PersonagemMagias({ personagem, setPersonagem, canEdit }: Props) 
                 className="flex w-full items-start justify-between gap-4 rounded-xl border border-sky-200 bg-sky-50/80 p-4 text-left transition hover:bg-sky-100/80 dark:border-sky-500/15 dark:bg-sky-500/[0.07] dark:hover:bg-sky-500/12 md:p-5"
               >
                 <div className="flex items-center gap-4">
-                  <Sparkles className="w-6 h-6 text-sky-600 dark:text-blue-400" />
+                  <Sparkles className="h-6 w-6 text-sky-600 dark:text-blue-400" />
 
                   <div className="flex-1">
                     <div className="font-semibold text-sm md:text-base">
