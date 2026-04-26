@@ -17,7 +17,7 @@ export async function LegalMarkdownPage({
   title,
   description,
 }: LegalMarkdownPageProps) {
-  const content = await readFile(path.join(process.cwd(), filename), "utf8");
+  const content = await readFile(path.join(process.cwd(), "docs", filename), "utf8");
 
   return (
     <>

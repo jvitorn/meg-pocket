@@ -1,46 +1,88 @@
 "use client";
 
 import Link from "next/link";
-import { Github } from "lucide-react";
+import {
+  BookOpen,
+  FileText,
+  Github,
+  Home,
+  Lock,
+  ScrollText,
+  Shield,
+  Sparkles,
+} from "lucide-react";
 
 export function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="text-foreground border-t border-border py-10 px-6">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
-        {/* Logo */}
-        <div
-          className="font-display text-xl md:text-2xl font-bold text-center md:text-left"
-        >
-          MAGOS &<br />GRIMORIOS
+    <footer className="border-t border-border/70 bg-muted/20 px-6 py-10 text-foreground">
+      <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1fr_auto] md:items-start">
+        <div>
+          <div className="font-display text-xl font-bold text-amber-600 md:text-2xl dark:text-amber-400">
+            MAGOS &<br />GRIMÓRIOS
+          </div>
+          <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+            Ferramenta open source para fichas, campanhas e consultas do sistema
+            Magos & Grimórios.
+          </p>
         </div>
 
-        {/* Links + Social */}
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex flex-wrap justify-center gap-6 text-sm font-medium text-yellow-600">
-            <Link href="/" className="hover:underline">
-              Inicio
+        <div className="grid gap-4 sm:grid-cols-2 md:min-w-md">
+          <nav className="grid gap-2 text-sm [&_svg]:text-amber-600 dark:[&_svg]:text-amber-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700 dark:text-amber-300">
+              Produto
+            </p>
+            <Link href="/" className="inline-flex items-center gap-2 text-foreground/80 transition hover:text-amber-700 dark:hover:text-amber-300">
+              <Home className="h-4 w-4" />
+              Início
             </Link>
-            <Link href="/termos" className="hover:underline">
+            <Link href="/campanhas" className="inline-flex items-center gap-2 text-foreground/80 transition hover:text-amber-700 dark:hover:text-amber-300">
+              <ScrollText className="h-4 w-4" />
+              Campanhas
+            </Link>
+            <Link href="/classe" className="inline-flex items-center gap-2 text-foreground/80 transition hover:text-amber-700 dark:hover:text-amber-300">
+              <Shield className="h-4 w-4" />
+              Classes
+            </Link>
+            <Link href="/raca" className="inline-flex items-center gap-2 text-foreground/80 transition hover:text-amber-700 dark:hover:text-amber-300">
+              <Sparkles className="h-4 w-4" />
+              Raças
+            </Link>
+          </nav>
+
+          <nav className="grid gap-2 text-sm [&_svg]:text-amber-600 dark:[&_svg]:text-amber-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700 dark:text-amber-300">
+              Projeto
+            </p>
+            <Link href="/termos" className="inline-flex items-center gap-2 text-foreground/80 transition hover:text-amber-700 dark:hover:text-amber-300">
+              <FileText className="h-4 w-4" />
               Termos
             </Link>
-            <Link href="/privacidade" className="hover:underline">
+            <Link href="/privacidade" className="inline-flex items-center gap-2 text-foreground/80 transition hover:text-amber-700 dark:hover:text-amber-300">
+              <Lock className="h-4 w-4" />
               Privacidade
+            </Link>
+            <Link href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" className="inline-flex items-center gap-2 text-foreground/80 transition hover:text-amber-700 dark:hover:text-amber-300">
+              <BookOpen className="h-4 w-4" />
+              Conteúdo aberto
             </Link>
             <Link
               href="https://github.com/jvitorn/meg-pocket"
               target="_blank"
+              className="inline-flex items-center gap-2 text-foreground/80 transition hover:text-amber-700 dark:hover:text-amber-300"
               aria-label="Repositório do Meg Pocket no GitHub"
             >
-              <Github className="w-5 h-5 hover:text-yellow-500 transition" />
+              <Github className="h-4 w-4" />
+              GitHub
             </Link>
-          </div>
-
-          <p className="text-muted-foreground text-xs mt-3 text-center">
-            © {year} Magos & Grimórios, Todos os direitos reservados
-          </p>
+          </nav>
         </div>
+      </div>
+
+      <div className="mx-auto mt-8 flex max-w-7xl flex-col gap-2 border-t border-border/60 pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <p>© {year} Magos & Grimórios. Alguns direitos reservados.</p>
+        <p>Código MIT. Conteúdo homebrew aberto para uso e adaptação não comercial.</p>
       </div>
     </footer>
   );

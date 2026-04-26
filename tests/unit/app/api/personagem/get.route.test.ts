@@ -89,7 +89,7 @@ describe("GET /api/personagem/[id]", () => {
       imagem_pixel: null,
       statusEspecial: "vivo",
       userId: "user-1",
-      raca: { nome: "Humano", hp: 5, mana: 2 },
+      raca: { nome: "Humano", hp: 5, mana: 2, corTema: "amber" },
       classe: { nome: "Mago", hp: 3, mana: 7 },
       slotsDefensivos: {
         esquivaUsada: 1,
@@ -161,6 +161,7 @@ describe("GET /api/personagem/[id]", () => {
       classe_nome: "Mago",
       racaId: 3,
       raca_nome: "Humano",
+      corTema: "amber",
       elemento: "fogo",
       hp_atual: 11,
       mana_atual: 9,

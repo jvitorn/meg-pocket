@@ -10,6 +10,7 @@ export interface PersonagemInterface extends BaseInterface {
 
   racaId: number;
   raca_nome?: string;
+  corTema?: string | null;
 
   classeId: number;
   classe_nome?: string;

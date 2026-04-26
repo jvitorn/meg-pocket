@@ -16,6 +16,7 @@ import {
   DashboardCampaignsSection,
   type DashboardCampanhaItem,
 } from "@/components/dashboard-campaigns-section";
+import { AppBreadcrumb } from "@/components/app-breadcrumb";
 
 type PersonagemListItem = Prisma.PersonagemGetPayload<{
   include: { classe: true; raca: true; campanha: true };
@@ -134,6 +135,12 @@ export default async function DashboardPage() {
 
         <section className="bg-linear-to-b from-muted/40 via-background to-background">
           <div className="max-w-7xl mx-auto px-6 py-10">
+            <AppBreadcrumb
+              items={[
+                { label: "Início", href: "/" },
+                { label: "Dashboard" },
+              ]}
+            />
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">

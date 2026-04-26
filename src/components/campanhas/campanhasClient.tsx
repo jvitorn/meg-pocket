@@ -123,7 +123,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 200, damping: 20 }}
             onClick={() => abrirDetalhes(campanha)}
-            className="group relative rounded-xl overflow-hidden border border-border/30 dark:bg-slate-900/60 hover:border-primary/50 transition-all duration-300 hover:shadow-2xl cursor-pointer"
+            className="hover-shimmer-card group relative cursor-pointer overflow-hidden rounded-xl border border-border/30 bg-card/80 transition-all duration-300 hover:-translate-y-1 hover:border-amber-500/35 hover:shadow-2xl dark:bg-slate-900/60 [--shimmer-color:#f59e0b]"
           >
             {/* Imagem de capa */}
             <div className="relative w-full h-44 sm:h-52 overflow-hidden">
@@ -185,7 +185,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
             </div>
 
             {/* brilho suave no hover */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-linear-to-t from-purple-600/6 via-transparent to-transparent" />
+            <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100 bg-linear-to-t from-amber-500/8 via-transparent to-transparent" />
           </motion.div>
         ))}
         </motion.section>
@@ -202,16 +202,16 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
       <AnimatePresence>
         {dialogAberto && campanhaSelecionada && (
           <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
-            <DialogContent className="max-w-4xl p-0 border-none bg-background/95 backdrop-blur-md sm:rounded-lg overflow-hidden">
+            <DialogContent className="max-h-[90vh] max-w-5xl overflow-hidden border border-border/70 bg-background/95 p-0 backdrop-blur-md sm:rounded-xl lg:max-w-6xl">
               <DialogTitle className="sr-only">{campanhaSelecionada.nome}</DialogTitle>
 
               <motion.div
                 key="modal"
-                initial={{ opacity: 0, scale: 0.97 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.97 }}
-                transition={{ duration: 0.25 }}
-                className="w-full flex flex-col max-h-[90vh]"
+                initial={{ opacity: 0, scale: 0.96, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.97, y: 10 }}
+                transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                className="flex max-h-[90vh] w-full flex-col"
               >
                 {/* Capa */}
                 <div className="relative w-full shrink-0 h-60 md:h-72 overflow-hidden">
@@ -230,7 +230,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                 </div>
 
                 {/* Conteúdo */}
-                <div className="p-6 overflow-y-auto">
+                <div className="overflow-y-auto p-6">
                   {campanhaSelecionada.sinopse && <p className="text-sm leading-relaxed text-foreground/90">{campanhaSelecionada.sinopse}</p>}
 
                   {campanhaSelecionada.tags?.length ? (
@@ -271,10 +271,10 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                         ))}
                       </div>
                     ) : personagens.length > 0 ? (
-                      <motion.div className="grid grid-cols-1 sm:grid-cols-2 gap-4" initial="hidden" animate="visible" variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } }}>
+                      <motion.div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" initial="hidden" animate="visible" variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } }}>
                         {personagens.map((p) => (
                           <motion.div key={p.id} variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
-                            <Link href={`/personagens/${p.id}`} onClick={() => setDialogAberto(false)} className="flex items-center gap-3 rounded-md border p-3 bg-background/70 hover:bg-accent/10 transition">
+                            <Link href={`/personagens/${p.id}`} onClick={() => setDialogAberto(false)} className="group flex items-center gap-3 rounded-md border bg-background/70 p-3 transition hover:border-amber-500/30 hover:bg-amber-500/5">
                             {(() => {
                               const imageSrc = p.imagem_pixel || p.url_imagem;
 
@@ -291,7 +291,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                               <p className="text-xs text-muted-foreground">
                                 {p.classe_nome && p.raca_nome ? `${p.classe_nome} ${p.raca_nome}` : p.classe_nome || p.raca_nome || 'Personagem'}
                               </p>
-                              <p className="text-xs text-primary mt-1 capitalize">{p.elemento}</p>
+                              <p className="mt-1 text-xs capitalize text-primary transition group-hover:text-amber-600">{p.elemento}</p>
                             </div>
                             </Link>
                           </motion.div>
@@ -305,7 +305,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                 </div>
 
                 {/* Footer sticky */}
-                <div className="sticky bottom-0 border-t bg-background/95 p-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <div className="sticky bottom-0 flex flex-col items-center justify-between gap-3 border-t bg-background/95 p-4 sm:flex-row">
                   <div className="text-sm text-muted-foreground">{campanhaSelecionada.count_jogadores ?? 0} personagens registrados</div>
                   <div className="flex items-center gap-3">
                     <Link href={`/personagens/campanha/${campanhaSelecionada.id}`} onClick={() => setDialogAberto(false)} className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-purple-600 text-white shadow hover:opacity-95 transition">

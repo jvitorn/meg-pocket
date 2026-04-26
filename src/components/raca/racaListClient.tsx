@@ -110,7 +110,7 @@ export default function RacaListClient({ initialItems }: { initialItems: Item[] 
                 transition={{ duration: 0.2 }}
                 style={theme.style}
                 className={cn(
-                  "group relative overflow-hidden rounded-[1.75rem] border bg-linear-to-b p-4 shadow-sm transition",
+                  "hover-shimmer-card group relative overflow-hidden rounded-[1.75rem] border bg-linear-to-b p-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl [--shimmer-color:var(--theme-ring)]",
                   theme.softClass,
                   theme.frameClass
                 )}
@@ -151,7 +151,7 @@ export default function RacaListClient({ initialItems }: { initialItems: Item[] 
                           Mana {raca.mana ?? 0}
                         </span>
                         {raca.corTema && (
-                          <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-medium text-white/85">
+                          <span className="rounded-full border border-border/70 bg-background/70 px-3 py-1 text-xs font-medium text-foreground/75 dark:border-white/10 dark:bg-white/10 dark:text-white/85">
                             {raca.corTema}
                           </span>
                         )}
@@ -161,32 +161,32 @@ export default function RacaListClient({ initialItems }: { initialItems: Item[] 
 
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div className="sm:col-span-2">
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-white/55">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground dark:text-white/55">
                         Habilidade diária
                       </p>
-                      <p className="mt-2 text-sm font-semibold text-white/90">
+                      <p className="mt-2 text-sm font-semibold text-foreground dark:text-white/90">
                         {raca.habilidadeDiariaNome ?? "Talento racial"}
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-white/55">
+                    <div className="rounded-2xl border border-border/70 bg-background/70 p-3 dark:border-white/10 dark:bg-black/15">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground dark:text-white/55">
                         Combate
                       </p>
-                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-white/86">
+                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-foreground/78 dark:text-white/86">
                         {raca.habilidadeDiariaCombate ?? "Sem habilidade de combate cadastrada."}
                       </p>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
-                      <p className="text-[11px] uppercase tracking-[0.24em] text-white/55">
+                    <div className="rounded-2xl border border-border/70 bg-background/70 p-3 dark:border-white/10 dark:bg-black/15">
+                      <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground dark:text-white/55">
                         Fora de combate
                       </p>
-                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-white/86">
+                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-foreground/78 dark:text-white/86">
                         {raca.habilidadeDiariaForaDeCombate ?? "Sem habilidade fora de combate cadastrada."}
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between text-xs text-white/68">
+                  <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground dark:text-white/68">
                     <span>{raca.icone ?? "sem ícone"}</span>
                     <span className="inline-flex items-center gap-1 opacity-80 transition group-hover:opacity-100">
                       Ver detalhes

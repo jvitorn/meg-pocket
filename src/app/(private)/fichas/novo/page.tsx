@@ -9,6 +9,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { resolveColorThemeName } from "@/lib/utils";
+import { AppBreadcrumb } from "@/components/app-breadcrumb";
 
 type NovaFichaPageProps = {
   searchParams?: Promise<{
@@ -172,6 +173,13 @@ export default async function NovaFichaPage({
 
         <section className="bg-linear-to-b from-muted/40 via-background to-background">
           <div className="w-full px-4 py-10 sm:px-6 lg:px-8 xl:px-10 2xl:px-14">
+            <AppBreadcrumb
+              items={[
+                { label: "Início", href: "/" },
+                { label: "Fichas", href: "/fichas" },
+                { label: initialData ? "Editar ficha" : "Nova ficha" },
+              ]}
+            />
             <div className="flex flex-col gap-3">
               <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
                 {initialData ? "Editar ficha" : "Nova ficha"}

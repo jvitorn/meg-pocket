@@ -356,12 +356,7 @@ export function PersonagemInventario({
         tone="amber"
       >
         <div className="space-y-4">
-          {!canEdit ? (
-            <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/4 dark:text-amber-100/80">
-              Uso e alterações do inventário ficam restritos ao administrador da
-              ficha.
-            </div>
-          ) : null}
+          
 
           <div className="rounded-2xl border border-dashed border-amber-500/20 bg-amber-50/80 p-4 dark:border-amber-500/20 dark:bg-amber-500/[0.07]">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

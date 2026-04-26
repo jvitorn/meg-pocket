@@ -11,10 +11,19 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { deletarPersonagem } from "@/services/personagemService";
 
 type Props = {
@@ -191,76 +200,61 @@ export function DashboardPersonagemCard({
         open={open}
         onOpenChange={(nextOpen) => {
           setOpen(nextOpen);
-          if (!nextOpen) {
-            setConfirmDelete(false);
-          }
         }}
       >
         <DialogContent className="max-w-md">
-          {!confirmDelete ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>Gerenciar ficha</DialogTitle>
-                <DialogDescription>
-                  Escolha se deseja editar ou deletar a ficha de {nome}.
-                </DialogDescription>
-              </DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Gerenciar ficha</DialogTitle>
+            <DialogDescription>
+              Escolha se deseja editar ou deletar a ficha de {nome}.
+            </DialogDescription>
+          </DialogHeader>
 
-              <div className="grid gap-3">
-                <Button asChild className="justify-start">
-                  <Link href={`/fichas/novo?id=${id}`}>
-                    <Pencil className="h-4 w-4" />
-                    Editar ficha
-                  </Link>
-                </Button>
+          <div className="grid gap-3">
+            <Button asChild className="justify-start">
+              <Link href={`/fichas/novo?id=${id}`}>
+                <Pencil className="h-4 w-4" />
+                Editar ficha
+              </Link>
+            </Button>
 
-                <Button
-                  type="button"
-                  variant="destructive"
-                  className="justify-start"
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Deletar ficha
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <DialogHeader>
-                <DialogTitle>Confirmar exclusão</DialogTitle>
-                <DialogDescription>
-                  Essa ação remove a ficha e os vínculos de magias, perícias,
-                  inventário e controles relacionados ao personagem.
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="rounded-2xl border border-red-200 bg-red-50/80 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/8 dark:text-red-100/80">
-                {nome} será deletado permanentemente.
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setConfirmDelete(false)}
-                  disabled={loadingDelete}
-                >
-                  Voltar
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={loadingDelete}
-                >
-                  {loadingDelete ? "Deletando..." : "Confirmar exclusão"}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
+            <Button
+              type="button"
+              variant="destructive"
+              className="justify-start"
+              onClick={() => setConfirmDelete(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Deletar ficha
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir ficha permanentemente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação remove {nome} e os vínculos de magias, perícias,
+              inventário e controles relacionados ao personagem.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="rounded-lg border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            Esta ação não pode ser desfeita.
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loadingDelete}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={loadingDelete}>
+              {loadingDelete ? "Excluindo..." : "Excluir ficha"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

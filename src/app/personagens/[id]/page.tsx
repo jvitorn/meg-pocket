@@ -8,15 +8,7 @@ export default function PersonagemPage() {
   return (
     <>
       <Navbar />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <header className="mb-6 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground">
-            Ficha
-          </h1>
-          <p className="text-sm text-muted-foreground mt-2">
-            Informações sobre seu personagem
-          </p>
-        </header>
+      <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
         <Suspense fallback={<PersonagemFichaSkeleton />}>
           <PersonagemClient />
         </Suspense>

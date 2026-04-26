@@ -7,7 +7,7 @@ import { ArrowRight, Search, Shield } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { ColorThemeName } from "@/lib/utils";
-import { getClasseTheme, getLegendInitials } from "@/lib/fantasyThemes";
+import { getClasseTheme } from "@/lib/fantasyThemes";
 
 type Item = {
   id: number;
@@ -153,7 +153,6 @@ export default function ClassesListClient({ initialItems }: { initialItems: Item
           filtered.map((classe) => {
             const theme = getClasseTheme(classe);
             const Icon = theme.icon;
-            const initials = getLegendInitials(classe.nome);
 
             return (
               <motion.article
@@ -163,7 +162,7 @@ export default function ClassesListClient({ initialItems }: { initialItems: Item
                 transition={{ duration: 0.2 }}
                 style={theme.style}
                 role="listitem"
-                className="rounded-2xl border border-border/70 bg-card/80 p-4 transition hover:border-primary/35"
+                className="hover-shimmer-card rounded-2xl border border-border/70 bg-card/80 p-4 transition duration-300 hover:-translate-y-1 hover:border-[color:var(--theme-frame)] hover:shadow-xl [--shimmer-color:var(--theme-ring)]"
               >
                 <Link href={`/classe/${classe.id}`} className="block">
                   <div className="flex items-start gap-3">

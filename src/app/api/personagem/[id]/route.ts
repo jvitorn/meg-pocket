@@ -139,6 +139,7 @@ export async function GET(
       classe_nome: personagem.classe?.nome ?? null,
       racaId: personagem.racaId,
       raca_nome: personagem.raca?.nome ?? null,
+      corTema: personagem.raca?.corTema ?? null,
       elemento: personagem.elemento,
       hp_atual: personagem.hp_atual ?? null,
       mana_atual: personagem.mana_atual ?? null,

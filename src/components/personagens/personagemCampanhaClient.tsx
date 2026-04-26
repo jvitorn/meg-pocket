@@ -14,6 +14,8 @@ import { EmptyState } from "@/components/empty-state";
 import { PersonagemCampanhaPageSkeleton } from "@/components/skeletons/personagem-campanha-page.skeleton";
 import { getThemeByColor } from "@/lib/fantasyThemes";
 import { cn } from "@/lib/utils";
+import { AppBreadcrumb } from "@/components/app-breadcrumb";
+import { getElementoThemeColor } from "@/lib/personagemElementoTheme";
 
 type FriendlyErrorState = {
   title: string;
@@ -55,7 +57,10 @@ export default function PersonagemCampanhaPage() {
   const [errorState, setErrorState] = useState<FriendlyErrorState | null>(null);
   const [showCarousel, setShowCarousel] = useState(true);
   const isMobile = useIsMobile();
-  const selectedTheme = getThemeByColor(personagemSelecionado?.corTema, "violet");
+  const selectedTheme = getThemeByColor(
+    getElementoThemeColor(personagemSelecionado?.elemento),
+    "violet"
+  );
 
   useEffect(() => {
     if (!id) {
@@ -127,17 +132,24 @@ export default function PersonagemCampanhaPage() {
         "bg-linear-to-br from-(--theme-soft-from) via-background/95 to-background"
       )}
     >
-      <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-(--theme-ring) opacity-60 transition-colors duration-700 dark:opacity-45" />
-      <div className="pointer-events-none absolute right-[12%] top-24 h-28 w-28 rounded-full border border-(--theme-chip-border) opacity-50 transition-colors duration-700 dark:opacity-35" />
-      <div className="pointer-events-none absolute left-[6%] top-28 h-40 w-40 rounded-full border border-(--theme-ring) opacity-45 transition-colors duration-700 dark:opacity-30" />
-      <div className="pointer-events-none absolute left-[22%] top-[42%] h-24 w-24 rounded-full border border-(--theme-chip-border) opacity-40 transition-colors duration-700 dark:opacity-25" />
-      <div className="pointer-events-none absolute right-[18%] top-[48%] h-44 w-44 rounded-full border border-(--theme-ring) opacity-40 transition-colors duration-700 dark:opacity-25" />
-      <div className="pointer-events-none absolute -bottom-36 left-1/3 h-96 w-96 rounded-full border border-(--theme-ring) opacity-40 transition-colors duration-700 dark:opacity-25" />
-      <div className="pointer-events-none absolute -bottom-20 -left-24 h-64 w-64 rounded-full border border-(--theme-chip-border) opacity-45 transition-colors duration-700 dark:opacity-30" />
-      <div className="pointer-events-none absolute inset-x-6 top-1/3 h-32 rounded-full bg-(--theme-glow) opacity-85 blur-3xl transition-colors duration-700 dark:opacity-70" />
-      <div className="pointer-events-none absolute inset-x-24 bottom-20 h-24 rounded-full bg-(--theme-glow) opacity-60 blur-3xl transition-colors duration-700 dark:opacity-45" />
+      <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-(--theme-ring) animate-soft-pulse transition-colors duration-700 dark:border-white/15 [--pulse-opacity-max:0.58] [--pulse-opacity-min:0.24]" />
+      <div className="pointer-events-none absolute right-[12%] top-24 h-28 w-28 rounded-full border border-(--theme-chip-border) animate-soft-pulse transition-colors duration-700 dark:border-white/10 [animation-delay:1.2s] [--pulse-opacity-max:0.45] [--pulse-opacity-min:0.18]" />
+      <div className="pointer-events-none absolute left-[6%] top-28 h-40 w-40 rounded-full border border-(--theme-ring) animate-soft-pulse transition-colors duration-700 dark:border-white/12 [animation-delay:2s] [--pulse-opacity-max:0.42] [--pulse-opacity-min:0.16]" />
+      <div className="pointer-events-none absolute left-[22%] top-[42%] h-24 w-24 rounded-full border border-(--theme-chip-border) animate-soft-pulse transition-colors duration-700 dark:border-white/10 [animation-delay:2.7s] [--pulse-opacity-max:0.34] [--pulse-opacity-min:0.12]" />
+      <div className="pointer-events-none absolute right-[18%] top-[48%] h-44 w-44 rounded-full border border-(--theme-ring) animate-soft-pulse transition-colors duration-700 dark:border-white/12 [animation-delay:3.4s] [--pulse-opacity-max:0.38] [--pulse-opacity-min:0.14]" />
+      <div className="pointer-events-none absolute -bottom-36 left-1/3 h-96 w-96 rounded-full border border-(--theme-ring) animate-soft-pulse transition-colors duration-700 dark:border-white/10 [animation-delay:1.8s] [--pulse-opacity-max:0.36] [--pulse-opacity-min:0.12]" />
+      <div className="pointer-events-none absolute -bottom-20 -left-24 h-64 w-64 rounded-full border border-(--theme-chip-border) animate-soft-pulse transition-colors duration-700 dark:border-white/10 [animation-delay:2.9s] [--pulse-opacity-max:0.4] [--pulse-opacity-min:0.15]" />
+      <div className="pointer-events-none absolute inset-x-6 top-1/3 h-32 rounded-full bg-(--theme-glow) opacity-85 blur-3xl animate-soft-pulse transition-colors duration-700 dark:opacity-55" />
+      <div className="pointer-events-none absolute inset-x-24 bottom-20 h-24 rounded-full bg-(--theme-glow) opacity-60 blur-3xl animate-soft-pulse transition-colors duration-700 dark:opacity-40 [animation-delay:2.2s]" />
 
       <div className="relative z-10 mx-auto max-w-7xl">
+        <AppBreadcrumb
+          items={[
+            { label: "Início", href: "/" },
+            { label: "Campanhas", href: "/campanhas" },
+            { label: "Personagens" },
+          ]}
+        />
         <header className="text-center">
           <h1 className="text-3xl font-bold text-foreground md:text-4xl">
             Personagens da campanha
@@ -190,7 +202,7 @@ export default function PersonagemCampanhaPage() {
                 initial={{ height: 0, opacity: 0, y: 12 }}
                 animate={{ height: "auto", opacity: 1, y: 0 }}
                 exit={{ height: 0, opacity: 0, y: 12 }}
-                transition={{ duration: 0.32, ease: [0.4, 0.0, 0.2, 1] }}
+                transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
                 className="overflow-hidden"
               >
                 <MultiCardItem.Carousel

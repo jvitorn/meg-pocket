@@ -7,6 +7,7 @@ import { CampanhaEditClient } from "@/components/campanhas/campanha-edit-client"
 import { prisma } from "@/lib/prisma";
 import { validarMestreDaCampanha } from "@/lib/regras/campanhaPermissao";
 import { Footer } from "@/components/footer";
+import { AppBreadcrumb } from "@/components/app-breadcrumb";
 
 function parseCampaignId(value: string) {
   const parsed = Number(value);
@@ -59,6 +60,7 @@ export default async function EditarCampanhaPage({
             <Link href="/dashboard">Voltar ao dashboard</Link>
           </Button>
         </main>
+        <Footer />
       </>
     );
   }
@@ -95,6 +97,7 @@ export default async function EditarCampanhaPage({
             <Link href="/dashboard">Voltar ao dashboard</Link>
           </Button>
         </main>
+        <Footer />
       </>
     );
   }
@@ -102,6 +105,17 @@ export default async function EditarCampanhaPage({
   return (
     <>
       <Navbar />
+      <div className="bg-background text-foreground">
+        <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+          <AppBreadcrumb
+            items={[
+              { label: "Início", href: "/" },
+              { label: "Dashboard", href: "/dashboard" },
+              { label: "Editar campanha" },
+            ]}
+          />
+        </div>
+      </div>
       <CampanhaEditClient
         campanha={{
           id: campanha.id,
@@ -130,6 +144,7 @@ export default async function EditarCampanhaPage({
         }))}
         catalogoItens={catalogoItens}
       />
+      <Footer />
     </>
   );
 }

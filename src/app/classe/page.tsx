@@ -7,6 +7,7 @@ import { Navbar } from "@/components/navbar";
 import { unstable_noStore as noStore } from "next/cache";
 import { ClassesListSkeleton } from "@/components/skeletons/classes-list.skeleton";
 import { resolveColorThemeName } from "@/lib/utils";
+import { AppBreadcrumb } from "@/components/app-breadcrumb";
 
 export const metadata = {
   title: "Classes — M&G Pocket",
@@ -62,6 +63,12 @@ export default function ClassesIndexPage() {
     <>
       <Navbar />
       <main className="max-w-7xl mx-auto px-6 py-8">
+        <AppBreadcrumb
+          items={[
+            { label: "Início", href: "/" },
+            { label: "Classes" },
+          ]}
+        />
         <Suspense fallback={<ClassesListSkeleton />}>
           {/* componente async que faz prisma.findMany */}
           <ClassesFetcher />

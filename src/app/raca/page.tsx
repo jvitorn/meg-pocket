@@ -8,6 +8,7 @@ import { Navbar } from "@/components/navbar";
 import { RacaListSkeleton } from "@/components/skeletons/raca-list.skeleton";
 import { resolveColorThemeName } from "@/lib/utils";
 import type { RacaInterface } from "@/types";
+import { AppBreadcrumb } from "@/components/app-breadcrumb";
 
 export const metadata = {
   title: "Raças — M&G Pocket",
@@ -55,6 +56,12 @@ export default function RacaIndexPage() {
     <>
       <Navbar />
       <main className="max-w-7xl mx-auto px-6 py-8">
+        <AppBreadcrumb
+          items={[
+            { label: "Início", href: "/" },
+            { label: "Raças" },
+          ]}
+        />
         <Suspense fallback={<RacaListSkeleton />}>
           <RacaFetcher />
         </Suspense>

@@ -9,21 +9,53 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
 } from "@/components/ui/navigation-menu";
-import { Github, Menu, X, Lightbulb } from "lucide-react";
+import {
+  Home,
+  LayoutDashboard,
+  Lightbulb,
+  LogIn,
+  LogOut,
+  Menu,
+  Moon,
+  ScrollText,
+  Shield,
+  Sparkles,
+  Sun,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { getNavLinks } from "@/lib/navigation";
 import { authService } from "@/services/authService";
 import { cn } from "@/lib/utils";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 
 function isLinkActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+const navIconMap = {
+  "/": Home,
+  "/campanhas": ScrollText,
+  "/classe": Shield,
+  "/raca": Sparkles,
+  "/login": LogIn,
+  "/dashboard": LayoutDashboard,
+  "/fichas": Users,
+} as const;
+
 export function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
   const { theme, setTheme } = useTheme();
   const { data: session } = useSession();
@@ -54,18 +86,122 @@ export function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo */}
-        <div className="font-display font-bold text-lg">
-          M&G
-        </div>
-
-        {/* Mobile toggle */}
-        <button
-          className="md:hidden"
-          onClick={() => setMenuOpen((prev) => !prev)}
-          aria-label="Abrir menu"
+        <Link
+          href="/"
+          className="font-display text-lg font-bold text-amber-600 transition hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
         >
-          {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+          M&G
+        </Link>
+
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              aria-label="Abrir menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent
+            side="right"
+            className="w-[18rem] border-border/70 bg-background/96 px-0 pb-0 backdrop-blur-xl sm:w-80"
+          >
+            <SheetHeader className="border-b border-amber-500/20 bg-amber-500/5 px-4 pb-4 text-left">
+              <SheetTitle className="font-display text-xl text-amber-600 dark:text-amber-400">
+                M&G Pocket
+              </SheetTitle>
+              <SheetDescription className="text-xs text-muted-foreground">
+                Navegação rápida
+              </SheetDescription>
+            </SheetHeader>
+
+            <nav className="grid gap-1 px-3 py-3">
+              {navLinks.map((link) => {
+                const isActive = isLinkActive(pathname, link.href);
+                const Icon = navIconMap[link.href as keyof typeof navIconMap] ?? Sparkles;
+
+                return (
+                  <SheetClose asChild key={link.href}>
+                    <Link
+                      href={link.href}
+                      aria-current={isActive ? "page" : undefined}
+                      className={cn(
+                        "group flex min-h-11 items-center gap-3 rounded-lg border px-2.5 py-2 text-sm font-medium transition",
+                        isActive
+                          ? "border-amber-400/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                          : "border-transparent text-foreground/80 hover:border-amber-500/20 hover:bg-amber-500/5 hover:text-foreground"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-md border transition",
+                          isActive
+                            ? "border-amber-400/35 bg-amber-500/10"
+                            : "border-border/70 bg-background group-hover:border-amber-500/25"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span>{link.label}</span>
+                    </Link>
+                  </SheetClose>
+                );
+              })}
+            </nav>
+
+            <SheetFooter className="gap-2 border-t border-border/70 bg-muted/20 px-3 py-3">
+              {isAuthenticated ? (
+                <div className="truncate rounded-lg border border-border/70 bg-background/80 px-3 py-2 text-xs text-muted-foreground">
+                  <span className="text-foreground">
+                    {userLabel}
+                  </span>
+                </div>
+              ) : null}
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="justify-start"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                >
+                  {theme === "dark" ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                  Tema
+                </Button>
+                {!isAuthenticated ? (
+                  <SheetClose asChild>
+                    <Button asChild variant="outline" size="sm" className="justify-start">
+                      <Link href="/login">
+                        <LogIn className="h-4 w-4" />
+                        Entrar
+                      </Link>
+                    </Button>
+                  </SheetClose>
+                ) : null}
+              </div>
+
+              {isAuthenticated ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="justify-start"
+                  onClick={() => authService.logout()}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sair
+                </Button>
+              ) : null}
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
 
         {/* Desktop menu */}
         <NavigationMenu className="hidden md:flex">
@@ -118,85 +254,9 @@ export function Navbar() {
           >
             <Lightbulb className="w-5 h-5 text-primary transition-colors" />
           </button>
-
-          <Link
-            href="https://github.com/jvitorn"
-            target="_blank"
-            aria-label="GitHub"
-          >
-            <Github className="w-5 h-5 hover:text-foreground transition" />
-          </Link>
         </div>
       </div>
 
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            key="mobile-menu"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.25 }}
-            className="md:hidden px-6 pb-4"
-          >
-            <nav className="flex flex-col gap-4 text-base">
-              {navLinks.map((link) => {
-                const isActive = isLinkActive(pathname, link.href);
-
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMenuOpen(false)}
-                    aria-current={isActive ? "page" : undefined}
-                    className={cn(
-                      "transition-colors",
-                      isActive
-                        ? "font-semibold text-yellow-600"
-                        : "text-foreground/90 hover:text-foreground"
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
-
-              {isAuthenticated && (
-                <div className="pt-1 space-y-2">
-                  <p className="text-xs text-muted-foreground">{userLabel}</p>
-                  <button
-                    onClick={() => authService.logout()}
-                    className="text-sm px-3 py-2 rounded border border-border hover:bg-muted transition w-fit"
-                  >
-                    Sair
-                  </button>
-                </div>
-              )}
-
-              <div className="flex gap-4 pt-2 text-muted-foreground">
-                <button
-                  onClick={() =>
-                    setTheme(theme === "dark" ? "light" : "dark")
-                  }
-                  className="transition hover:text-foreground cursor-pointer"
-                  aria-label="Alternar tema"
-                >
-                  <Lightbulb className="w-5 h-5 text-primary transition-colors" />
-                </button>
-
-                <Link
-                  href="https://github.com/jvitorn"
-                  target="_blank"
-                  aria-label="GitHub"
-                >
-                  <Github className="w-5 h-5 hover:text-foreground transition" />
-                </Link>
-              </div>
-            </nav>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

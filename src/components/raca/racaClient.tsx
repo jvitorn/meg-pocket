@@ -13,6 +13,7 @@ import { MarkdownContent } from "@/components/world/markdown-content";
 import { getLegendInitials, getRacaTheme } from "@/lib/fantasyThemes";
 import { cn } from "@/lib/utils";
 import { AttributeCard } from "@/components/attribute-card";
+import { AppBreadcrumb } from "@/components/app-breadcrumb";
 
 const listVariants = {
   hidden: { opacity: 0 },
@@ -42,13 +43,13 @@ function StatCard({
   accentClass: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md">
+    <div className="rounded-2xl border border-border/70 bg-background/70 p-4 backdrop-blur-md dark:border-white/10 dark:bg-white/5">
       <div
         className={cn("text-[11px] uppercase tracking-[0.28em]", accentClass)}
       >
         {label}
       </div>
-      <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
+      <div className="mt-2 text-2xl font-semibold text-foreground dark:text-white">{value}</div>
     </div>
   );
 }
@@ -134,7 +135,7 @@ export default function RacaPage() {
       <Toaster position="top-right" />
       <main
         style={theme.style}
-        className="relative overflow-hidden bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_34%),linear-gradient(180deg,rgba(6,8,12,0.96),rgba(12,10,18,0.98))] text-foreground"
+        className="relative overflow-hidden bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--theme-glow)_55%,transparent),transparent_34%),linear-gradient(180deg,var(--background),color-mix(in_srgb,var(--theme-soft-from)_45%,var(--background)))] text-foreground dark:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_34%),linear-gradient(180deg,rgba(6,8,12,0.96),rgba(12,10,18,0.98))]"
       >
         <section className="relative isolate min-h-[72vh] overflow-hidden">
           <div className="absolute inset-0">
@@ -165,8 +166,8 @@ export default function RacaPage() {
             )}
           </div>
 
-          <div className="absolute inset-0 bg-linear-to-t from-black via-black/60 to-black/25 lg:via-black/70" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.12),transparent_24%),radial-gradient(circle_at_80%_10%,rgba(255,255,255,0.08),transparent_20%),radial-gradient(circle_at_50%_80%,rgba(255,255,255,0.06),transparent_20%)]" />
+          <div className="absolute inset-0 bg-linear-to-t from-background via-background/82 to-background/35 dark:from-black dark:via-black/60 dark:to-black/25 lg:dark:via-black/70" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,color-mix(in_srgb,var(--theme-glow)_80%,transparent),transparent_24%),radial-gradient(circle_at_80%_10%,rgba(255,255,255,0.12),transparent_20%),radial-gradient(circle_at_50%_80%,color-mix(in_srgb,var(--theme-ring)_32%,transparent),transparent_20%)] opacity-80 dark:opacity-100" />
 
           <motion.div
             initial={{ opacity: 0, y: 22 }}
@@ -174,6 +175,14 @@ export default function RacaPage() {
             transition={{ duration: 0.7, ease: "easeOut" }}
             className="relative z-20 mx-auto flex min-h-[72vh] max-w-7xl flex-col justify-end px-6 pb-14 pt-32"
           >
+            <AppBreadcrumb
+              className="mb-8"
+              items={[
+                { label: "Início", href: "/" },
+                { label: "Raças", href: "/raca" },
+                { label: raca.nome },
+              ]}
+            />
             <div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr]">
               <motion.div
                 initial={{ opacity: 0, y: 16, scale: 0.98 }}
@@ -211,7 +220,7 @@ export default function RacaPage() {
                     )}
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between px-2 pb-1 text-xs text-white/65">
+                <div className="mt-3 flex items-center justify-between px-2 pb-1 text-xs text-foreground/65 dark:text-white/65">
                     <span>{raca.icone ?? "símbolo"}</span>
                     <span className="inline-flex items-center gap-1">
                       <ArrowRight className="h-3.5 w-3.5" />
@@ -222,28 +231,28 @@ export default function RacaPage() {
               </motion.div>
 
               <div className="max-w-3xl lg:order-2 lg:text-right">
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-white/75 backdrop-blur-md">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-foreground/75 backdrop-blur-md dark:border-white/15 dark:bg-white/10 dark:text-white/75">
                   <Gem className="h-3.5 w-3.5" />
                   Raça / Linhagem
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4 lg:justify-end">
-                  <div className="rounded-2xl border border-white/15 bg-black/25 px-4 py-3 text-white/90 backdrop-blur-md">
-                    <div className="text-[11px] uppercase tracking-[0.3em] text-white/55">
+                  <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3 text-foreground/90 backdrop-blur-md dark:border-white/15 dark:bg-black/25 dark:text-white/90">
+                    <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground dark:text-white/55">
                       Selo da raça
                     </div>
                     <div className="mt-1 text-lg font-semibold">{initials}</div>
                   </div>
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/15 bg-black/30 backdrop-blur-md">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border/70 bg-background/70 backdrop-blur-md dark:border-white/15 dark:bg-black/30">
                     <Icon className={cn("h-8 w-8", theme.iconClass)} />
                   </div>
                 </div>
 
-                <h1 className="mt-6 text-5xl font-black uppercase tracking-[0.12em] text-white drop-shadow-[0_12px_30px_rgba(0,0,0,0.5)] md:text-7xl lg:ml-auto">
+                <h1 className="mt-6 text-5xl font-black uppercase tracking-[0.12em] text-foreground drop-shadow-[0_12px_30px_rgba(0,0,0,0.18)] md:text-7xl lg:ml-auto dark:text-white dark:drop-shadow-[0_12px_30px_rgba(0,0,0,0.5)]">
                   {raca.nome}
                 </h1>
 
-                <p className="mt-4 max-w-2xl text-lg leading-8 text-white/82 md:text-xl lg:ml-auto">
+                <p className="mt-4 max-w-2xl text-lg leading-8 text-foreground/78 md:text-xl lg:ml-auto dark:text-white/82">
                   {raca.descricao ??
                     "Uma raça com legado, atributos e presença marcante para a ficha."}
                 </p>
@@ -259,7 +268,7 @@ export default function RacaPage() {
                     value={raca.mana ?? "—"}
                     accentClass={theme.textClass}
                   />
-                  <div className="rounded-2xl border border-white/10 bg-white/6 px-4 py-4 text-white/85 backdrop-blur-md">
+                  <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-4 text-foreground/85 backdrop-blur-md dark:border-white/10 dark:bg-white/6 dark:text-white/85">
                     <div
                       className={cn(
                         "text-[11px] uppercase tracking-[0.28em]",
