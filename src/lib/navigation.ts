@@ -20,10 +20,13 @@ export const BASE_NAV_LINKS = [
 ] as const satisfies NavbarInterface[];
 
 export function getNavLinks(isAuthenticated: boolean): NavbarInterface[] {
+  if (!isAuthenticated) {
+    return [...BASE_NAV_LINKS, { label: "Login", href: "/login" }];
+  }
+
   return [
     ...BASE_NAV_LINKS,
-    isAuthenticated
-      ? { label: "Fichas", href: "/fichas", } 
-      : { label: "Login", href: "/login" },
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Fichas", href: "/fichas" },
   ];
 }

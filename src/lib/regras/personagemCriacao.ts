@@ -23,12 +23,15 @@ export function formatPericiaTipo(value?: string | null) {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
-export function calcularQuantidadeObrigatoriaPericias(totalTipos: number) {
-  if (totalTipos <= 0) {
+export function calcularQuantidadeObrigatoriaPericias(
+  totalTipos: number,
+  totalPericias = totalTipos
+) {
+  if (totalTipos <= 0 || totalPericias <= 0) {
     return 0;
   }
 
-  return totalTipos >= 3 ? 2 : 1;
+  return totalPericias >= 4 ? 2 : 1;
 }
 
 export function isValidExternalUrl(value: string) {

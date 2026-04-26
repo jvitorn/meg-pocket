@@ -206,10 +206,17 @@ export function DashboardCampaignsSection({
                       Criada em {campanha.createdAtLabel}
                     </p>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button asChild variant="outline" size="sm">
                         <Link href="/campanhas">Ver vitrine</Link>
                       </Button>
+                      {campanha.isOwner ? (
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/campanhas/editar/${campanha.id}`}>
+                            Editar campanha
+                          </Link>
+                        </Button>
+                      ) : null}
                       <Button asChild size="sm">
                         <Link href={`/personagens/campanha/${campanha.id}`}>
                           Abrir campanha

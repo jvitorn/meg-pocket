@@ -447,7 +447,10 @@ export async function PUT(
     );
     const requiredPericiasCount =
       periciasCatalogo.length > 0
-        ? calcularQuantidadeObrigatoriaPericias(tiposPericiaDisponiveis.size)
+        ? calcularQuantidadeObrigatoriaPericias(
+            tiposPericiaDisponiveis.size,
+            periciasCatalogo.length
+          )
         : 0;
 
     if (requiredPericiasCount === 0 && periciaIds.length > 0) {
@@ -457,13 +460,17 @@ export async function PUT(
       );
     }
 
-    if (requiredPericiasCount > 0 && periciaIds.length !== requiredPericiasCount) {
+    if (
+      requiredPericiasCount > 0 &&
+      (periciaIds.length < 1 || periciaIds.length > requiredPericiasCount)
+    ) {
       return NextResponse.json(
         {
           success: false,
-          error: `Selecione ${requiredPericiasCount} ${
-            requiredPericiasCount === 1 ? "perícia" : "perícias"
-          } para continuar.`,
+          error:
+            requiredPericiasCount === 1
+              ? "Selecione 1 perícia para continuar."
+              : `Selecione de 1 a ${requiredPericiasCount} perícias para continuar.`,
         },
         { status: 400, headers: rateLimitHeaders }
       );
@@ -475,21 +482,6 @@ export async function PUT(
         { success: false, error: "Perícia não encontrada." },
         { status: 400, headers: rateLimitHeaders }
       );
-    }
-
-    const tiposSelecionados = new Set<string>();
-    for (const periciaId of periciaIds) {
-      const pericia = periciasPorId.get(periciaId);
-      const tipo = normalizePericiaTipo(pericia?.tipo);
-
-      if (tiposSelecionados.has(tipo)) {
-        return NextResponse.json(
-          { success: false, error: "Selecione no máximo 1 perícia por tipo." },
-          { status: 400, headers: rateLimitHeaders }
-        );
-      }
-
-      tiposSelecionados.add(tipo);
     }
 
     const magiaIdsDaClasse = new Set(classe.Magias.map((magia) => magia.id));

@@ -149,9 +149,10 @@ describe("POST /api/personagem/create", () => {
       },
       { id: 3, hp: 5, mana: 6 },
       [
-        { id: 1, tipo: "mental" },
-        { id: 2, tipo: "fisica" },
-        { id: 3, tipo: "social" },
+        { id: 1, tipo: "luta" },
+        { id: 2, tipo: "luta" },
+        { id: 3, tipo: "suporte" },
+        { id: 4, tipo: "suporte" },
       ],
     ]);
     mocks.create.mockResolvedValue({ id: 99 });

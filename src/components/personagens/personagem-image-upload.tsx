@@ -466,7 +466,7 @@ export function PersonagemImageUpload({ value, onChange, disabled = false }: Pro
           }
         }}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-h-[calc(100dvh-1rem)] max-w-2xl overflow-y-auto p-4 sm:max-h-[calc(100vh-2rem)] sm:p-6">
           <DialogHeader>
             <DialogTitle>Recortar imagem</DialogTitle>
             <DialogDescription>
@@ -478,7 +478,7 @@ export function PersonagemImageUpload({ value, onChange, disabled = false }: Pro
           {cropDraft && renderedStyle ? (
             <div className="space-y-6">
               <div className="space-y-3">
-                <div className="mx-auto w-full max-w-[20rem]">
+                <div className="mx-auto w-full max-w-[min(20rem,calc(100dvw-3rem))]">
                   <div
                     ref={cropViewportRef}
                     className="relative aspect-square w-full overflow-hidden rounded-3xl border border-border/60 bg-black/80 touch-none"
@@ -505,8 +505,8 @@ export function PersonagemImageUpload({ value, onChange, disabled = false }: Pro
                 </p>
               </div>
 
-              <div className="mx-auto w-full max-w-[20rem] space-y-5">
-                <div className="rounded-2xl border border-border/60 bg-background/70 p-4">
+              <div className="mx-auto w-full max-w-[min(20rem,calc(100dvw-3rem))] space-y-5">
+                <div className="rounded-2xl border border-border/60 bg-background/70 p-3 sm:p-4">
                   <p className="text-sm font-medium">Controles</p>
                   <div className="mt-4 space-y-4">
                     <div className="space-y-2">

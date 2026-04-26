@@ -136,7 +136,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                   transition={{ duration: 0.6 }}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+                <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-amber-500/20 via-emerald-500/10 to-sky-500/15 text-sm text-muted-foreground">
                   Sem capa
                 </div>
               )}
@@ -218,7 +218,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                   {campanhaSelecionada.capa ? (
                     <img src={campanhaSelecionada.capa} alt={`Capa ${campanhaSelecionada.nome}`} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground">Sem imagem de capa</div>
+                    <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-amber-500/20 via-emerald-500/10 to-sky-500/15 text-sm text-muted-foreground">Sem capa</div>
                   )}
                   <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/30 to-transparent" />
                   <div className="absolute bottom-4 left-6 text-white drop-shadow-lg">

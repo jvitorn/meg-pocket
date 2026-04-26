@@ -113,9 +113,10 @@ describe("PUT /api/personagem/[id]", () => {
       },
       { id: 3, hp: 5, mana: 2 },
       [
-        { id: 20, tipo: "fisica" },
-        { id: 21, tipo: "mental" },
-        { id: 22, tipo: "social" },
+        { id: 20, tipo: "luta" },
+        { id: 21, tipo: "luta" },
+        { id: 22, tipo: "suporte" },
+        { id: 23, tipo: "suporte" },
       ],
     ]);
   });

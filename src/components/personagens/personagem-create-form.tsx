@@ -391,17 +391,8 @@ export default function PersonagemCreateForm({
   }, [pericias]);
   const periciaTiposDisponiveisCount = periciasAgrupadasPorTipo.length;
   const requiredPericiasCount = hasPericiasDisponiveis
-    ? calcularQuantidadeObrigatoriaPericias(periciaTiposDisponiveisCount)
+    ? calcularQuantidadeObrigatoriaPericias(periciaTiposDisponiveisCount, pericias.length)
     : 0;
-  const selectedPericiaTiposCount = useMemo(() => {
-    const tipos = new Set(
-      selectedPericiaIds
-        .map((id) => periciaTipoPorId.get(id))
-        .filter((tipo): tipo is string => Boolean(tipo))
-    );
-    return tipos.size;
-  }, [periciaTipoPorId, selectedPericiaIds]);
-  const hasDuplicatedPericiaTipo = selectedPericiaTiposCount !== selectedPericiaIds.length;
   const selectedMagias = useMemo(() => {
     if (selectedMagiaIds.length === 0) return [];
     const selectedSet = new Set(selectedMagiaIds);
@@ -421,14 +412,11 @@ export default function PersonagemCreateForm({
       if (prev.length === 0) return prev;
 
       const next: string[] = [];
-      const tiposSelecionados = new Set<string>();
 
       for (const id of prev) {
         const tipo = periciaTipoPorId.get(id);
         if (!tipo) continue;
-        if (tiposSelecionados.has(tipo)) continue;
         next.push(id);
-        tiposSelecionados.add(tipo);
         if (next.length >= requiredPericiasCount) break;
       }
 
@@ -451,7 +439,8 @@ export default function PersonagemCreateForm({
   const canAdvanceStep3 = !hasMagiasNaClasse || selectedMagiaIds.length > 0;
   const canAdvanceStep4 =
     !hasPericiasDisponiveis ||
-    (selectedPericiaIds.length === requiredPericiasCount && !hasDuplicatedPericiaTipo);
+    (selectedPericiaIds.length > 0 &&
+      selectedPericiaIds.length <= requiredPericiasCount);
   const canAdvanceStep5 = Boolean(campanhaId && elemento);
   const canSubmit =
     Boolean(isReady) &&
@@ -510,9 +499,9 @@ export default function PersonagemCreateForm({
     if (step === 4) {
       if (!canAdvanceStep4) {
         setError(
-          `Selecione ${requiredPericiasCount} ${
-            requiredPericiasCount === 1 ? "perícia" : "perícias"
-          } (no máximo 1 por tipo).`
+          requiredPericiasCount === 1
+            ? "Selecione 1 perícia."
+            : `Selecione de 1 a ${requiredPericiasCount} perícias.`
         );
         return;
       }
@@ -574,18 +563,10 @@ export default function PersonagemCreateForm({
 
   function handleTogglePericia(pericia: PericiaOption) {
     const targetId = String(pericia.id);
-    const targetTipo = normalizePericiaTipo(pericia.tipo);
 
     setSelectedPericiaIds((prev) => {
       if (prev.includes(targetId)) {
         return prev.filter((id) => id !== targetId);
-      }
-
-      const sameTypeId = prev.find(
-        (id) => periciaTipoPorId.get(id) === targetTipo
-      );
-      if (sameTypeId) {
-        return prev.map((id) => (id === sameTypeId ? targetId : id));
       }
 
       if (prev.length >= requiredPericiasCount) {
@@ -1127,14 +1108,14 @@ export default function PersonagemCreateForm({
                     <div>
                       <h3 className="text-base font-semibold">
                         {hasPericiasDisponiveis
-                          ? `Escolha ${requiredPericiasCount} ${
-                              requiredPericiasCount === 1 ? "perícia" : "perícias"
-                            }`
+                          ? requiredPericiasCount === 1
+                            ? "Escolha 1 perícia"
+                            : `Escolha até ${requiredPericiasCount} perícias`
                           : "Perícias"}
                       </h3>
                       <p className="mt-1 text-sm text-muted-foreground/90">
                         {hasPericiasDisponiveis
-                          ? "Selecione talentos de treinamento, com limites por categoria."
+                          ? "Selecione talentos de treinamento para sua ficha."
                           : "Nenhuma perícia disponível para seleção nesta etapa."}
                       </p>
                     </div>
@@ -1161,8 +1142,9 @@ export default function PersonagemCreateForm({
                   {hasPericiasDisponiveis && (
                     <div className="space-y-4">
                       {periciasAgrupadasPorTipo.map((grupo) => {
-                        const selectedIdDoTipo =
-                          selectedPericiaIds.find((id) => periciaTipoPorId.get(id) === grupo.tipo) ?? null;
+                        const selectedCountDoTipo = selectedPericiaIds.filter(
+                          (id) => periciaTipoPorId.get(id) === grupo.tipo
+                        ).length;
 
                         return (
                           <section
@@ -1174,12 +1156,13 @@ export default function PersonagemCreateForm({
                               <span
                                 className={cn(
                                   "rounded-full border px-2 py-1 text-[11px]",
-                                  selectedIdDoTipo
+                                  selectedCountDoTipo > 0
                                     ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200"
                                     : "border-border/70 text-muted-foreground"
                                 )}
                               >
-                                {selectedIdDoTipo ? "1 selecionada" : "0 selecionada"}
+                                {selectedCountDoTipo} selecionada
+                                {selectedCountDoTipo !== 1 ? "s" : ""}
                               </span>
                             </div>
 
@@ -1187,12 +1170,9 @@ export default function PersonagemCreateForm({
                               {grupo.items.map((pericia) => {
                                 const periciaId = String(pericia.id);
                                 const isSelected = selectedPericiaIds.includes(periciaId);
-                                const canReplaceSameTipo =
-                                  Boolean(selectedIdDoTipo) && selectedIdDoTipo !== periciaId;
                                 const isDisabled =
                                   !isSelected &&
-                                  selectedPericiaIds.length >= requiredPericiasCount &&
-                                  !canReplaceSameTipo;
+                                  selectedPericiaIds.length >= requiredPericiasCount;
 
                                 return (
                                   <article
@@ -1237,9 +1217,7 @@ export default function PersonagemCreateForm({
                                       <span className="text-xs text-muted-foreground">
                                         {isSelected
                                           ? "Selecionada"
-                                          : canReplaceSameTipo
-                                            ? "Troca a escolhida deste tipo"
-                                            : "Toque para selecionar"}
+                                          : "Toque para selecionar"}
                                       </span>
                                       <Button
                                         type="button"
