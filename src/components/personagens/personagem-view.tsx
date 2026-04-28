@@ -402,7 +402,7 @@ export function PersonagemView({
 
             {visibleSections.rolagem ? (
               <SectionTransition key="rolagem">
-                <PersonagemPainelRolagem />
+                <PersonagemPainelRolagem canEdit={canEdit} />
               </SectionTransition>
             ) : null}
 
@@ -434,7 +434,7 @@ export function PersonagemView({
 
             {visibleSections.pericias ? (
               <SectionTransition key="pericias">
-                <PersonagemPericias pericias={personagem.pericias ?? []} />
+                <PersonagemPericias pericias={personagem.pericias ?? []} canEdit={canEdit} />
               </SectionTransition>
             ) : null}
 

@@ -218,7 +218,7 @@ export default function ClassePage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative z-20 mx-auto max-w-7xl px-4 pb-10 pt-24 sm:px-6 sm:pb-14 md:pt-28 lg:pt-32"
+            className="relative z-20 mx-auto max-w-7xl px-4 pb-10 pt-12 sm:px-6 sm:pb-10 md:pt-14 lg:pt-20"
           >
             <div className="grid items-end gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
               <div className="max-w-3xl">

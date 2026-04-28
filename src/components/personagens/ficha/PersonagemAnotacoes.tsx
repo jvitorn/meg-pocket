@@ -103,9 +103,6 @@ function EditorLayout({
             <p className="text-sm font-semibold text-foreground">
               Bloco de escrita
             </p>
-            <p className="text-xs text-muted-foreground">
-              Espaço reservado para a ficha `personagens/[id]`.
-            </p>
           </div>
 
           <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-xs font-medium text-cyan-700 dark:bg-cyan-500/12 dark:text-cyan-100">
@@ -234,6 +231,7 @@ export function PersonagemAnotacoes({
     <Button
       type="button"
       variant="outline"
+      disabled={!canEdit}
       className="rounded-full border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-100"
     >
       <PanelLeft className="h-4 w-4" />

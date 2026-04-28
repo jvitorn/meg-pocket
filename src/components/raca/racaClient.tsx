@@ -173,7 +173,7 @@ export default function RacaPage() {
             initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: "easeOut" }}
-            className="relative z-20 mx-auto flex min-h-[72vh] max-w-7xl flex-col justify-end px-6 pb-14 pt-32"
+            className="relative z-20 mx-auto flex min-h-[72vh] max-w-7xl flex-col justify-end px-6 pb-14 pt-10"
           >
             <AppBreadcrumb
               className="mb-8"

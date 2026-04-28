@@ -58,9 +58,10 @@ function buildPericiaNotation(pontuacao?: number) {
 ---------------------------------------------------------*/
 interface Props {
   pericias: PericiaPersonagem[];
+  canEdit: boolean;
 }
 
-export function PersonagemPericias({ pericias }: Props) {
+export function PersonagemPericias({ pericias, canEdit}: Props) {
   const [selected, setSelected] = useState<PericiaPersonagem | null>(null);
 
   const handleAbrir = useCallback((p: PericiaPersonagem) => {
@@ -179,6 +180,7 @@ export function PersonagemPericias({ pericias }: Props) {
                   descricao={`Confira abaixo o resultado de ${notacaoRolagem}.`}
                   buttonLabel={`Rolar Pericia`}
                   buttonVariant="secondary"
+                  disabled ={!canEdit}
                 />
               ) : null}
 

@@ -199,6 +199,7 @@ function ItemDetailContent({
             titulo={`Rolagem de ${item.nome}`}
             descricao={`Confira abaixo o resultado de ${notacaoRolagem}.`}
             buttonLabel={`Rolar ${notacaoRolagem}`}
+            disabled={!canEdit}
             buttonVariant="secondary"
           />
         ) : null}

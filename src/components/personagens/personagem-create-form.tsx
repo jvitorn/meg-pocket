@@ -1767,7 +1767,6 @@ export default function PersonagemCreateForm({
           if (!open) setDetailsModal(null);
         }}
         magia={modalMagia}
-        description={modalMagia ? magiaResumoCurto(modalMagia) : "Detalhes da magia."}
         contextBadge={selectedClasse ? `Classe: ${selectedClasse.nome}` : undefined}
       />
     </div>

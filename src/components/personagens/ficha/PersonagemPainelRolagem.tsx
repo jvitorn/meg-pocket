@@ -34,6 +34,7 @@ type Props = {
   dadosDisponiveis?: readonly TipoDado[];
   quantidadeInicial?: number;
   quantidadeMaxima?: number;
+  canEdit?:boolean;
 };
 
 type PainelInternoProps = {
@@ -43,6 +44,7 @@ type PainelInternoProps = {
   dadosDisponiveis: readonly TipoDado[];
   setLados: (value: TipoDado) => void;
   setQuantidade: Dispatch<SetStateAction<number>>;
+  canEdit:boolean;
 };
 
 function PainelInterno({
@@ -52,6 +54,7 @@ function PainelInterno({
   dadosDisponiveis,
   setLados,
   setQuantidade,
+  canEdit,
 }: PainelInternoProps) {
   const notacao = useMemo(() => `${quantidade}d${lados}`, [quantidade, lados]);
 
@@ -173,6 +176,7 @@ function PainelInterno({
         titulo="Resultado da rolagem"
         descricao="Confira abaixo o resultado da rolagem manual da ficha."
         buttonLabel={`Rolar ${notacao}`}
+        disabled={!canEdit}
         buttonVariant="default"
       />
     </div>
@@ -183,6 +187,7 @@ export function PersonagemPainelRolagem({
   dadosDisponiveis = DADOS_DISPONIVEIS,
   quantidadeInicial = 1,
   quantidadeMaxima = 6,
+  canEdit,
 }: Props) {
   const isMobile = useMediaQuery("(max-width: 1023px)");
   const [open, setOpen] = useState(false);
@@ -195,6 +200,7 @@ export function PersonagemPainelRolagem({
       <Button
         type="button"
         variant="outline"
+        disabled={!canEdit}
         className="h-10 w-full rounded-full border-fuchsia-300 bg-fuchsia-500 px-4 text-white hover:border-fuchsia-400 hover:bg-fuchsia-500/90 dark:border-fuchsia-400/30 dark:bg-fuchsia-500/90"
       >
         <Dices className="mr-2 h-4 w-4" />
@@ -253,6 +259,7 @@ export function PersonagemPainelRolagem({
                 dadosDisponiveis={dadosDisponiveis}
                 setLados={setLados}
                 setQuantidade={setQuantidade}
+                canEdit
               />
             </div>
 
@@ -311,6 +318,7 @@ export function PersonagemPainelRolagem({
             dadosDisponiveis={dadosDisponiveis}
             setLados={setLados}
             setQuantidade={setQuantidade}
+            canEdit
           />
         </div>
       </SheetContent>
