@@ -26,7 +26,7 @@ export function getNavLinks(isAuthenticated: boolean): NavbarInterface[] {
 
   return [
     ...BASE_NAV_LINKS,
-    { label: "Dashboard", href: "/dashboard" },
     { label: "Fichas", href: "/fichas" },
+    { label: "Dashboard", href: "/dashboard" },
   ];
 }

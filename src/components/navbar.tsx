@@ -1,18 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
 import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-} from "@/components/ui/navigation-menu";
-import {
+  BookOpenText,
+  ChevronDown,
+  ChevronRight,
   Home,
   LayoutDashboard,
-  Lightbulb,
   LogIn,
   LogOut,
   Menu,
@@ -21,6 +16,7 @@ import {
   Shield,
   Sparkles,
   Sun,
+  UserCircle,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -39,6 +35,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 
 function isLinkActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -55,208 +52,323 @@ const navIconMap = {
   "/fichas": Users,
 } as const;
 
+function BrandMark({ compact = false }: { compact?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-3">
+      <span className="flex size-10 items-center justify-center rounded-md border border-amber-600/20 bg-amber-600/10 text-amber-600 shadow-sm dark:text-amber-700">
+        <BookOpenText className="size-5" />
+      </span>
+      <span className={cn("leading-none", compact && "sm:hidden")}>
+        <span className="block font-display text-xl font-bold text-amber-600 dark:text-amber-700">
+          M&G
+        </span>
+        <span className="block text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-amber-700 dark:text-amber-700">
+          Pocket
+        </span>
+      </span>
+    </span>
+  );
+}
+
 export function Navbar() {
-  const [hasScrolled, setHasScrolled] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const { data: session } = useSession();
   const pathname = usePathname();
   const isAuthenticated = Boolean(session?.user);
   const navLinks = getNavLinks(isAuthenticated);
   const userLabel =
     session?.user?.name ?? session?.user?.email ?? "Usuário logado";
+  const splitIndex = Math.ceil(navLinks.length / 2);
+  const leftLinks = navLinks.slice(0, splitIndex);
+  const rightLinks = navLinks.slice(splitIndex);
+  const isDark = resolvedTheme === "dark";
 
-  useEffect(() => {
-    const onScroll = () => {
-      setHasScrolled(window.scrollY > 8);
-    };
+  const renderDesktopLink = (link: (typeof navLinks)[number]) => {
+    const isActive = isLinkActive(pathname, link.href);
 
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    return (
+      <Link
+        key={link.href}
+        href={link.href}
+        aria-current={isActive ? "page" : undefined}
+        className={cn(
+          "relative inline-flex h-10 items-center px-1 text-sm font-medium transition-colors",
+          isActive
+            ? "text-amber-700 dark:text-amber-600"
+            : "text-foreground/80 hover:text-amber-700 dark:hover:text-amber-600"
+        )}
+      >
+        {link.label}
+        <span
+          className={cn(
+            "absolute inset-x-1 -bottom-1 h-px origin-center scale-x-0 bg-amber-600 transition-transform dark:bg-amber-700",
+            isActive && "scale-x-100"
+          )}
+        />
+      </Link>
+    );
+  };
 
   return (
-    <div
-      className={cn(
-        "sticky top-0 z-50 w-full backdrop-blur transition-colors duration-200",
-        hasScrolled
-          ? "border-b border-border/60 bg-background/85 shadow-md supports-backdrop-filter:bg-background/75"
-          : "border-b border-transparent bg-transparent"
-      )}
+    <header
+      className="z-40 w-full border-b border-border/70 bg-background/95 backdrop-blur-md"
     >
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        {/* Logo */}
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:py-6">
         <Link
           href="/"
-          className="font-display text-lg font-bold text-amber-600 transition hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+          className="inline-flex items-center transition-opacity hover:opacity-85 lg:hidden"
+          aria-label="M&G Pocket"
         >
-          M&G
+          <BrandMark compact />
         </Link>
 
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              aria-label="Abrir menu"
-            >
-              <Menu className="h-5 w-5" suppressHydrationWarning />
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="right"
-            className="w-[18rem] border-border/70 bg-background/96 px-0 pb-0 backdrop-blur-xl sm:w-80"
+        <nav
+          aria-label="Navegação principal"
+          className="hidden flex-1 items-center justify-center gap-8 text-muted-foreground lg:flex"
+        >
+          <div className="flex flex-1 items-center justify-end gap-8 xl:gap-12">
+            {leftLinks.map(renderDesktopLink)}
+          </div>
+
+          <Link
+            href="/"
+            className="mx-2 inline-flex shrink-0 items-center transition-opacity hover:opacity-85"
+            aria-label="M&G Pocket"
           >
-            <SheetHeader className="border-b border-amber-500/20 bg-amber-500/5 px-4 pb-4 text-left">
-              <SheetTitle className="font-display text-xl text-amber-600 dark:text-amber-400">
-                M&G Pocket
-              </SheetTitle>
-              <SheetDescription className="text-xs text-muted-foreground">
-                Navegação rápida
-              </SheetDescription>
-            </SheetHeader>
+            <BrandMark />
+          </Link>
 
-            <nav className="grid gap-1 px-3 py-3">
-              {navLinks.map((link) => {
-                const isActive = isLinkActive(pathname, link.href);
-                const Icon = navIconMap[link.href as keyof typeof navIconMap] ?? Sparkles;
+          <div className="flex flex-1 items-center justify-start gap-8 xl:gap-12">
+            {rightLinks.map(renderDesktopLink)}
+          </div>
+        </nav>
 
-                return (
-                  <SheetClose asChild key={link.href}>
-                    <Link
-                      href={link.href}
-                      aria-current={isActive ? "page" : undefined}
-                      className={cn(
-                        "group flex min-h-11 items-center gap-3 rounded-lg border px-2.5 py-2 text-sm font-medium transition",
-                        isActive
-                          ? "border-amber-400/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                          : "border-transparent text-foreground/80 hover:border-amber-500/20 hover:bg-amber-500/5 hover:text-foreground"
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "flex h-8 w-8 items-center justify-center rounded-md border transition",
-                          isActive
-                            ? "border-amber-400/35 bg-amber-500/10"
-                            : "border-border/70 bg-background group-hover:border-amber-500/25"
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <span>{link.label}</span>
-                    </Link>
-                  </SheetClose>
-                );
-              })}
-            </nav>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="hidden rounded-md text-foreground/80 hover:text-amber-700 dark:hover:text-amber-600 md:inline-flex"
+            onClick={() => setTheme(isDark ? "light" : "dark")}
+            aria-label="Alternar tema"
+          >
+            {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          </Button>
 
-            <SheetFooter className="gap-2 border-t border-border/70 bg-muted/20 px-3 py-3">
-              {isAuthenticated ? (
-                <div className="truncate rounded-lg border border-border/70 bg-background/80 px-3 py-2 text-xs text-muted-foreground">
-                  <span className="text-foreground">
-                    {userLabel}
-                  </span>
-                </div>
-              ) : null}
-
-              <div className="grid grid-cols-2 gap-2">
+          {isAuthenticated ? (
+            <DropdownMenuPrimitive.Root>
+              <DropdownMenuPrimitive.Trigger asChild>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="justify-start"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="hidden max-w-44 rounded-md border-border/80 bg-background/80 text-foreground/80 hover:border-amber-600/30 hover:bg-amber-600/5 hover:text-amber-700 dark:hover:text-amber-600 md:inline-flex"
                 >
-                  {theme === "dark" ? (
-                    <Sun className="h-4 w-4" />
-                  ) : (
-                    <Moon className="h-4 w-4" />
-                  )}
-                  Tema
+                  <UserCircle className="size-4 text-amber-600 dark:text-amber-700" />
+                  <span className="truncate">{userLabel}</span>
+                  <ChevronDown className="size-3.5 text-muted-foreground" />
                 </Button>
-                {!isAuthenticated ? (
-                  <SheetClose asChild>
-                    <Button asChild variant="outline" size="sm" className="justify-start">
-                      <Link href="/login">
-                        <LogIn className="h-4 w-4" />
-                        Entrar
-                      </Link>
-                    </Button>
-                  </SheetClose>
-                ) : null}
-              </div>
-
-              {isAuthenticated ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="justify-start"
-                  onClick={() => authService.logout()}
+              </DropdownMenuPrimitive.Trigger>
+              <DropdownMenuPrimitive.Portal>
+                <DropdownMenuPrimitive.Content
+                  align="end"
+                  sideOffset={10}
+                  className="z-50 min-w-56 overflow-hidden rounded-md border border-border/80 bg-popover p-1 text-popover-foreground shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
                 >
-                  <LogOut className="h-4 w-4" />
-                  Sair
-                </Button>
-              ) : null}
-            </SheetFooter>
-          </SheetContent>
-        </Sheet>
-
-        {/* Desktop menu */}
-        <NavigationMenu className="hidden md:flex">
-          <NavigationMenuList className="flex gap-6 text-base">
-            {navLinks.map((link) => {
-              const isActive = isLinkActive(pathname, link.href);
-
-              return (
-                <NavigationMenuItem key={link.href}>
-                  <NavigationMenuLink asChild active={isActive}>
+                  <DropdownMenuPrimitive.Label className="px-3 py-2 text-xs text-muted-foreground">
+                    <span className="block">Conta</span>
+                    <span className="block truncate font-medium text-foreground">
+                      {userLabel}
+                    </span>
+                  </DropdownMenuPrimitive.Label>
+                  <DropdownMenuPrimitive.Separator className="my-1 h-px bg-border" />
+                  <DropdownMenuPrimitive.Item asChild>
                     <Link
-                      href={link.href}
-                      aria-current={isActive ? "page" : undefined}
-                      className={cn(
-                        "px-1 py-1 transition-colors",
-                        isActive
-                          ? "font-semibold text-yellow-600 hover:text-yellow-600 focus:text-yellow-600"
-                          : "text-foreground/90 hover:text-foreground"
-                      )}
+                      href="/fichas"
+                      className="flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none transition hover:bg-muted hover:text-amber-700 focus:bg-muted focus:text-amber-700 dark:hover:text-amber-600 dark:focus:text-amber-600"
                     >
-                      {link.label}
+                      <Users className="size-4 text-amber-600 dark:text-amber-700" />
+                      Fichas
                     </Link>
-                  </NavigationMenuLink>
-                </NavigationMenuItem>
-              );
-            })}
-          </NavigationMenuList>
-        </NavigationMenu>
+                  </DropdownMenuPrimitive.Item>
+                  <DropdownMenuPrimitive.Item asChild>
+                    <Link
+                      href="/dashboard"
+                      className="flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none transition hover:bg-muted hover:text-amber-700 focus:bg-muted focus:text-amber-700 dark:hover:text-amber-600 dark:focus:text-amber-600"
+                    >
+                      <LayoutDashboard className="size-4 text-amber-600 dark:text-amber-700" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuPrimitive.Item>
+                  <DropdownMenuPrimitive.Separator className="my-1 h-px bg-border" />
+                  <DropdownMenuPrimitive.Item
+                    className="flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-sm text-foreground outline-none transition hover:bg-muted hover:text-amber-700 focus:bg-muted focus:text-amber-700 dark:hover:text-amber-600 dark:focus:text-amber-600"
+                    onSelect={() => authService.logout()}
+                  >
+                    <LogOut className="size-4 text-amber-600 dark:text-amber-700" />
+                    Sair
+                  </DropdownMenuPrimitive.Item>
+                </DropdownMenuPrimitive.Content>
+              </DropdownMenuPrimitive.Portal>
+            </DropdownMenuPrimitive.Root>
+          ) : null}
 
-        {/* Right icons */}
-        <div className="hidden md:flex items-center gap-4 text-muted-foreground">
-          {isAuthenticated && (
-            <>
-              <span className="text-xs text-foreground/80">{userLabel}</span>
-              <button
-                onClick={() => authService.logout()}
-                className="text-sm px-3 py-1 rounded border border-border hover:bg-muted transition text-foreground"
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-md md:hidden"
+                aria-label="Abrir menu"
               >
-                Sair
-              </button>
-            </>
-          )}
+                <Menu className="size-5" />
+              </Button>
+            </SheetTrigger>
 
-          <button
-            onClick={() =>
-              setTheme(theme === "dark" ? "light" : "dark")
-            }
-            className="transition hover:text-foreground cursor-pointer"
-            aria-label="Alternar tema"
-          >
-            <Lightbulb className="w-5 h-5 text-primary transition-colors" />
-          </button>
+            <SheetContent
+              side="right"
+              className="w-[21rem] max-w-[calc(100vw-1.25rem)] gap-0 overflow-hidden border-l border-border/80 bg-background p-0 shadow-2xl sm:w-96"
+            >
+              <SheetHeader className="border-b border-border/80 bg-muted/20 p-5 text-left">
+                <SheetTitle asChild>
+                  <Link href="/" className="w-fit">
+                    <BrandMark />
+                  </Link>
+                </SheetTitle>
+                <SheetDescription className="max-w-[16rem] text-xs leading-5">
+                  Organize campanhas, fichas e referências em poucos toques.
+                </SheetDescription>
+              </SheetHeader>
+
+              <nav className="grid gap-2 p-3" aria-label="Menu mobile">
+                {navLinks.map((link) => {
+                  const isActive = isLinkActive(pathname, link.href);
+                  const Icon =
+                    navIconMap[link.href as keyof typeof navIconMap] ??
+                    Sparkles;
+
+                  return (
+                    <SheetClose asChild key={link.href}>
+                      <Link
+                        href={link.href}
+                        aria-current={isActive ? "page" : undefined}
+                        className={cn(
+                          "group flex min-h-14 items-center gap-3 rounded-md border px-3 py-2.5 text-sm font-semibold transition",
+                          isActive
+                            ? "border-amber-600/25 bg-amber-600/10 text-amber-700 dark:text-amber-600"
+                            : "border-transparent text-foreground/80 hover:border-border hover:bg-muted/60 hover:text-amber-700 dark:hover:text-amber-600"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "flex size-9 items-center justify-center rounded-md border transition",
+                            isActive
+                              ? "border-amber-600/20 bg-background text-amber-600 dark:text-amber-700"
+                              : "border-border/70 bg-background text-amber-600 dark:text-amber-700"
+                          )}
+                        >
+                          <Icon className="size-4" />
+                        </span>
+                        <span className="flex-1">{link.label}</span>
+                        <ChevronRight
+                          className={cn(
+                            "size-4 transition",
+                            isActive
+                              ? "text-amber-600 dark:text-amber-700"
+                              : "text-muted-foreground/50 group-hover:translate-x-0.5 group-hover:text-amber-700 dark:group-hover:text-amber-600"
+                          )}
+                        />
+                      </Link>
+                    </SheetClose>
+                  );
+                })}
+              </nav>
+
+              <SheetFooter className="mt-auto gap-3 border-t border-border/80 bg-muted/25 p-4">
+                {isAuthenticated ? (
+                  <div className="rounded-md border border-border/80 bg-background p-2 shadow-sm">
+                    <div className="flex items-center gap-2 px-1 py-1.5">
+                      <UserCircle className="size-4 text-amber-600 dark:text-amber-700" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                        {userLabel}
+                      </span>
+                    </div>
+                    <div className="mt-1 grid grid-cols-2 gap-2">
+                      <SheetClose asChild>
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="sm"
+                          className="justify-start rounded-md text-foreground/80 hover:text-amber-700 dark:hover:text-amber-600"
+                        >
+                          <Link href="/fichas">
+                            <Users className="size-4" />
+                            Fichas
+                          </Link>
+                        </Button>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="sm"
+                          className="justify-start rounded-md text-foreground/80 hover:text-amber-700 dark:hover:text-amber-600"
+                        >
+                          <Link href="/dashboard">
+                            <LayoutDashboard className="size-4" />
+                            Painel
+                          </Link>
+                        </Button>
+                      </SheetClose>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="justify-start rounded-md hover:border-amber-600/30 hover:text-amber-700 dark:hover:text-amber-600"
+                    onClick={() => setTheme(isDark ? "light" : "dark")}
+                  >
+                    {isDark ? (
+                      <Sun className="size-4" />
+                    ) : (
+                      <Moon className="size-4" />
+                    )}
+                    Tema
+                  </Button>
+
+                  {isAuthenticated ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="justify-start rounded-md hover:border-amber-600/30 hover:text-amber-700 dark:hover:text-amber-600"
+                      onClick={() => authService.logout()}
+                    >
+                      <LogOut className="size-4" />
+                      Sair
+                    </Button>
+                  ) : (
+                    <SheetClose asChild>
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="justify-start rounded-md hover:border-amber-600/30 hover:text-amber-700 dark:hover:text-amber-600"
+                      >
+                        <Link href="/login">
+                          <LogIn className="size-4" />
+                          Entrar
+                        </Link>
+                      </Button>
+                    </SheetClose>
+                  )}
+                </div>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
-
-    </div>
+    </header>
   );
 }

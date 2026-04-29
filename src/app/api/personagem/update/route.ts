@@ -322,7 +322,7 @@ export async function POST(request: Request) {
       success: true,
       personagem: {
         id: updated.id,
-        nome: (updated.apelido && updated.apelido.trim() !== '') ? updated.apelido : updated.nome,
+        nome: updated.nome,
         apelido: updated.apelido ?? null,
         campanhaId: updated.campanhaId,
         classeId: updated.classeId,

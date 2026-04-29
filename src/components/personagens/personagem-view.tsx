@@ -376,7 +376,7 @@ export function PersonagemView({
             nome={personagem.nome}
             classe={personagem.classe_nome}
             raca={personagem.raca_nome}
-            urlImagem={personagem.url_imagem}
+            urlImagem={personagem.imagem_pixel || personagem.url_imagem}
           />
 
           <PersonagemBarras

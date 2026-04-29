@@ -10,6 +10,7 @@ import { CampanhaInterface, PersonagemInterface } from '@/types';
 import { getPersonagensNaCampanha } from '@/services/personagemService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
+import { SafeImage } from '@/components/safe-image';
 
 type Props = {
   initialCampanhas: CampanhaInterface[];
@@ -128,13 +129,20 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
             {/* Imagem de capa */}
             <div className="relative w-full h-44 sm:h-52 overflow-hidden">
               {campanha.capa ? (
-                <motion.img
-                  src={campanha.capa}
-                  alt={`Capa ${campanha.nome}`}
-                  className="w-full h-full object-cover"
+                <motion.div
+                  className="relative h-full w-full"
                   whileHover={{ scale: 1.06 }}
                   transition={{ duration: 0.6 }}
-                />
+                >
+                  <SafeImage
+                  src={campanha.capa}
+                  alt={`Capa ${campanha.nome}`}
+                    fill
+                    sizes="(max-width: 1024px) 50vw, 33vw"
+                    className="object-cover"
+                    fallbackLabel={campanha.nome}
+                  />
+                </motion.div>
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-amber-500/20 via-emerald-500/10 to-sky-500/15 text-sm text-muted-foreground">
                   Sem capa
@@ -216,7 +224,14 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                 {/* Capa */}
                 <div className="relative w-full shrink-0 h-60 md:h-72 overflow-hidden">
                   {campanhaSelecionada.capa ? (
-                    <img src={campanhaSelecionada.capa} alt={`Capa ${campanhaSelecionada.nome}`} className="w-full h-full object-cover" />
+                    <SafeImage
+                      src={campanhaSelecionada.capa}
+                      alt={`Capa ${campanhaSelecionada.nome}`}
+                      fill
+                      sizes="100vw"
+                      className="object-cover"
+                      fallbackLabel={campanhaSelecionada.nome}
+                    />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-amber-500/20 via-emerald-500/10 to-sky-500/15 text-sm text-muted-foreground">Sem capa</div>
                   )}
@@ -279,7 +294,16 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                               const imageSrc = p.imagem_pixel || p.url_imagem;
 
                               return imageSrc ? (
-                                <img src={imageSrc} alt={p.nome} className="w-12 h-12 rounded-md object-cover" />
+                                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md">
+                                  <SafeImage
+                                    src={imageSrc}
+                                    alt={p.nome}
+                                    fill
+                                    sizes="48px"
+                                    className="object-cover"
+                                    fallbackLabel={p.nome}
+                                  />
+                                </div>
                               ) : (
                                 <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
                                   <User2 className="h-5 w-5 text-muted-foreground" />

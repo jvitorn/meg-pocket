@@ -154,7 +154,7 @@ describe("GET /api/personagem/[id]", () => {
 
     await expect(response.json()).resolves.toEqual({
       id: 7,
-      nome: "Arkan, o Cinzento",
+      nome: "Arkan",
       apelido: "Arkan, o Cinzento",
       campanhaId: 1,
       classeId: 2,

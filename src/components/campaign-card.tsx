@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Users } from 'lucide-react';
 import type { CampanhaInterface } from '@/types';
+import { SafeImage } from '@/components/safe-image';
 
 export interface CampaignCardProps {
   campanha: CampanhaInterface & {
@@ -18,12 +19,16 @@ export function CampaignCard({ campanha }: CampaignCardProps) {
     <article className="group rounded-lg overflow-hidden border bg-background/50 hover:shadow-lg transition-shadow">
       {/* Link principal para a página de detalhes */}
       <Link href={`/campanhas/${campanhaId}`} className="block focus:outline-none focus:ring-2 focus:ring-ring">
-        <div className="w-full h-44 sm:h-40 md:h-44 bg-muted overflow-hidden">
+        <div className="relative w-full h-44 sm:h-40 md:h-44 bg-muted overflow-hidden">
           {campanha.capa ? (
-            <img
+            <SafeImage
               src={campanha.capa}
               alt={`Capa ${campanha.nome}`}
-              className="w-full h-full object-cover transform group-hover:scale-105 transition-transform"
+              fill
+              sizes="(max-width: 768px) 100vw, 33vw"
+              className="object-cover transform group-hover:scale-105 transition-transform"
+              fallbackLabel={campanha.nome}
+              fallbackClassName="text-sm"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">

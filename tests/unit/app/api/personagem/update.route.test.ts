@@ -248,7 +248,7 @@ describe("POST /api/personagem/update", () => {
       success: true,
       personagem: {
         id: 7,
-        nome: "A Cronista",
+        nome: "Selene",
         apelido: "A Cronista",
         campanhaId: 1,
         classeId: 2,
@@ -594,7 +594,7 @@ describe("POST /api/personagem/update", () => {
       success: true,
       personagem: {
         id: 7,
-        nome: "A Cronista",
+        nome: "Selene",
         apelido: "A Cronista",
         campanhaId: 1,
         classeId: 2,

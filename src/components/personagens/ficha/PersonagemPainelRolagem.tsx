@@ -2,7 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
-import { Dice6, Dices, Minus, Plus, Swords } from "lucide-react";
+import { Dice6, Dices, Minus, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";

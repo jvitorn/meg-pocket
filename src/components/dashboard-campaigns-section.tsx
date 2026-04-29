@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ExternalLink, Pencil, Plus, ScrollText, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,6 +43,10 @@ export function DashboardCampaignsSection({
     useState<DashboardCampanhaItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setCampanhas(initialCampanhas);
+  }, [initialCampanhas]);
 
   async function handleCreateCampaign(values: CampanhaInfoValues) {
     if (loading) {

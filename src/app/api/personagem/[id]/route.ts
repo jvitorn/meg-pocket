@@ -129,10 +129,7 @@ export async function GET(
 
     const result = {
       id: personagem.id,
-      nome:
-        personagem.apelido && personagem.apelido.trim() !== ""
-          ? personagem.apelido
-          : personagem.nome,
+      nome: personagem.nome,
       apelido: personagem.apelido ?? null,
       campanhaId: personagem.campanhaId,
       classeId: personagem.classeId,

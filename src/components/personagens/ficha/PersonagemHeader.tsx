@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SafeImage } from "@/components/safe-image";
 
 interface Props {
   nome: string;
@@ -15,17 +15,16 @@ export function PersonagemHeader({ nome, classe, raca, urlImagem }: Props) {
 
       {/* Avatar */}
       <div className="flex justify-center w-full">
-        <div className="rounded-full overflow-hidden border-2 border-primary/20 w-32 h-32 md:w-44 md:h-44">
-          <Avatar className="w-full h-full">
-            <AvatarImage
-              src={urlImagem ?? undefined}
-              alt={nome}
-              className="object-cover"
-            />
-            <AvatarFallback className="text-3xl font-bold">
-              {nome?.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+        <div className="relative h-32 w-32 overflow-hidden rounded-full border-2 border-primary/20 md:h-44 md:w-44">
+          <SafeImage
+            src={urlImagem}
+            alt={nome}
+            fill
+            sizes="(max-width: 768px) 128px, 176px"
+            className="object-cover"
+            fallbackLabel={nome}
+            fallbackClassName="text-3xl"
+          />
         </div>
       </div>
 

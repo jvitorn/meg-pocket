@@ -5,6 +5,7 @@ import { BackgroundHome } from "@/components/background-home";
 import { HomeFaq } from "@/components/home-faq";
 import { HomeQuickStart } from "@/components/home-quick-start";
 import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
 import { authOptions } from "@/lib/auth";
 import { getCampanhas } from "@/data/campanhas";
 
@@ -41,7 +42,12 @@ export default async function Home() {
   noStore();
   const session = await getServerSession(authOptions);
   const isAuthenticated = Boolean(session?.user);
-  const featuredCampaigns = (await getCampanhas()).slice(0, 3);
+  const featuredCampaigns = await getCampanhas()
+    .then((campanhas) => campanhas.slice(0, 3))
+    .catch((error) => {
+      console.error("Erro ao carregar campanhas em destaque:", error);
+      return [];
+    });
 
   return (
     <>
@@ -57,6 +63,7 @@ export default async function Home() {
       />
       <HomeQuickStart featuredCampaigns={featuredCampaigns} />
       <HomeFaq isAuthenticated={isAuthenticated} />
+      <Footer />
     </>
   );
 }

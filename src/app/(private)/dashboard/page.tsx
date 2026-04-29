@@ -252,8 +252,7 @@ export default async function DashboardPage() {
             {personagens.length > 0 ? (
               <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {personagens.map((personagem) => {
-                  const nome =
-                    personagem.apelido?.trim() || personagem.nome || "Sem nome";
+                  const nome = personagem.nome || "Sem nome";
                   const classe = personagem.classe?.nome ?? null;
                   const raca = personagem.raca?.nome ?? null;
                   const detalhe =
@@ -261,7 +260,7 @@ export default async function DashboardPage() {
                       ? `${classe} • ${raca}`
                       : classe || raca || "Origem nao definida";
                   const imageSrc =
-                    personagem.url_imagem || personagem.imagem_pixel || "";
+                    personagem.imagem_pixel || personagem.url_imagem || "";
                   const hpMax = resolverBaseAtributo({
                     basePersistida: personagem.hp_base,
                     baseDerivada:

@@ -22,6 +22,10 @@ vi.mock("sonner", () => ({
   toast: toastMocks,
 }));
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/personagens/8",
+}));
+
 vi.mock("framer-motion", () => ({
   motion: {
     div: ({

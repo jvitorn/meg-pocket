@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -25,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { deletarPersonagem } from "@/services/personagemService";
+import { SafeImage } from "@/components/safe-image";
 
 type Props = {
   id: number;
@@ -179,19 +179,14 @@ export function DashboardPersonagemCard({
           </div>
 
           <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border bg-muted">
-            {imageSrc ? (
-              <Image
-                src={imageSrc}
-                alt={nome}
-                fill
-                sizes="80px"
-                className="object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-muted to-muted/40 text-sm font-semibold text-muted-foreground">
-                {nome.slice(0, 2).toUpperCase()}
-              </div>
-            )}
+            <SafeImage
+              src={imageSrc}
+              alt={nome}
+              fill
+              sizes="80px"
+              className="object-cover"
+              fallbackLabel={nome}
+            />
           </div>
         </div>
       </div>

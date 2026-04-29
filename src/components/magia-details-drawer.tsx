@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Crosshair, Droplets, Sparkles } from "lucide-react";
+import { Crosshair, Droplets } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { PersonagemInterface } from "@/types";
@@ -15,6 +16,8 @@ interface Props {
 }
 
 export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) {
+  const pathname = usePathname();
+  const isSpecialRoute = pathname?.startsWith("/personagens/especial/");
   /* Drawers locais */
   const [hpDrawerOpen, setHpDrawerOpen] = useState(false);
   const [manaDrawerOpen, setManaDrawerOpen] = useState(false);
@@ -248,12 +251,14 @@ export function PersonagemBarras({ personagem, setPersonagem, canEdit }: Props) 
             <div className="w-full">
               <button
                 onClick={() => {
-                  window.location.href = `/personagens/especial/${personagem.id}`;
+                  window.location.href = isSpecialRoute
+                    ? `/personagens/${personagem.id}`
+                    : `/personagens/especial/${personagem.id}`;
                 }}
                 className="w-full inline-flex items-center gap-2 justify-center px-4 py-2 rounded shadow-lg bg-linear-to-r from-purple-600 to-pink-500 text-white hover:scale-[1.025] transition-transform text-sm font-semibold"
               >
                 <Bolt className="w-4 h-4" />
-                Ativar ficha especial
+                {isSpecialRoute ? "Desativar ficha especial" : "Ativar ficha especial"}
               </button>
             </div>
           )}
