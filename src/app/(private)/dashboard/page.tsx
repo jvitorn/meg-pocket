@@ -85,6 +85,7 @@ export default async function DashboardPage() {
           sinopse: true,
           capa: true,
           mestre: true,
+          tags: true,
           user: {
             select: {
               id: true,
@@ -114,6 +115,9 @@ export default async function DashboardPage() {
       sinopse: campanha.sinopse ?? null,
       capa: campanha.capa ?? null,
       mestre: campanha.mestre ?? null,
+      tags: Array.isArray(campanha.tags)
+        ? campanha.tags.map((tag) => String(tag)).filter(Boolean)
+        : [],
       countPersonagens: campanha._count.personagens,
       createdAtLabel: formatter.format(new Date(campanha.createdAt)),
       updatedAtLabel: formatter.format(new Date(campanha.updatedAt)),

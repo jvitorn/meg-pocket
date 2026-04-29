@@ -150,10 +150,13 @@ describe("PersonagemInventario", () => {
     );
   });
 
-  it("desabilita o uso em modo somente leitura", () => {
+  it("desabilita o uso em modo somente leitura", async () => {
+    const user = userEvent.setup();
+
     render(<Wrapper canEdit={false} />);
 
-    expect(screen.getByRole("button", { name: "Detalhes" })).toBeInTheDocument();
-    expect(screen.getByText(/restritos ao administrador/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Detalhes" }));
+
+    expect(await screen.findByRole("button", { name: "Usar" })).toBeDisabled();
   });
 });

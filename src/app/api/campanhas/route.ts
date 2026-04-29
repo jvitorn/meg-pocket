@@ -78,6 +78,7 @@ export async function POST(request: Request) {
         sinopse: true,
         capa: true,
         mestre: true,
+        tags: true,
       },
     });
 

@@ -83,7 +83,14 @@ export default async function EditarCampanhaPage({
     }),
     prisma.item.findMany({
       orderBy: [{ tipo: "asc" }, { nome: "asc" }],
-      select: { id: true, nome: true, tipo: true },
+      select: {
+        id: true,
+        nome: true,
+        tipo: true,
+        descricao: true,
+        durabilidadeBase: true,
+        durabilidadeMax: true,
+      },
     }),
   ]);
 
@@ -137,6 +144,9 @@ export default async function EditarCampanhaPage({
             itemId: entry.itemId,
             nome: entry.item.nome,
             tipo: entry.item.tipo,
+            descricao: entry.item.descricao,
+            durabilidadeAtual: entry.durabilidadeAtual,
+            durabilidadeMax: entry.durabilidadeMax,
             quantidade: entry.quantidade,
             esgotado: Boolean(entry.esgotadoEm) || entry.quantidade === 0,
             observacoes: entry.observacoes ?? "",

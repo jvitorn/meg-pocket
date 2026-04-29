@@ -4,20 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Plus, ScrollText, Sparkles } from "lucide-react";
+import { ExternalLink, Pencil, Plus, ScrollText, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+  CampanhaInfoDialog,
+  normalizeCampanhaTags,
+  type CampanhaInfoValues,
+} from "@/components/campanhas/campanha-info-dialog";
 
 export type DashboardCampanhaItem = {
   id: number;
@@ -29,19 +24,13 @@ export type DashboardCampanhaItem = {
   createdAtLabel: string;
   updatedAtLabel: string;
   isOwner: boolean;
+  tags: string[];
 };
 
 type Props = {
   initialCampanhas: DashboardCampanhaItem[];
   defaultMestre: string;
 };
-
-function normalizeTags(tags: string) {
-  return tags
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-}
 
 export function DashboardCampaignsSection({
   initialCampanhas,
@@ -50,15 +39,12 @@ export function DashboardCampaignsSection({
   const router = useRouter();
   const [campanhas, setCampanhas] = useState(initialCampanhas);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [nome, setNome] = useState("");
-  const [sinopse, setSinopse] = useState("");
-  const [capa, setCapa] = useState("");
-  const [mestre, setMestre] = useState(defaultMestre);
-  const [tags, setTags] = useState("");
+  const [editingCampanha, setEditingCampanha] =
+    useState<DashboardCampanhaItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleCreateCampaign() {
+  async function handleCreateCampaign(values: CampanhaInfoValues) {
     if (loading) {
       return;
     }
@@ -73,11 +59,11 @@ export function DashboardCampaignsSection({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          nome,
-          sinopse,
-          capa,
-          mestre,
-          tags: normalizeTags(tags),
+          nome: values.nome,
+          sinopse: values.sinopse,
+          capa: values.capa,
+          mestre: values.mestre,
+          tags: normalizeCampanhaTags(values.tags),
         }),
       });
 
@@ -102,6 +88,9 @@ export function DashboardCampaignsSection({
             createdAtLabel: "agora",
             updatedAtLabel: "agora",
             isOwner: true,
+            tags: Array.isArray(createdCampaign.tags)
+              ? createdCampaign.tags.map(String)
+              : normalizeCampanhaTags(values.tags),
           },
           ...prev,
         ]);
@@ -109,16 +98,72 @@ export function DashboardCampaignsSection({
 
       toast.success("Campanha criada com sucesso.");
       setDialogOpen(false);
-      setNome("");
-      setSinopse("");
-      setCapa("");
-      setTags("");
       router.refresh();
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
           : "Não foi possível criar a campanha."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleEditCampaign(values: CampanhaInfoValues) {
+    if (loading || !editingCampanha) {
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/campanhas/${editingCampanha.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: values.nome,
+          sinopse: values.sinopse,
+          capa: values.capa,
+          mestre: values.mestre,
+          tags: normalizeCampanhaTags(values.tags),
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setError(data?.error ?? "Não foi possível editar a campanha.");
+        return;
+      }
+
+      const updated = data?.campanha;
+      setCampanhas((current) =>
+        current.map((campanha) =>
+          campanha.id === editingCampanha.id
+            ? {
+                ...campanha,
+                nome: updated?.nome ?? values.nome,
+                sinopse: updated?.sinopse ?? values.sinopse,
+                capa: updated?.capa ?? values.capa,
+                mestre: updated?.mestre ?? values.mestre,
+                tags: Array.isArray(updated?.tags)
+                  ? updated.tags.map(String)
+                  : normalizeCampanhaTags(values.tags),
+                updatedAtLabel: "agora",
+              }
+            : campanha
+        )
+      );
+      toast.success("Informações iniciais atualizadas.");
+      setEditingCampanha(null);
+      router.refresh();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível editar a campanha."
       );
     } finally {
       setLoading(false);
@@ -142,7 +187,11 @@ export function DashboardCampaignsSection({
             </p>
           </div>
 
-          <Button type="button" className="gap-2" onClick={() => setDialogOpen(true)}>
+          <Button
+            type="button"
+            className="gap-2"
+            onClick={() => setDialogOpen(true)}
+          >
             <Plus className="h-4 w-4" />
             Criar campanha
           </Button>
@@ -211,14 +260,20 @@ export function DashboardCampaignsSection({
                         <Link href="/campanhas">Ver vitrine</Link>
                       </Button>
                       {campanha.isOwner ? (
-                        <Button asChild variant="outline" size="sm">
-                          <Link href={`/campanhas/editar/${campanha.id}`}>
-                            Editar campanha
-                          </Link>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => setEditingCampanha(campanha)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Editar informações iniciais
                         </Button>
                       ) : null}
-                      <Button asChild size="sm">
-                        <Link href={`/personagens/campanha/${campanha.id}`}>
+                      <Button asChild size="sm" className="gap-2">
+                        <Link href={`/campanhas/editar/${campanha.id}`}>
+                          <ExternalLink className="h-4 w-4" />
                           Abrir campanha
                         </Link>
                       </Button>
@@ -252,108 +307,56 @@ export function DashboardCampaignsSection({
         )}
       </section>
 
-      <Dialog
-        open={dialogOpen}
-        onOpenChange={(nextOpen) => {
-          setDialogOpen(nextOpen);
-          if (nextOpen) {
-            return;
-          }
-          setError(null);
-        }}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Criar campanha</DialogTitle>
-            <DialogDescription>
-              Cadastre a base da mesa agora. Depois voce pode evoluir a
-              narrativa e os detalhes visuais.
-            </DialogDescription>
-          </DialogHeader>
+      {dialogOpen ? (
+        <CampanhaInfoDialog
+          open={dialogOpen}
+          onOpenChange={(nextOpen) => {
+            setDialogOpen(nextOpen);
+            if (nextOpen) {
+              return;
+            }
+            setError(null);
+          }}
+          title="Criar campanha"
+          description="Cadastre a base da mesa agora. Depois voce pode evoluir a narrativa e os detalhes visuais."
+          submitLabel="Criar campanha"
+          loading={loading}
+          error={error}
+          initialValues={{
+            nome: "",
+            mestre: defaultMestre,
+            capa: "",
+            sinopse: "",
+            tags: "",
+          }}
+          onSubmit={handleCreateCampaign}
+        />
+      ) : null}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field className="md:col-span-2">
-              <FieldLabel htmlFor="campanha-nome">Nome</FieldLabel>
-              <Input
-                id="campanha-nome"
-                value={nome}
-                onChange={(event) => setNome(event.target.value)}
-                placeholder="Ex: As Ruinas de Valthera"
-              />
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="campanha-mestre">Mestre</FieldLabel>
-              <Input
-                id="campanha-mestre"
-                value={mestre}
-                onChange={(event) => setMestre(event.target.value)}
-                placeholder="Seu nome de mestre"
-              />
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="campanha-capa">URL da capa</FieldLabel>
-              <Input
-                id="campanha-capa"
-                value={capa}
-                onChange={(event) => setCapa(event.target.value)}
-                placeholder="https://..."
-              />
-              <FieldDescription>
-                Opcional. Se deixar vazio, a campanha usa um painel tematico.
-              </FieldDescription>
-            </Field>
-
-            <Field className="md:col-span-2">
-              <FieldLabel htmlFor="campanha-sinopse">Sinopse</FieldLabel>
-              <textarea
-                id="campanha-sinopse"
-                rows={4}
-                value={sinopse}
-                onChange={(event) => setSinopse(event.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm shadow-xs outline-none focus:ring-2 focus:ring-primary/40"
-                placeholder="Descreva o clima, o conflito central ou a promessa da aventura."
-              />
-            </Field>
-
-            <Field className="md:col-span-2">
-              <FieldLabel htmlFor="campanha-tags">Tags</FieldLabel>
-              <Input
-                id="campanha-tags"
-                value={tags}
-                onChange={(event) => setTags(event.target.value)}
-                placeholder="fantasia sombria, ruinas, diplomacia"
-              />
-              <FieldDescription>
-                Opcional. Separe as tags por virgula.
-              </FieldDescription>
-            </Field>
-          </div>
-
-          {error ? (
-            <p className="text-sm text-destructive">{error}</p>
-          ) : null}
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setDialogOpen(false)}
-              disabled={loading}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              onClick={handleCreateCampaign}
-              disabled={loading}
-            >
-              {loading ? "Criando..." : "Criar campanha"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {editingCampanha ? (
+        <CampanhaInfoDialog
+          open={Boolean(editingCampanha)}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setEditingCampanha(null);
+              setError(null);
+            }
+          }}
+          title="Editar informações iniciais"
+          description="Ajuste os dados públicos da campanha sem sair do dashboard."
+          submitLabel="Salvar informações"
+          loading={loading}
+          error={error}
+          initialValues={{
+            nome: editingCampanha.nome,
+            mestre: editingCampanha.mestre ?? "",
+            capa: editingCampanha.capa ?? "",
+            sinopse: editingCampanha.sinopse ?? "",
+            tags: editingCampanha.tags.join(", "),
+          }}
+          onSubmit={handleEditCampaign}
+        />
+      ) : null}
     </>
   );
 }

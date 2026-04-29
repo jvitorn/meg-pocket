@@ -76,12 +76,19 @@ export async function POST(
       );
     }
 
-    const durabilidadeMax = item.efeito
+    const durabilidadeMaxCatalogo = item.efeito
       ? 1
       : (item.durabilidadeMax ?? item.durabilidadeBase);
-    const durabilidadeAtual = item.efeito
+    const durabilidadeAtualCatalogo = item.efeito
       ? 1
-      : (item.durabilidadeBase ?? durabilidadeMax);
+      : (item.durabilidadeBase ?? durabilidadeMaxCatalogo);
+    const durabilidadeMaxBody = toPositiveInt(body?.durabilidadeMax);
+    const durabilidadeAtualBody = toPositiveInt(body?.durabilidadeAtual);
+    const durabilidadeMax = durabilidadeMaxBody ?? durabilidadeMaxCatalogo;
+    const durabilidadeAtual =
+      durabilidadeMax && durabilidadeAtualBody
+        ? Math.min(durabilidadeAtualBody, durabilidadeMax)
+        : durabilidadeAtualCatalogo;
 
     await prisma.itemInventario.upsert({
       where: {

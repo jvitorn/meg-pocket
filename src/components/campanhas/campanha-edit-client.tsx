@@ -1,19 +1,42 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Boxes, RotateCcw, Save, Send, Trash2 } from "lucide-react";
+import {
+  BookOpen,
+  Boxes,
+  ClipboardList,
+  Drama,
+  Plus,
+  RotateCcw,
+  Save,
+  Send,
+  Shield,
+  Skull,
+  Swords,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+  CampanhaInfoDialog,
+  normalizeCampanhaTags,
+  type CampanhaInfoValues,
+} from "@/components/campanhas/campanha-info-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { StatDrawer } from "@/components/stat-drawer";
 import type { ItemTipo } from "@/types";
 
 const ITEM_TIPO_LABEL: Record<ItemTipo, string> = {
@@ -37,6 +60,9 @@ type CatalogItem = {
   id: number;
   nome: string;
   tipo: ItemTipo;
+  descricao: string | null;
+  durabilidadeBase: number | null;
+  durabilidadeMax: number | null;
 };
 
 type CampaignInventoryItem = {
@@ -44,6 +70,9 @@ type CampaignInventoryItem = {
   itemId: number;
   nome: string;
   tipo: ItemTipo;
+  descricao: string | null;
+  durabilidadeAtual: number | null;
+  durabilidadeMax: number | null;
   quantidade: number;
   esgotado: boolean;
   observacoes: string;
@@ -62,17 +91,21 @@ type Props = {
   catalogoItens: CatalogItem[];
 };
 
+function clampDurability(value: string, max: number | null | undefined) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return "";
+  const normalized = Math.trunc(parsed);
+  return String(max ? Math.min(normalized, max) : normalized);
+}
+
 export function CampanhaEditClient({
   campanha,
   personagens,
   catalogoItens,
 }: Props) {
   const router = useRouter();
-  const [nome, setNome] = useState(campanha.nome);
-  const [mestre, setMestre] = useState(campanha.mestre);
-  const [capa, setCapa] = useState(campanha.capa);
-  const [sinopse, setSinopse] = useState(campanha.sinopse);
-  const [tags, setTags] = useState(campanha.tags.join(", "));
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [selectedPersonagemId, setSelectedPersonagemId] = useState(
     personagens[0]?.id ? String(personagens[0].id) : ""
   );
@@ -81,7 +114,17 @@ export function CampanhaEditClient({
   );
   const [quantidade, setQuantidade] = useState("1");
   const [observacoes, setObservacoes] = useState("");
+  const [allowItemOverride, setAllowItemOverride] = useState(false);
+  const [durabilidadeAtual, setDurabilidadeAtual] = useState("");
+  const [durabilidadeMax, setDurabilidadeMax] = useState("");
+  const [recoveringItem, setRecoveringItem] =
+    useState<(CampaignInventoryItem & { personagemNome: string }) | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const selectedCatalogItem = useMemo(
+    () => catalogoItens.find((item) => String(item.id) === selectedItemId) ?? null,
+    [catalogoItens, selectedItemId]
+  );
 
   const inventario = useMemo(
     () =>
@@ -95,6 +138,9 @@ export function CampanhaEditClient({
     [personagens]
   );
 
+  const totalItens = inventario.reduce((total, item) => total + item.quantidade, 0);
+  const itensExpirados = inventario.filter((item) => item.esgotado).length;
+
   async function mutate(url: string, init: RequestInit) {
     const response = await fetch(url, init);
     const data = await response.json().catch(() => null);
@@ -106,8 +152,7 @@ export function CampanhaEditClient({
     router.refresh();
   }
 
-  async function handleSaveCampaign(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleSaveCampaign(values: CampanhaInfoValues) {
     setLoading(true);
 
     try {
@@ -115,17 +160,15 @@ export function CampanhaEditClient({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nome,
-          mestre,
-          capa,
-          sinopse,
-          tags: tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean),
+          nome: values.nome,
+          mestre: values.mestre,
+          capa: values.capa,
+          sinopse: values.sinopse,
+          tags: normalizeCampanhaTags(values.tags),
         }),
       });
-      toast.success("Campanha atualizada.");
+      toast.success("Informações iniciais atualizadas.");
+      setInfoOpen(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao salvar.");
     } finally {
@@ -146,10 +189,20 @@ export function CampanhaEditClient({
           itemId: selectedItemId,
           quantidade,
           observacoes,
+          ...(allowItemOverride
+            ? {
+                durabilidadeAtual,
+                durabilidadeMax,
+              }
+            : {}),
         }),
       });
       setObservacoes("");
-      toast.success("Item vinculado à ficha.");
+      setAllowItemOverride(false);
+      setDurabilidadeAtual("");
+      setDurabilidadeMax("");
+      setItemDialogOpen(false);
+      toast.success("Item incluído no inventário com sucesso.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao vincular item.");
     } finally {
@@ -193,90 +246,352 @@ export function CampanhaEditClient({
     }
   }
 
+  function openRecoverDrawer(
+    item: CampaignInventoryItem & { personagemNome: string }
+  ) {
+    setRecoveringItem(item);
+  }
+
+  const quickSections = [
+    {
+      title: "Escudo do mestre",
+      text: "Referências rápidas, CDs, segredos e clima da sessão.",
+      icon: Shield,
+    },
+    {
+      title: "Criar combate",
+      text: "Fila de iniciativa, turnos e estado dos inimigos.",
+      icon: Swords,
+    },
+    {
+      title: "Anotações",
+      text: "Ganchos, consequências e decisões importantes.",
+      icon: ClipboardList,
+    },
+    {
+      title: "Criação de NPCs",
+      text: "Aliados, rivais, vilões e rostos recorrentes.",
+      icon: Drama,
+    },
+    {
+      title: "Bestiário",
+      text: "Criaturas preparadas para aparecer na mesa.",
+      icon: Skull,
+    },
+    {
+      title: "Crônicas",
+      text: "Resumo de sessões e marcos da campanha.",
+      icon: BookOpen,
+    },
+  ];
+
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Button asChild variant="ghost" size="sm" className="-ml-3">
-            <Link href="/dashboard">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Dashboard
-            </Link>
-          </Button>
-          <h1 className="mt-2 text-3xl font-semibold">Editar campanha</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Controle rápido para mestre de {campanha.nome}.
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-2 py-6 sm:gap-8 sm:px-4 sm:py-8 lg:px-4">
+      <section className="overflow-hidden rounded-xl border border-border/60 bg-card/70 shadow-sm sm:rounded-2xl">
+        <div className="relative min-h-70">
+          {campanha.capa ? (
+            <Image
+              src={campanha.capa}
+              alt={`Capa da campanha ${campanha.nome}`}
+              fill
+              sizes="100vw"
+              className="object-cover"
+              priority
+            />
+          ) : (
+            <div className="absolute inset-0 bg-linear-to-br from-stone-900 via-zinc-800 to-emerald-950" />
+          )}
+          <div className="absolute inset-0 bg-linear-to-t from-background via-background/55 to-black/15" />
+          <div className="relative flex min-h-70 flex-col justify-between gap-8 p-4 sm:p-8">
+            <div className="max-w-3xl">
+              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                Mesa do mestre
+              </p>
+              <h1 className="mt-2 text-3xl font-semibold sm:text-5xl">
+                {campanha.nome}
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+                {campanha.sinopse ||
+                  "A campanha ainda não tem sinopse. Defina o tom inicial e deixe a mesa pronta para aventura."}
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Button type="button" className="gap-2" onClick={() => setItemDialogOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Vincular item à ficha
+                </Button>
+                <Button type="button" variant="outline" className="gap-2" onClick={() => setInfoOpen(true)}>
+                  <Save className="h-4 w-4" />
+                  Editar informações iniciais
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:gap-4 md:grid-cols-3">
+        <div className="rounded-lg border bg-card/70 p-4 sm:p-5">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            Mestre
+          </p>
+          <p className="mt-2 text-xl font-semibold">{campanha.mestre || "Não informado"}</p>
+        </div>
+        <div className="rounded-lg border bg-card/70 p-4 sm:p-5">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            Jogadores
+          </p>
+          <p className="mt-2 text-xl font-semibold">{personagens.length}</p>
+        </div>
+        <div className="rounded-lg border bg-card/70 p-4 sm:p-5">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            Inventário
+          </p>
+          <p className="mt-2 text-xl font-semibold">
+            {totalItens} item{totalItens !== 1 ? "s" : ""} · {itensExpirados} expirado
+            {itensExpirados !== 1 ? "s" : ""}
           </p>
         </div>
-      </div>
+      </section>
 
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <form
-          onSubmit={handleSaveCampaign}
-          className="rounded-lg border bg-card/70 p-5"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Informações</h2>
-            <Button type="submit" size="sm" disabled={loading}>
-              <Save className="mr-2 h-4 w-4" />
-              Salvar
+      <section className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
+        <section className="rounded-lg border bg-card/70 p-4 sm:p-5">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Jogadores da campanha</h2>
+          </div>
+          <div className="mt-5 grid gap-3">
+            {personagens.map((personagem) => (
+              <div
+                key={personagem.id}
+                className="flex items-center justify-between gap-3 rounded-md border bg-background/70 px-3 py-3"
+              >
+                <div>
+                  <p className="font-medium">{personagem.nome}</p>
+                  <p className="text-xs text-muted-foreground">{personagem.jogador}</p>
+                </div>
+                <span className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
+                  {personagem.inventario.length} item
+                  {personagem.inventario.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+            ))}
+            {personagens.length === 0 ? (
+              <p className="rounded-md border border-dashed p-5 text-sm text-muted-foreground">
+                Nenhum jogador vinculado a esta campanha ainda.
+              </p>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="-mx-2 rounded-none border-y bg-card/70 p-3 sm:mx-0 sm:rounded-lg sm:border sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Boxes className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Inventário da campanha</h2>
+            </div>
+            <Button type="button" size="sm" className="w-full gap-2 sm:w-auto" onClick={() => setItemDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Vincular item
             </Button>
           </div>
 
-          <FieldGroup className="mt-5 gap-4">
-            <Field>
-              <FieldLabel htmlFor="campanha-nome">Nome</FieldLabel>
-              <Input
-                id="campanha-nome"
-                value={nome}
-                onChange={(event) => setNome(event.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="campanha-mestre">Mestre</FieldLabel>
-              <Input
-                id="campanha-mestre"
-                value={mestre}
-                onChange={(event) => setMestre(event.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="campanha-capa">URL da capa</FieldLabel>
-              <Input
-                id="campanha-capa"
-                value={capa}
-                onChange={(event) => setCapa(event.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="campanha-sinopse">Sinopse</FieldLabel>
-              <textarea
-                id="campanha-sinopse"
-                value={sinopse}
-                onChange={(event) => setSinopse(event.target.value)}
-                rows={5}
-                className="min-h-28 w-full rounded-md border bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="campanha-tags">Tags</FieldLabel>
-              <Input
-                id="campanha-tags"
-                value={tags}
-                onChange={(event) => setTags(event.target.value)}
-              />
-              <FieldDescription>Separe por vírgula.</FieldDescription>
-            </Field>
-          </FieldGroup>
-        </form>
+          <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
+            {personagens.map((personagem) => (
+              <div key={personagem.id} className="rounded-md border bg-background/60 sm:rounded-lg">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b px-3 py-3 sm:px-4">
+                  <div>
+                    <h3 className="font-semibold">{personagem.nome}</h3>
+                    <p className="text-xs text-muted-foreground">{personagem.jogador}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {personagem.inventario.length} registro
+                    {personagem.inventario.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
 
-        <section className="rounded-lg border bg-card/70 p-5">
-          <div className="flex items-center gap-2">
-            <Boxes className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Vincular item à ficha</h2>
+                {personagem.inventario.length > 0 ? (
+                  <div className="divide-y">
+                    {personagem.inventario.map((item) => (
+                      <div
+                        key={item.id}
+                        className="grid gap-3 px-3 py-4 sm:gap-4 sm:px-4 xl:grid-cols-[minmax(0,1.2fr)_0.7fr_0.9fr_auto]"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium">{item.nome}</p>
+                            <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">
+                              {ITEM_TIPO_LABEL[item.tipo]}
+                            </span>
+                            {item.esgotado ? (
+                              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
+                                Expirado
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                            {item.descricao || item.observacoes || "Sem observações."}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs sm:max-w-xs xl:max-w-none">
+                          <span>
+                            Qtd.
+                            <Input
+                              defaultValue={item.quantidade}
+                              type="number"
+                              min="0"
+                              className="mt-1 h-8"
+                              onBlur={(event) =>
+                                updateInventoryItem(
+                                  item.id,
+                                  { quantidade: event.target.value },
+                                  "Quantidade atualizada."
+                                )
+                              }
+                              disabled={loading}
+                            />
+                          </span>
+                          <span>
+                            Dur.
+                            <p className="mt-1 rounded-md border px-2 py-1.5">
+                              {item.durabilidadeAtual ?? "-"} / {item.durabilidadeMax ?? "-"}
+                            </p>
+                          </span>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <select
+                            id={`destino-${item.id}`}
+                            className="h-9 min-w-0 flex-1 rounded-md border bg-background px-2 text-sm xl:min-w-32 xl:flex-none"
+                            defaultValue=""
+                            disabled={loading}
+                          >
+                            <option value="" disabled>
+                              Destino
+                            </option>
+                            {personagens
+                              .filter((destino) => destino.id !== personagem.id)
+                              .map((destino) => (
+                                <option key={destino.id} value={destino.id}>
+                                  {destino.nome}
+                                </option>
+                              ))}
+                          </select>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            disabled={loading}
+                            onClick={() => {
+                              const select = document.getElementById(
+                                `destino-${item.id}`
+                              ) as HTMLSelectElement | null;
+                              if (!select?.value) return;
+                              updateInventoryItem(
+                                item.id,
+                                {
+                                  action: "transfer",
+                                  targetPersonagemId: select.value,
+                                },
+                                "Item transferido."
+                              );
+                            }}
+                            aria-label="Transferir item"
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <div className="flex justify-start gap-2 xl:justify-end">
+                          {item.esgotado ? (
+                            <>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="outline"
+                                disabled={loading}
+                                onClick={() =>
+                                  openRecoverDrawer({
+                                    ...item,
+                                    personagemNome: personagem.nome,
+                                  })
+                                }
+                                aria-label="Recuperar item"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="destructive"
+                                disabled={loading}
+                                onClick={() => deleteExpiredItem(item.id)}
+                                aria-label="Apagar item expirado"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="px-3 py-6 text-sm text-muted-foreground sm:px-4">
+                    Nenhum item vinculado a este personagem.
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
+        </section>
+      </section>
 
-          <form onSubmit={handleAddItem} className="mt-5 grid gap-4 sm:grid-cols-2">
+      <section className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {quickSections.map((section) => {
+          const Icon = section.icon;
+          return (
+            <div
+              key={section.title}
+              className="rounded-lg border border-dashed bg-card/45 p-4 sm:p-5"
+            >
+              <Icon className="h-5 w-5 text-primary" />
+              <h2 className="mt-3 font-semibold">{section.title}</h2>
+              <p className="mt-2 text-sm text-muted-foreground">{section.text}</p>
+            </div>
+          );
+        })}
+      </section>
+
+      {infoOpen ? (
+        <CampanhaInfoDialog
+          open={infoOpen}
+          onOpenChange={setInfoOpen}
+          title="Editar informações iniciais"
+          description="Atualize o nome, mestre, capa, sinopse e tags principais da campanha."
+          submitLabel="Salvar informações"
+          loading={loading}
+          initialValues={{
+            nome: campanha.nome,
+            mestre: campanha.mestre,
+            capa: campanha.capa,
+            sinopse: campanha.sinopse,
+            tags: campanha.tags.join(", "),
+          }}
+          onSubmit={handleSaveCampaign}
+        />
+      ) : null}
+
+      <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Vincular item à ficha</DialogTitle>
+            <DialogDescription>
+              Selecione o personagem e confira os dados do item antes de incluir no inventário.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAddItem} className="grid gap-4 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="personagem">Personagem</FieldLabel>
               <select
@@ -299,7 +614,11 @@ export function CampanhaEditClient({
               <select
                 id="item"
                 value={selectedItemId}
-                onChange={(event) => setSelectedItemId(event.target.value)}
+                onChange={(event) => {
+                  setSelectedItemId(event.target.value);
+                  setDurabilidadeAtual("");
+                  setDurabilidadeMax("");
+                }}
                 className="h-9 rounded-md border bg-background px-3 text-sm"
                 disabled={catalogoItens.length === 0}
               >
@@ -331,7 +650,96 @@ export function CampanhaEditClient({
               />
             </Field>
 
-            <div className="sm:col-span-2">
+            <div className="rounded-lg border bg-background/70 p-4 sm:col-span-2">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold">
+                    {selectedCatalogItem?.nome ?? "Item não selecionado"}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {selectedCatalogItem?.descricao ?? "Sem descrição no catálogo."}
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={allowItemOverride}
+                    onChange={(event) => setAllowItemOverride(event.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  Editar valores deste inventário
+                </label>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="durabilidade-max">Durabilidade max.</FieldLabel>
+                  <Input
+                    id="durabilidade-max"
+                    type="number"
+                    min="1"
+                    value={durabilidadeMax}
+                    placeholder={String(
+                      selectedCatalogItem?.durabilidadeMax ??
+                        selectedCatalogItem?.durabilidadeBase ??
+                        ""
+                    )}
+                    onChange={(event) => {
+                      const next = clampDurability(event.target.value, null);
+                      setDurabilidadeMax(next);
+                      setDurabilidadeAtual((current) =>
+                        next ? clampDurability(current, Number(next)) : current
+                      );
+                    }}
+                    disabled={!allowItemOverride}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="durabilidade-atual">Durabilidade atual</FieldLabel>
+                  <Input
+                    id="durabilidade-atual"
+                    type="number"
+                    min="1"
+                    max={
+                      Number(durabilidadeMax) ||
+                      selectedCatalogItem?.durabilidadeMax ||
+                      selectedCatalogItem?.durabilidadeBase ||
+                      undefined
+                    }
+                    value={durabilidadeAtual}
+                    placeholder={String(
+                      selectedCatalogItem?.durabilidadeBase ??
+                        selectedCatalogItem?.durabilidadeMax ??
+                        ""
+                    )}
+                    onChange={(event) =>
+                      setDurabilidadeAtual(
+                        clampDurability(
+                          event.target.value,
+                          Number(durabilidadeMax) ||
+                            selectedCatalogItem?.durabilidadeMax ||
+                            selectedCatalogItem?.durabilidadeBase
+                        )
+                      )
+                    }
+                    disabled={!allowItemOverride}
+                  />
+                </Field>
+              </div>
+              <FieldDescription className="mt-3">
+                A edição local altera apenas a durabilidade deste item no inventário.
+              </FieldDescription>
+            </div>
+
+            <DialogFooter className="sm:col-span-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setItemDialogOpen(false)}
+                disabled={loading}
+              >
+                Cancelar
+              </Button>
               <Button
                 type="submit"
                 disabled={
@@ -344,171 +752,37 @@ export function CampanhaEditClient({
               >
                 Vincular item
               </Button>
-            </div>
+            </DialogFooter>
           </form>
-        </section>
-      </section>
+        </DialogContent>
+      </Dialog>
 
-      <section className="rounded-lg border bg-card/70 p-5">
-        <h2 className="text-lg font-semibold">Inventário da campanha</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
-            <thead className="border-b text-xs uppercase text-muted-foreground">
-              <tr>
-                <th className="py-3 pr-4 font-medium">Item</th>
-                <th className="py-3 pr-4 font-medium">Personagem</th>
-                <th className="py-3 pr-4 font-medium">Tipo</th>
-                <th className="py-3 pr-4 font-medium">Qtd.</th>
-                <th className="py-3 pr-4 font-medium">Transferir</th>
-                <th className="py-3 text-right font-medium">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {inventario.map((item) => (
-                <tr key={item.id} className="border-b last:border-0">
-                  <td className="py-3 pr-4">
-                    <div className="font-medium">{item.nome}</div>
-                    {item.esgotado ? (
-                      <span className="text-xs text-amber-600">Expirado</span>
-                    ) : null}
-                  </td>
-                  <td className="py-3 pr-4">{item.personagemNome}</td>
-                  <td className="py-3 pr-4">
-                    <select
-                      defaultValue={item.tipo}
-                      onChange={(event) =>
-                        updateInventoryItem(
-                          item.id,
-                          { tipo: event.target.value },
-                          "Tipo do item atualizado."
-                        )
-                      }
-                      className="h-8 rounded-md border bg-background px-2"
-                      disabled={loading}
-                    >
-                      {Object.entries(ITEM_TIPO_LABEL).map(([tipo, label]) => (
-                        <option key={tipo} value={tipo}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="py-3 pr-4">
-                    <Input
-                      defaultValue={item.quantidade}
-                      type="number"
-                      min="0"
-                      className="h-8 w-20"
-                      onBlur={(event) =>
-                        updateInventoryItem(
-                          item.id,
-                          { quantidade: event.target.value },
-                          "Quantidade atualizada."
-                        )
-                      }
-                      disabled={loading}
-                    />
-                  </td>
-                  <td className="py-3 pr-4">
-                    <div className="flex gap-2">
-                      <select
-                        id={`destino-${item.id}`}
-                        className="h-8 rounded-md border bg-background px-2"
-                        defaultValue=""
-                        disabled={loading}
-                      >
-                        <option value="" disabled>
-                          Destino
-                        </option>
-                        {personagens
-                          .filter((personagem) => personagem.id !== item.personagemId)
-                          .map((personagem) => (
-                            <option key={personagem.id} value={personagem.id}>
-                              {personagem.nome}
-                            </option>
-                          ))}
-                      </select>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        disabled={loading}
-                        onClick={() => {
-                          const select = document.getElementById(
-                            `destino-${item.id}`
-                          ) as HTMLSelectElement | null;
-                          if (!select?.value) return;
-                          updateInventoryItem(
-                            item.id,
-                            {
-                              action: "transfer",
-                              targetPersonagemId: select.value,
-                            },
-                            "Item transferido."
-                          );
-                        }}
-                        aria-label="Transferir item"
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
-                  <td className="py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      {item.esgotado ? (
-                        <>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="outline"
-                            disabled={loading}
-                            onClick={() =>
-                              updateInventoryItem(
-                                item.id,
-                                { action: "recover" },
-                                "Item recuperado."
-                              )
-                            }
-                            aria-label="Recuperar item"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="destructive"
-                            disabled={loading}
-                            onClick={() => deleteExpiredItem(item.id)}
-                            aria-label="Apagar item expirado"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {inventario.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Nenhum item vinculado aos personagens desta campanha.
-            </p>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-3">
-        {["Sessões", "Convites", "Anotações do mestre"].map((title) => (
-          <div key={title} className="rounded-lg border border-dashed bg-card/40 p-5">
-            <h2 className="font-semibold">{title}</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Este painel vai ganhar controles próprios futuramente.
-            </p>
-          </div>
-        ))}
-      </section>
+      <StatDrawer
+        open={Boolean(recoveringItem)}
+        setOpen={(open) => {
+          if (!open) setRecoveringItem(null);
+        }}
+        title="Recuperar item"
+        description={`Escolha com qual durabilidade o item volta para ${
+          recoveringItem?.personagemNome ?? "a ficha"
+        }.`}
+        current={
+          recoveringItem?.durabilidadeMax ??
+          recoveringItem?.durabilidadeAtual ??
+          1
+        }
+        max={recoveringItem?.durabilidadeMax ?? undefined}
+        unitLabel="durabilidade"
+        onUpdate={async (novoValor) => {
+          if (!recoveringItem) return;
+          await updateInventoryItem(
+            recoveringItem.id,
+            { action: "recover", durabilidadeAtual: novoValor },
+            "Item recuperado."
+          );
+          setRecoveringItem(null);
+        }}
+      />
     </main>
   );
 }

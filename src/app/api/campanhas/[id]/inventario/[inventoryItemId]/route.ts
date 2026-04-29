@@ -128,12 +128,17 @@ export async function PATCH(
         registro.durabilidadeMax ??
         registro.item.durabilidadeMax ??
         registro.item.durabilidadeBase;
+      const durabilidadeEscolhida = toPositiveInt(body?.durabilidadeAtual);
+      const durabilidadeAtual =
+        durabilidadeMax && durabilidadeEscolhida
+          ? Math.min(durabilidadeEscolhida, durabilidadeMax)
+          : (registro.item.durabilidadeBase ?? durabilidadeMax);
 
       await prisma.itemInventario.update({
         where: { id: registro.id },
         data: {
           quantidade: Math.max(1, normalizarQuantidadeItem(registro.quantidade)),
-          durabilidadeAtual: registro.item.durabilidadeBase ?? durabilidadeMax,
+          durabilidadeAtual,
           durabilidadeMax,
           efeitoAtivo: false,
           esgotadoEm: null,

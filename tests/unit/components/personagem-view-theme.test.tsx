@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
+  easeInOut: [0.42, 0, 0.58, 1],
   motion: {
     div: ({
       children,

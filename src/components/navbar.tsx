@@ -101,7 +101,7 @@ export function Navbar() {
               className="md:hidden"
               aria-label="Abrir menu"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5" suppressHydrationWarning />
             </Button>
           </SheetTrigger>
           <SheetContent
