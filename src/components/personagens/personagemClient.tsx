@@ -51,6 +51,20 @@ function mapPersonagemErrorState(
   };
 }
 
+function getFichaExpandedStorageKey(personagemId: string) {
+  return `meg-pocket:ficha:${personagemId}:expandida:v1`;
+}
+
+function getStoredExpanded(personagemId: string) {
+  if (typeof window === "undefined") return false;
+
+  try {
+    return window.localStorage.getItem(getFichaExpandedStorageKey(personagemId)) === "true";
+  } catch {
+    return false;
+  }
+}
+
 export default function PersonagemClient() {
   const { id } = useParams<{ id: string }>();
 
@@ -59,7 +73,17 @@ export default function PersonagemClient() {
   );
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<FriendlyErrorState | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => (id ? getStoredExpanded(id) : false));
+
+  useEffect(() => {
+    if (!id) return;
+
+    try {
+      window.localStorage.setItem(getFichaExpandedStorageKey(id), String(expanded));
+    } catch {
+      // Keep the sheet usable when local storage is unavailable.
+    }
+  }, [expanded, id]);
 
   /* ---------------- Carregar personagem ---------------- */
   useEffect(() => {

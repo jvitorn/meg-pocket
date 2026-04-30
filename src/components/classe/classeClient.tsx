@@ -449,7 +449,7 @@ export default function ClassePage() {
                   <CarouselContent className="-ml-3">
                     {personagensPreview.map((personagem) => {
                       const nomeVisual = personagem.apelido?.trim() || personagem.nome;
-                      const img = personagem.url_imagem || personagem.imagem_pixel;
+                      const img = personagem.imagemPerfil || personagem.imagemPrincipal;
 
                       return (
                         <CarouselItem

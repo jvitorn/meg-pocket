@@ -6,6 +6,13 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Elemento {
+  natureza
+  agua
+  fogo
+  vento
+}
+
 
 /// Raça
 model Raca {
@@ -77,15 +84,16 @@ model Personagem {
   campanhaId        Int
   classeId          Int
   racaId            Int
-  elemento          String
+  elemento          Elemento
   hp_atual          Int?
   mana_atual        Int?
   defesa_atual      Int?                @default(0)
   defesa_max        Int?                @default(0)
+  habilidadeDiariaUsada Boolean         @default(false)
   hp_base           Int?
   mana_base         Int?
-  imagem_pixel      String?
-  url_imagem        String?
+  imagemPerfil      String?             @map("imagem_perfil")
+  imagemPrincipal   String?             @map("imagem_principal")
   statusEspecial    String?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt

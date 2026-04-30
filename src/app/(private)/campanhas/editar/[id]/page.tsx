@@ -1,13 +1,10 @@
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 
-import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { CampanhaEditClient } from "@/components/campanhas/campanha-edit-client";
 import { prisma } from "@/lib/prisma";
 import { validarMestreDaCampanha } from "@/lib/regras/campanhaPermissao";
-import { Footer } from "@/components/footer";
-import { AppBreadcrumb } from "@/components/app-breadcrumb";
 
 function parseCampaignId(value: string) {
   const parsed = Number(value);
@@ -31,19 +28,15 @@ export default async function EditarCampanhaPage({
 
   if (!campanhaId) {
     return (
-      <>
-        <Navbar />
-        <main className="mx-auto max-w-3xl px-4 py-12">
-          <h1 className="text-2xl font-semibold">Campanha inválida</h1>
-          <p className="mt-2 text-muted-foreground">
-            Esse endereço não aponta para uma campanha válida.
-          </p>
-          <Button asChild className="mt-6">
-            <Link href="/dashboard">Voltar ao dashboard</Link>
-          </Button>
-        </main>
-        <Footer/>
-      </>
+      <main className="mx-auto max-w-3xl px-4 py-12">
+        <h1 className="text-2xl font-semibold">Campanha inválida</h1>
+        <p className="mt-2 text-muted-foreground">
+          Esse endereço não aponta para uma campanha válida.
+        </p>
+        <Button asChild className="mt-6">
+          <Link href="/dashboard">Voltar ao dashboard</Link>
+        </Button>
+      </main>
     );
   }
 
@@ -51,17 +44,13 @@ export default async function EditarCampanhaPage({
 
   if (!permissao.ok) {
     return (
-      <>
-        <Navbar />
-        <main className="mx-auto max-w-3xl px-4 py-12">
-          <h1 className="text-2xl font-semibold">Acesso restrito</h1>
-          <p className="mt-2 text-muted-foreground">{permissao.error}</p>
-          <Button asChild className="mt-6">
-            <Link href="/dashboard">Voltar ao dashboard</Link>
-          </Button>
-        </main>
-        <Footer />
-      </>
+      <main className="mx-auto max-w-3xl px-4 py-12">
+        <h1 className="text-2xl font-semibold">Acesso restrito</h1>
+        <p className="mt-2 text-muted-foreground">{permissao.error}</p>
+        <Button asChild className="mt-6">
+          <Link href="/dashboard">Voltar ao dashboard</Link>
+        </Button>
+      </main>
     );
   }
 
@@ -96,65 +85,46 @@ export default async function EditarCampanhaPage({
 
   if (!campanha) {
     return (
-      <>
-        <Navbar />
-        <main className="mx-auto max-w-3xl px-4 py-12">
-          <h1 className="text-2xl font-semibold">Campanha não encontrada</h1>
-          <Button asChild className="mt-6">
-            <Link href="/dashboard">Voltar ao dashboard</Link>
-          </Button>
-        </main>
-        <Footer />
-      </>
+      <main className="mx-auto max-w-3xl px-4 py-12">
+        <h1 className="text-2xl font-semibold">Campanha não encontrada</h1>
+        <Button asChild className="mt-6">
+          <Link href="/dashboard">Voltar ao dashboard</Link>
+        </Button>
+      </main>
     );
   }
 
   return (
-    <>
-      <Navbar />
-      <div className="bg-background text-foreground">
-        <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
-          <AppBreadcrumb
-            items={[
-              { label: "Início", href: "/" },
-              { label: "Dashboard", href: "/dashboard" },
-              { label: "Editar campanha" },
-            ]}
-          />
-        </div>
-      </div>
-      <CampanhaEditClient
-        campanha={{
-          id: campanha.id,
-          nome: campanha.nome,
-          sinopse: campanha.sinopse ?? "",
-          mestre: campanha.mestre ?? "",
-          capa: campanha.capa ?? "",
-          tags: tagsToStringArray(campanha.tags),
-        }}
-        personagens={campanha.personagens.map((personagem) => ({
-          id: personagem.id,
-          nome: personagem.nome,
-          jogador:
-            personagem.user?.name ??
-            personagem.user?.email ??
-            "Jogador não vinculado",
-          inventario: personagem.itensInventario.map((entry) => ({
-            id: entry.id,
-            itemId: entry.itemId,
-            nome: entry.item.nome,
-            tipo: entry.item.tipo,
-            descricao: entry.item.descricao,
-            durabilidadeAtual: entry.durabilidadeAtual,
-            durabilidadeMax: entry.durabilidadeMax,
-            quantidade: entry.quantidade,
-            esgotado: Boolean(entry.esgotadoEm) || entry.quantidade === 0,
-            observacoes: entry.observacoes ?? "",
-          })),
-        }))}
-        catalogoItens={catalogoItens}
-      />
-      <Footer />
-    </>
+    <CampanhaEditClient
+      campanha={{
+        id: campanha.id,
+        nome: campanha.nome,
+        sinopse: campanha.sinopse ?? "",
+        mestre: campanha.mestre ?? "",
+        capa: campanha.capa ?? "",
+        tags: tagsToStringArray(campanha.tags),
+      }}
+      personagens={campanha.personagens.map((personagem) => ({
+        id: personagem.id,
+        nome: personagem.nome,
+        jogador:
+          personagem.user?.name ??
+          personagem.user?.email ??
+          "Jogador não vinculado",
+        inventario: personagem.itensInventario.map((entry) => ({
+          id: entry.id,
+          itemId: entry.itemId,
+          nome: entry.item.nome,
+          tipo: entry.item.tipo,
+          descricao: entry.item.descricao,
+          durabilidadeAtual: entry.durabilidadeAtual,
+          durabilidadeMax: entry.durabilidadeMax,
+          quantidade: entry.quantidade,
+          esgotado: Boolean(entry.esgotadoEm) || entry.quantidade === 0,
+          observacoes: entry.observacoes ?? "",
+        })),
+      }))}
+      catalogoItens={catalogoItens}
+    />
   );
 }

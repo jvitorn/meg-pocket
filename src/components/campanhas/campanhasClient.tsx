@@ -291,7 +291,7 @@ export default function CampanhasClient({ initialCampanhas }: Props) {
                           <motion.div key={p.id} variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
                             <Link href={`/personagens/${p.id}`} onClick={() => setDialogAberto(false)} className="group flex items-center gap-3 rounded-md border bg-background/70 p-3 transition hover:border-amber-500/30 hover:bg-amber-500/5">
                             {(() => {
-                              const imageSrc = p.imagem_pixel || p.url_imagem;
+                              const imageSrc = p.imagemPerfil || p.imagemPrincipal;
 
                               return imageSrc ? (
                                 <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md">

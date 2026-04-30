@@ -24,7 +24,8 @@ import { getThemeByColor } from "@/lib/fantasyThemes";
 
 // Props para o componente de item de card reutilizável
 interface dataMulticardInterface extends BaseInterface{
-  url_imagem?: string
+  imagemPrincipal?: string | null
+  imagemPerfil?: string | null
 }
 interface MultiCardItemProps {
   data: dataMulticardInterface; // dados da classe (ex: nome, imagem, etc.)
@@ -48,7 +49,7 @@ export function MultiCardItem({
   onButtonClick,
 }: MultiCardItemProps) {
   const theme = getThemeByColor(data.corTema, "zinc");
-  const imageSrc = data.imagem_pixel || data.url_imagem || data.img || "";
+  const imageSrc = data.imagemPerfil || data.imagemPrincipal || data.img || "";
   const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
   const imageFailed = Boolean(imageSrc && failedImageSrc === imageSrc);
 

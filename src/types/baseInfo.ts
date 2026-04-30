@@ -11,5 +11,6 @@ export interface BaseInterface {
     corTema?: ColorThemeName | null;
     icone?: string | null;
     magias?: MagiaPersonagem[];
-    imagem_pixel?: string;
+    imagemPerfil?: string | null;
+    imagemPrincipal?: string | null;
 }

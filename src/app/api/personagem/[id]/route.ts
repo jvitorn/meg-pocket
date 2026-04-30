@@ -1,5 +1,6 @@
 // app/personagens/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import type { Elemento } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   getSessionUserId,
@@ -137,6 +138,11 @@ export async function GET(
       racaId: personagem.racaId,
       raca_nome: personagem.raca?.nome ?? null,
       corTema: personagem.raca?.corTema ?? null,
+      habilidadeDiariaNome: personagem.raca?.habilidadeDiariaNome ?? null,
+      habilidadeDiariaCombate: personagem.raca?.habilidadeDiariaCombate ?? null,
+      habilidadeDiariaForaDeCombate:
+        personagem.raca?.habilidadeDiariaForaDeCombate ?? null,
+      habilidadeDiariaUsada: personagem.habilidadeDiariaUsada,
       elemento: personagem.elemento,
       hp_atual: personagem.hp_atual ?? null,
       mana_atual: personagem.mana_atual ?? null,
@@ -146,8 +152,8 @@ export async function GET(
       mana: manaBase,
       sobre: personagem.descricao ?? null,
       anotacoes: personagem.anotacoes ?? null,
-      url_imagem: personagem.url_imagem ?? null,
-      imagem_pixel: personagem.imagem_pixel ?? null,
+      imagemPrincipal: personagem.imagemPrincipal ?? null,
+      imagemPerfil: personagem.imagemPerfil ?? null,
       magias,
       pericias,
       inventario,
@@ -297,8 +303,8 @@ export async function PUT(
       "anotacoes"
     );
     const anotacoes = String(body?.anotacoes ?? "").replace(/\r\n/g, "\n");
-    const urlImagem = String(body?.url_imagem ?? "").trim();
-    const elemento = String(body?.elemento ?? "").trim().toLowerCase();
+    const urlImagem = String(body?.imagemPrincipal ?? "").trim();
+    const elemento = String(body?.elemento ?? "").trim().toLowerCase() as Elemento;
 
     const campanhaId = toPositiveInt(body?.campanhaId);
     const classeId = toPositiveInt(body?.classeId);
@@ -525,7 +531,7 @@ export async function PUT(
         classeId,
         racaId,
         elemento,
-        url_imagem: urlImagem || null,
+        imagemPrincipal: urlImagem || null,
         hp_base: hpBase,
         mana_base: manaBase,
         hp_atual: Math.min(personagemAtual.hp_atual ?? limites.hpMax, limites.hpMax),

@@ -37,8 +37,8 @@ export async function GET(
             id: true,
             nome: true,
             apelido: true,
-            url_imagem: true,
-            imagem_pixel: true,
+            imagemPrincipal: true,
+            imagemPerfil: true,
           },
         },
         Magias: {

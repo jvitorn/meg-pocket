@@ -102,7 +102,7 @@ export type PersonagemFormInitialData = {
   nome: string;
   apelido?: string | null;
   descricao?: string | null;
-  url_imagem?: string | null;
+  imagemPrincipal?: string | null;
   campanhaId: number;
   classeId: number;
   racaId: number;
@@ -294,9 +294,9 @@ export default function PersonagemCreateForm({
   const [apelido, setApelido] = useState(initialData?.apelido ?? "");
   const [descricao, setDescricao] = useState(initialData?.descricao ?? "");
   const [imageDraft, setImageDraft] = useState<ImageUploadDraft | null>(
-    initialData?.url_imagem
+    initialData?.imagemPrincipal
       ? {
-          previewUrl: initialData.url_imagem,
+          previewUrl: initialData.imagemPrincipal,
           file: null,
         }
       : null
@@ -620,7 +620,7 @@ export default function PersonagemCreateForm({
         nome: nome.trim(),
         apelido: apelido.trim() || null,
         descricao: descricao.trim() || null,
-        url_imagem: uploadedImageUrl,
+        imagemPrincipal: uploadedImageUrl,
         campanhaId,
         classeId,
         racaId,

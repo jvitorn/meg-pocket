@@ -7,6 +7,7 @@ import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolverBaseAtributo } from "@/lib/personagemAtributos";
+import { resolverImagemPerfilPersonagem } from "@/lib/personagemImagem";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -136,8 +137,7 @@ export default async function FichasPage() {
                     classe && raca
                       ? `${classe} • ${raca}`
                       : classe || raca || "Origem nao definida";
-                  const imageSrc =
-                    personagem.url_imagem || personagem.imagem_pixel || "";
+                  const imageSrc = resolverImagemPerfilPersonagem(personagem);
                   const hpMax = resolverBaseAtributo({
                     basePersistida: personagem.hp_base,
                     baseDerivada:

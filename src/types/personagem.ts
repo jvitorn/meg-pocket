@@ -11,9 +11,15 @@ export interface PersonagemInterface extends BaseInterface {
   racaId: number;
   raca_nome?: string;
   corTema?: string | null;
+  habilidadeDiariaNome?: string | null;
+  habilidadeDiariaCombate?: string | null;
+  habilidadeDiariaForaDeCombate?: string | null;
+  habilidadeDiariaUsada?: boolean;
 
   classeId: number;
   classe_nome?: string;
+  habilidadeClasseNome?: string | null;
+  habilidadeClasseDescricao?: string | null;
 
   elemento: string;
 
@@ -25,8 +31,8 @@ export interface PersonagemInterface extends BaseInterface {
   sobre: string;
   anotacoes?: string | null;
 
-  url_imagem?: string;
-  imagem_pixel?: string;
+  imagemPrincipal?: string | null;
+  imagemPerfil?: string | null;
 
   magias?: MagiaPersonagem[];
   pericias?: PericiaPersonagem[];

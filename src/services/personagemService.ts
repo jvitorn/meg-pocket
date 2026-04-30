@@ -124,6 +124,30 @@ export async function resetarSlotsDefensivos(
   return res.json();
 }
 
+export async function marcarHabilidadeDiariaUsada(personagemId: number) {
+  const res = await fetch(`${PERSONAGEMROUTE}/${personagemId}/habilidade-diaria`, {
+    method: "POST",
+  });
+
+  if (!res.ok) {
+    throw new Error(await parseResponseError(res));
+  }
+
+  return res.json();
+}
+
+export async function resetarHabilidadeDiaria(personagemId: number) {
+  const res = await fetch(`${PERSONAGEMROUTE}/${personagemId}/habilidade-diaria`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    throw new Error(await parseResponseError(res));
+  }
+
+  return res.json();
+}
+
 export async function usarItemInventario(
   personagemId: number,
   inventoryItemId: number

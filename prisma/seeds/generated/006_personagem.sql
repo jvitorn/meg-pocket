@@ -1,6 +1,6 @@
 -- Generated from personagem.csv
-COPY "Personagem" ("id", "nome", "apelido", "descricao", "campanhaId", "classeId", "racaId", "elemento", "hp_atual", "mana_atual", "hp_base", "mana_base", "imagem_pixel", "url_imagem", "statusEspecial", "createdAt", "updatedAt", "especialId", "userId") FROM stdin WITH (FORMAT csv, HEADER true, NULL 'null');
-id,nome,apelido,descricao,campanhaId,classeId,racaId,elemento,hp_atual,mana_atual,hp_base,mana_base,imagem_pixel,url_imagem,statusEspecial,createdAt,updatedAt,especialId,userId
+COPY "Personagem" ("id", "nome", "apelido", "descricao", "campanhaId", "classeId", "racaId", "elemento", "hp_atual", "mana_atual", "hp_base", "mana_base", "imagem_principal", "imagem_perfil", "statusEspecial", "createdAt", "updatedAt", "especialId", "userId") FROM stdin WITH (FORMAT csv, HEADER true, NULL 'null');
+id,nome,apelido,descricao,campanhaId,classeId,racaId,elemento,hp_atual,mana_atual,hp_base,mana_base,imagem_principal,imagem_perfil,statusEspecial,createdAt,updatedAt,especialId,userId
 1,Celi,null,"Celi é uma elfa que treinou a vida inteira para ser uma guerreira, tem uma forte conexão com a floresta, assim como nunca deixa seus companheiros para trás. 
     ",1,1,3,natureza,20,9,1,1,https://krxuafiolrihvoajvmnc.supabase.co/storage/v1/object/public/assets/celi_pixel.png,"https://krxuafiolrihvoajvmnc.supabase.co/storage/v1/object/public/assets/celi_profile.png
     ",null,2025-11-29 18:58:54,2026-02-24 00:02:09.438,null,cmknadd9s0000jmsb075f9ziw

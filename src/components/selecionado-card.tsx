@@ -12,7 +12,8 @@ interface SelecionadoCardProps extends BaseInterface {
   sobre?: string;
   mana_atual?: number;
   hp_atual?: number;
-  url_imagem?: string;
+  imagemPrincipal?: string | null;
+  imagemPerfil?: string | null;
 }
 // Interface para os props com valores opcionais
 interface Props {
@@ -37,7 +38,7 @@ export default function SelecionadoCard({
   // Usando a raça selecionada ou a padrão
   const race = selectedRace || defaultRace;
   const theme = getThemeByColor(race.corTema, "zinc");
-  const imageSrc = race.imagem_pixel || race.url_imagem || race.img || "";
+  const imageSrc = race.imagemPerfil || race.imagemPrincipal || race.img || "";
   const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
   const imageFailed = Boolean(imageSrc && failedImageSrc === imageSrc);
   const description =

@@ -5,8 +5,8 @@ export interface ClassePersonagemPreview {
   id: number;
   nome: string;
   apelido?: string | null;
-  url_imagem?: string | null;
-  imagem_pixel?: string | null;
+  imagemPrincipal?: string | null;
+  imagemPerfil?: string | null;
 }
 
 export interface ClasseInterface extends BaseInterface {

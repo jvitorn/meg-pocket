@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, ReactNode, SetStateAction } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion, easeInOut } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Leaf, Droplet, Flame, Wind } from "lucide-react";
@@ -14,6 +14,7 @@ import { PersonagemSobre } from "@/components/personagens/ficha/PersonagemSobre"
 import { PersonagemPericias } from "@/components/personagens/ficha/PersonagemPericias";
 import { PersonagemInventario } from "@/components/personagens/ficha/PersonagemInventario";
 import { PersonagemMagias } from "@/components/personagens/ficha/PersonagemMagias";
+import { PersonagemHabilidadesUnicas } from "@/components/personagens/ficha/PersonagemHabilidadesUnicas";
 import {
   PersonagemSectionId,
   PersonagemSectionNav,
@@ -42,6 +43,42 @@ const elements = {
     bgColor: "bg-slate-500",
   },
 };
+
+const defaultVisibleSections = {
+  anotacoes: true,
+  defesa: true,
+  habilidades: true,
+  sobre: true,
+  pericias: true,
+  inventario: true,
+  magias: true,
+  acoes: true,
+  rolagem: true,
+} satisfies Record<PersonagemSectionId, boolean>;
+
+function getFichaSectionsStorageKey(personagemId: number) {
+  return `meg-pocket:ficha:${personagemId}:secoes:v1`;
+}
+
+function getStoredVisibleSections(personagemId: number) {
+  if (typeof window === "undefined") return defaultVisibleSections;
+
+  try {
+    const raw = window.localStorage.getItem(getFichaSectionsStorageKey(personagemId));
+    if (!raw) return defaultVisibleSections;
+
+    const parsed = JSON.parse(raw) as Partial<Record<PersonagemSectionId, boolean>>;
+
+    return {
+      ...defaultVisibleSections,
+      ...Object.fromEntries(
+        Object.entries(parsed).filter(([, value]) => typeof value === "boolean")
+      ),
+    };
+  } catch {
+    return defaultVisibleSections;
+  }
+}
 
 const elementIconMotion = {
   natureza: {
@@ -188,16 +225,18 @@ export function PersonagemView({
   extraSection,
   expanded = false,
 }: Props) {
-  const [visibleSections, setVisibleSections] = useState({
-    anotacoes: true,
-    defesa: true,
-    sobre: true,
-    pericias: true,
-    inventario: true,
-    magias: true,
-    acoes: true,
-    rolagem: true,
-  });
+  const sectionsStorageKey = getFichaSectionsStorageKey(personagem.id);
+  const [visibleSections, setVisibleSections] = useState(() =>
+    getStoredVisibleSections(personagem.id)
+  );
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(sectionsStorageKey, JSON.stringify(visibleSections));
+    } catch {
+      // Prefer rendering normally when storage is unavailable in tests or privacy modes.
+    }
+  }, [sectionsStorageKey, visibleSections]);
 
   const elemento = (
     ["natureza", "agua", "fogo", "vento"].includes(
@@ -210,6 +249,11 @@ export function PersonagemView({
   const ElementIcon = elements[elemento].icon;
   const fichaTheme = getThemeByColor(personagem.corTema, "violet");
   const hasActions = Boolean(personagem.actions?.length);
+  const hasRacaAbility = Boolean(
+    personagem.habilidadeDiariaCombate?.trim() ||
+      personagem.habilidadeDiariaForaDeCombate?.trim()
+  );
+  const habilidadeCount = Number(hasRacaAbility);
   const navItems: ReadonlyArray<{
     id: PersonagemSectionId;
     label: string;
@@ -233,6 +277,12 @@ export function PersonagemView({
       label: "Defesa",
       count: null,
       isVisible: visibleSections.defesa,
+    },
+    {
+      id: "habilidades",
+      label: "Habilidade",
+      count: habilidadeCount,
+      isVisible: visibleSections.habilidades,
     },
     {
       id: "sobre",
@@ -376,7 +426,7 @@ export function PersonagemView({
             nome={personagem.nome}
             classe={personagem.classe_nome}
             raca={personagem.raca_nome}
-            urlImagem={personagem.imagem_pixel || personagem.url_imagem}
+            urlImagem={personagem.imagemPerfil || personagem.imagemPrincipal}
           />
 
           <PersonagemBarras
@@ -403,6 +453,15 @@ export function PersonagemView({
             {visibleSections.rolagem ? (
               <SectionTransition key="rolagem">
                 <PersonagemPainelRolagem canEdit={canEdit} />
+              </SectionTransition>
+            ) : null}
+
+            {visibleSections.habilidades ? (
+              <SectionTransition key="habilidades">
+                <PersonagemHabilidadesUnicas
+                  personagem={personagem}
+                  canEdit={canEdit}
+                />
               </SectionTransition>
             ) : null}
 
@@ -468,6 +527,7 @@ export function PersonagemView({
             !visibleSections.magias &&
             !visibleSections.anotacoes &&
             !visibleSections.defesa &&
+            !visibleSections.habilidades &&
             !visibleSections.rolagem &&
             !(hasActions && visibleSections.acoes) ? (
               <SectionTransition key="empty-state">

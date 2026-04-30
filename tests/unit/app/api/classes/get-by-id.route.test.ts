@@ -66,8 +66,8 @@ describe("GET /api/classes/[id]", () => {
           id: 7,
           nome: "Arkan",
           apelido: "Arkan, o Firme",
-          url_imagem: "https://example.com/arkan.png",
-          imagem_pixel: null,
+          imagemPrincipal: "https://example.com/arkan.png",
+          imagemPerfil: null,
         },
       ],
       Magias: [
@@ -106,8 +106,8 @@ describe("GET /api/classes/[id]", () => {
             id: 7,
             nome: "Arkan",
             apelido: "Arkan, o Firme",
-            url_imagem: "https://example.com/arkan.png",
-            imagem_pixel: null,
+            imagemPrincipal: "https://example.com/arkan.png",
+            imagemPerfil: null,
           },
         ],
         Magias: [

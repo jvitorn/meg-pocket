@@ -94,8 +94,8 @@ describe("ClasseClient", () => {
               id: index + 1,
               nome: `Personagem ${index + 1}`,
               apelido: null,
-              url_imagem: null,
-              imagem_pixel: null,
+              imagemPrincipal: null,
+              imagemPerfil: null,
             })),
             Magias: [
               {

@@ -11,6 +11,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { Toaster } from "@/components/ui/sonner";
 import { resolverBaseAtributo } from "@/lib/personagemAtributos";
+import { resolverImagemPerfilPersonagem } from "@/lib/personagemImagem";
 import { DashboardPersonagemCard } from "@/components/dashboard-personagem-card";
 import {
   DashboardCampaignsSection,
@@ -259,8 +260,7 @@ export default async function DashboardPage() {
                     classe && raca
                       ? `${classe} • ${raca}`
                       : classe || raca || "Origem nao definida";
-                  const imageSrc =
-                    personagem.imagem_pixel || personagem.url_imagem || "";
+                  const imageSrc = resolverImagemPerfilPersonagem(personagem);
                   const hpMax = resolverBaseAtributo({
                     basePersistida: personagem.hp_base,
                     baseDerivada:

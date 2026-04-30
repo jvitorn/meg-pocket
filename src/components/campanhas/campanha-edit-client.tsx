@@ -8,6 +8,7 @@ import {
   Boxes,
   ClipboardList,
   Drama,
+  LogOut,
   Plus,
   RotateCcw,
   Save,
@@ -26,6 +27,8 @@ import {
   type CampanhaInfoValues,
 } from "@/components/campanhas/campanha-info-dialog";
 import { Button } from "@/components/ui/button";
+import { AppBreadcrumb } from "@/components/app-breadcrumb";
+import { AppSidebar } from "@/components/app-sidebar";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +39,12 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { StatDrawer } from "@/components/stat-drawer";
 import type { ItemTipo } from "@/types";
 
@@ -286,7 +295,41 @@ export function CampanhaEditClient({
   ];
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-2 py-6 sm:gap-8 sm:px-4 sm:py-8 lg:px-4">
+    <SidebarProvider>
+      <AppSidebar
+        campanha={{
+          id: campanha.id,
+          nome: campanha.nome,
+          mestre: campanha.mestre,
+        }}
+        personagensCount={personagens.length}
+        inventarioCount={totalItens}
+        onAddItem={() => setItemDialogOpen(true)}
+        onEditInfo={() => setInfoOpen(true)}
+      />
+      <SidebarInset className="bg-background text-foreground">
+        <header className="sticky top-0 z-30 flex min-h-16 shrink-0 items-center justify-between gap-3 border-b bg-background/95 px-4 backdrop-blur supports-backdrop-filter:bg-background/80">
+          <div className="flex min-w-0 items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+            <AppBreadcrumb
+              className="mb-0 min-w-0"
+              items={[
+                { label: "Início", href: "/" },
+                { label: "Dashboard", href: "/dashboard" },
+                { label: "Editar campanha" },
+              ]}
+            />
+          </div>
+          <Button asChild variant="outline" size="sm" className="shrink-0 gap-2">
+            <a href="/dashboard">
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Sair do painel</span>
+            </a>
+          </Button>
+        </header>
+
+        <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-2 py-6 sm:gap-8 sm:px-4 sm:py-8 lg:px-4">
       <section className="overflow-hidden rounded-xl border border-border/60 bg-card/70 shadow-sm sm:rounded-2xl">
         <div className="relative min-h-70">
           {campanha.capa ? (
@@ -301,10 +344,11 @@ export function CampanhaEditClient({
           ) : (
             <div className="absolute inset-0 bg-linear-to-br from-stone-900 via-zinc-800 to-emerald-950" />
           )}
-          <div className="absolute inset-0 bg-linear-to-t from-background via-background/55 to-black/15" />
+          <div className="absolute inset-0 bg-linear-to-t from-background via-background/60 to-black/20" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent" />
           <div className="relative flex min-h-70 flex-col justify-between gap-8 p-4 sm:p-8">
             <div className="max-w-3xl">
-              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+              <p className="text-xs uppercase tracking-[0.28em] text-primary/85">
                 Mesa do mestre
               </p>
               <h1 className="mt-2 text-3xl font-semibold sm:text-5xl">
@@ -354,7 +398,7 @@ export function CampanhaEditClient({
       </section>
 
       <section className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
-        <section className="rounded-lg border bg-card/70 p-4 sm:p-5">
+        <section id="jogadores" className="scroll-mt-24 rounded-lg border bg-card/70 p-4 sm:p-5">
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Jogadores da campanha</h2>
@@ -383,7 +427,7 @@ export function CampanhaEditClient({
           </div>
         </section>
 
-        <section className="-mx-2 rounded-none border-y bg-card/70 p-3 sm:mx-0 sm:rounded-lg sm:border sm:p-5">
+        <section id="inventario" className="-mx-2 scroll-mt-24 rounded-none border-y bg-card/70 p-3 sm:mx-0 sm:rounded-lg sm:border sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Boxes className="h-5 w-5 text-primary" />
@@ -547,7 +591,7 @@ export function CampanhaEditClient({
         </section>
       </section>
 
-      <section className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <section id="ferramentas" className="grid scroll-mt-24 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
         {quickSections.map((section) => {
           const Icon = section.icon;
           return (
@@ -783,6 +827,8 @@ export function CampanhaEditClient({
           setRecoveringItem(null);
         }}
       />
-    </main>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

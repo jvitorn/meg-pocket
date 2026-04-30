@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+const headerMock = vi.hoisted(() => vi.fn());
+
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
   easeInOut: [0.42, 0, 0.58, 1],
@@ -32,7 +34,10 @@ vi.mock("framer-motion", () => ({
 }));
 
 vi.mock("@/components/personagens/ficha/PersonagemHeader", () => ({
-  PersonagemHeader: () => <div>Header mock</div>,
+  PersonagemHeader: (props: { urlImagem?: string | null }) => {
+    headerMock(props);
+    return <div>Header mock</div>;
+  },
 }));
 
 vi.mock("@/components/personagens/ficha/PersonagemBarras", () => ({
@@ -71,12 +76,17 @@ vi.mock("@/components/personagens/ficha/PersonagemAnotacoes", () => ({
   PersonagemAnotacoes: () => <div>Anotações mock</div>,
 }));
 
+vi.mock("@/components/personagens/ficha/PersonagemHabilidadesUnicas", () => ({
+  PersonagemHabilidadesUnicas: () => <div>Habilidade mock</div>,
+}));
+
 import { PersonagemView } from "@/components/personagens/personagem-view";
 import { getThemeByColor } from "@/lib/fantasyThemes";
 import type { PersonagemInterface } from "@/types";
 
 describe("PersonagemView tema interno", () => {
   it("usa a cor da raça dentro da ficha e mantém pulse suave interno", () => {
+    headerMock.mockClear();
     const personagem: PersonagemInterface = {
       id: 7,
       nome: "Arkan",
@@ -111,5 +121,62 @@ describe("PersonagemView tema interno", () => {
       String(expected.style["--theme-surface" as keyof typeof expected.style])
     );
     expect(card.querySelector(".animate-soft-pulse")).toBeInTheDocument();
+  });
+
+  it("usa imagem de perfil no cabeçalho e cai para imagem principal quando necessario", () => {
+    headerMock.mockClear();
+    const setPersonagem = vi.fn();
+
+    const { rerender } = render(
+      <PersonagemView
+        personagem={{
+          id: 7,
+          nome: "Arkan",
+          campanhaId: 1,
+          classeId: 2,
+          racaId: 3,
+          elemento: "fogo",
+          hp: 8,
+          mana: 9,
+          sobre: "Cronista",
+          imagemPrincipal: "https://example.com/principal.png",
+          imagemPerfil: "https://example.com/perfil.png",
+        }}
+        setPersonagem={setPersonagem}
+        canEdit
+      />
+    );
+
+    expect(headerMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        urlImagem: "https://example.com/perfil.png",
+      })
+    );
+
+    rerender(
+      <PersonagemView
+        personagem={{
+          id: 7,
+          nome: "Arkan",
+          campanhaId: 1,
+          classeId: 2,
+          racaId: 3,
+          elemento: "fogo",
+          hp: 8,
+          mana: 9,
+          sobre: "Cronista",
+          imagemPrincipal: "https://example.com/principal.png",
+          imagemPerfil: null,
+        }}
+        setPersonagem={setPersonagem}
+        canEdit
+      />
+    );
+
+    expect(headerMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        urlImagem: "https://example.com/principal.png",
+      })
+    );
   });
 });

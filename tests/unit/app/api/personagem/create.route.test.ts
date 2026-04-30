@@ -166,7 +166,7 @@ describe("POST /api/personagem/create", () => {
         classeId: 2,
         racaId: 3,
         elemento: "fogo",
-        url_imagem: "https://example.com/arkan.png",
+        imagemPrincipal: "https://example.com/arkan.png",
         periciaIds: [1, 2, 2],
         magiaIds: [10, 11, 11],
       })
@@ -186,7 +186,7 @@ describe("POST /api/personagem/create", () => {
         classeId: 2,
         racaId: 3,
         elemento: "fogo",
-        url_imagem: "https://example.com/arkan.png",
+        imagemPrincipal: "https://example.com/arkan.png",
         hp_base: 8,
         mana_base: 10,
         hp_atual: 8,

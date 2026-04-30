@@ -69,8 +69,8 @@ describe("GET /api/campanhas/personagens/[id]", () => {
         hp_base: null,
         mana_base: null,
         descricao: "Vigia da fronteira.",
-        url_imagem: null,
-        imagem_pixel: null,
+        imagemPrincipal: null,
+        imagemPerfil: null,
         statusEspecial: "vivo",
         raca: {
           nome: "Lumis",

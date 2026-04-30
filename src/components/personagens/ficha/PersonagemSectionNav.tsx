@@ -11,6 +11,7 @@ import {
   Shield,
   Sparkles,
   WandSparkles,
+  BadgeCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +23,8 @@ export type PersonagemSectionId =
   | "inventario"
   | "magias"
   | "acoes"
-  | "rolagem";
+  | "rolagem"
+  | "habilidades";
 
 
 type NavItem = {
@@ -47,6 +49,7 @@ const sectionIcons = {
   magias: Sparkles,
   acoes: WandSparkles,
   rolagem: Dices,
+  habilidades: BadgeCheck,
 } as const;
 
 const sectionStyles = {
@@ -113,6 +116,14 @@ const sectionStyles = {
       "border-emerald-300 bg-emerald-50 text-emerald-600 dark:border-emerald-500/25 dark:bg-emerald-500/8 dark:text-emerald-200/80",
     badge:
       "bg-emerald-200 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-100",
+  },
+  habilidades: {
+    active:
+      "border-amber-400/60 bg-amber-100 text-amber-700 dark:border-amber-500/50 dark:bg-amber-500/15 dark:text-amber-100",
+    inactive:
+      "border-amber-300 bg-amber-50 text-amber-600 dark:border-amber-500/25 dark:bg-amber-500/8 dark:text-amber-200/80",
+    badge:
+      "bg-amber-200 text-amber-700 dark:bg-amber-500/20 dark:text-amber-100",
   },
 } as const;
 

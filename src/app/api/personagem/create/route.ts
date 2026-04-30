@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import type { Elemento } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
@@ -48,8 +49,8 @@ export async function POST(request: Request) {
     const nome = String(body?.nome ?? "").trim();
     const apelido = String(body?.apelido ?? "").trim();
     const descricao = String(body?.descricao ?? "").trim();
-    const urlImagem = String(body?.url_imagem ?? "").trim();
-    const elemento = String(body?.elemento ?? "").trim().toLowerCase();
+    const urlImagem = String(body?.imagemPrincipal ?? "").trim();
+    const elemento = String(body?.elemento ?? "").trim().toLowerCase() as Elemento;
 
     const campanhaId = toPositiveInt(body?.campanhaId);
     const classeId = toPositiveInt(body?.classeId);
@@ -241,7 +242,7 @@ export async function POST(request: Request) {
         classeId,
         racaId,
         elemento,
-        url_imagem: urlImagem || null,
+        imagemPrincipal: urlImagem || null,
         hp_base: hpBase,
         mana_base: manaBase,
         hp_atual: hpBase,
