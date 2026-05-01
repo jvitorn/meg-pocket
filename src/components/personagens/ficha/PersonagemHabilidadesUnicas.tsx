@@ -216,28 +216,30 @@ export function PersonagemHabilidadesUnicas({ personagem, canEdit }: Props) {
             Sem habilidade racial cadastrada para esta ficha.
         </p>
       )}
+    </div>
+  );
 
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Button
-          type="button"
-          onClick={markUsed}
-          disabled={!canEdit || !ability.available || isUsed || saving}
-          className="bg-rose-600 text-white hover:bg-rose-700 dark:bg-rose-500 dark:hover:bg-rose-400"
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          {saving && !isUsed ? "Salvando..." : "Marcar como usada"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={resetAll}
-          disabled={!canEdit || !isUsed || saving}
-          className="border-rose-300 bg-background text-rose-800 hover:bg-rose-50 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"
-        >
-          <RotateCcw className="h-4 w-4" />
-          {saving && isUsed ? "Salvando..." : "Resetar uso"}
-        </Button>
-      </div>
+  const abilityActions = (
+    <div className="grid gap-2 sm:grid-cols-2">
+      <Button
+        type="button"
+        onClick={markUsed}
+        disabled={!canEdit || !ability.available || isUsed || saving}
+        className="bg-rose-600 text-white hover:bg-rose-700 dark:bg-rose-500 dark:hover:bg-rose-400"
+      >
+        <CheckCircle2 className="h-4 w-4" />
+        {saving && !isUsed ? "Salvando..." : "Marcar como usada"}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={resetAll}
+        disabled={!canEdit || !isUsed || saving}
+        className="border-rose-300 bg-background text-rose-800 hover:bg-rose-50 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"
+      >
+        <RotateCcw className="h-4 w-4" />
+        {saving && isUsed ? "Salvando..." : "Resetar uso"}
+      </Button>
     </div>
   );
 
@@ -246,8 +248,8 @@ export function PersonagemHabilidadesUnicas({ personagem, canEdit }: Props) {
       <Drawer open={open} onOpenChange={setOpen}>
         {section}
 
-        <DrawerContent>
-          <div className="mx-auto w-full max-w-xl">
+        <DrawerContent className="max-h-[90vh]">
+          <div className="mx-auto flex min-h-0 w-full max-w-xl flex-col">
             <DrawerHeader className="text-left">
               <DrawerTitle>Habilidade racial</DrawerTitle>
               <DrawerDescription>
@@ -255,9 +257,10 @@ export function PersonagemHabilidadesUnicas({ personagem, canEdit }: Props) {
               </DrawerDescription>
             </DrawerHeader>
 
-            <div className="px-4 pb-2">{details}</div>
+            <div className="min-h-0 overflow-y-auto px-4 pb-4">{details}</div>
 
-            <DrawerFooter>
+            <DrawerFooter className="border-t border-border/70 bg-background/95">
+              {abilityActions}
               <DrawerClose asChild>
                 <Button type="button" variant="outline">
                   Fechar
@@ -282,7 +285,10 @@ export function PersonagemHabilidadesUnicas({ personagem, canEdit }: Props) {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6">{details}</div>
+        <div className="mt-6 space-y-5">
+          {details}
+          {abilityActions}
+        </div>
 
         <SheetFooter className="mt-6">
           <SheetClose asChild>

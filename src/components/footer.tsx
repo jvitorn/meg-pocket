@@ -9,6 +9,7 @@ import {
   Lock,
   ScrollText,
   Shield,
+  Skull,
   Sparkles,
 } from "lucide-react";
 
@@ -48,6 +49,10 @@ export function Footer() {
             <Link href="/raca" className="inline-flex items-center gap-2 text-foreground/80 transition hover:text-amber-700 dark:hover:text-amber-600">
               <Sparkles className="h-4 w-4" />
               Raças
+            </Link>
+            <Link href="/ameacas" className="inline-flex items-center gap-2 text-foreground/80 transition hover:text-amber-700 dark:hover:text-amber-600">
+              <Skull className="h-4 w-4" />
+              Ameaças
             </Link>
           </nav>
 

@@ -119,11 +119,11 @@ const sectionStyles = {
   },
   habilidades: {
     active:
-      "border-amber-400/60 bg-amber-100 text-amber-700 dark:border-amber-500/50 dark:bg-amber-500/15 dark:text-amber-100",
+      "border-rose-400/60 bg-rose-100 text-rose-700 dark:border-rose-500/50 dark:bg-rose-500/15 dark:text-rose-100",
     inactive:
-      "border-amber-300 bg-amber-50 text-amber-600 dark:border-amber-500/25 dark:bg-amber-500/8 dark:text-amber-200/80",
+      "border-rose-300 bg-rose-50 text-rose-600 dark:border-rose-500/25 dark:bg-rose-500/8 dark:text-rose-200/80",
     badge:
-      "bg-amber-200 text-amber-700 dark:bg-amber-500/20 dark:text-amber-100",
+      "bg-rose-200 text-rose-700 dark:bg-rose-500/20 dark:text-rose-100",
   },
 } as const;
 

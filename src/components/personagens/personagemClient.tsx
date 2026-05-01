@@ -73,17 +73,17 @@ export default function PersonagemClient() {
   );
   const [loading, setLoading] = useState(true);
   const [errorState, setErrorState] = useState<FriendlyErrorState | null>(null);
-  const [expanded, setExpanded] = useState(() => (id ? getStoredExpanded(id) : false));
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !personagem?.canEdit) return;
 
     try {
       window.localStorage.setItem(getFichaExpandedStorageKey(id), String(expanded));
     } catch {
       // Keep the sheet usable when local storage is unavailable.
     }
-  }, [expanded, id]);
+  }, [expanded, id, personagem?.canEdit]);
 
   /* ---------------- Carregar personagem ---------------- */
   useEffect(() => {
@@ -100,6 +100,7 @@ export default function PersonagemClient() {
     setLoading(true);
     setErrorState(null);
     setPersonagem(null);
+    setExpanded(false);
 
     const fetchPersonagem = async () => {
       try {
@@ -113,6 +114,7 @@ export default function PersonagemClient() {
         }
 
         const data: PersonagemInterface = await response.json();
+        setExpanded(data.canEdit ? getStoredExpanded(id) : false);
         setPersonagem(data);
       } catch (error: unknown) {
         const status = error instanceof Error ? (error as Error & { status?: number }).status : undefined;
@@ -229,6 +231,7 @@ export default function PersonagemClient() {
             transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
           >
             <PersonagemView
+              key={personagem.id}
               personagem={personagem}
               setPersonagem={setPersonagem}
               canEdit={canEdit}

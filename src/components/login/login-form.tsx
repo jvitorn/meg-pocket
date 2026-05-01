@@ -20,18 +20,31 @@ import {
 import { Input } from "@/components/ui/input";
 import { authService } from "@/services/authService";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  clearClientAuthCache,
+  markClientAuthCacheCreatedAt,
+} from "@/lib/clientAuthCache";
 
 export function LoginForm({
+  showExpiredNotice = false,
   className,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & { showExpiredNotice?: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showExpiredNotice) return;
+
+    void clearClientAuthCache();
+    toast.warning("Credenciais expiradas. Entre novamente para continuar.");
+  }, [showExpiredNotice]);
 
   function getLoginErrorMessage(rawError?: string | null) {
     if (!rawError) {
@@ -60,6 +73,7 @@ export function LoginForm({
       }
 
       if (result?.ok) {
+        markClientAuthCacheCreatedAt();
         router.replace("/dashboard");
         router.refresh();
         return;

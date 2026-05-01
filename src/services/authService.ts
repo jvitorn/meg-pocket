@@ -1,8 +1,10 @@
 import { signIn, signOut } from "next-auth/react";
+import { clearClientAuthCache } from "@/lib/clientAuthCache";
 
 export const authService = {
   // 🔵 Google 
-  loginComGoogle() {
+  async loginComGoogle() {
+    await clearClientAuthCache();
     return signIn("google", {
       callbackUrl: "/dashboard",
     });
@@ -16,7 +18,8 @@ export const authService = {
       callbackUrl: "/dashboard",
     });
   },
-  logout() {
+  async logout() {
+    await clearClientAuthCache();
     return signOut({
       callbackUrl: "/login",
     });

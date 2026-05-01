@@ -112,4 +112,43 @@ describe("PersonagemClient tema e expansão", () => {
       "true"
     );
   });
+
+  it("nao persiste expansao quando a ficha esta em modo visualizacao", async () => {
+    const user = userEvent.setup();
+    const storageSpy = vi.spyOn(Storage.prototype, "setItem");
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 7,
+          nome: "Arkan",
+          campanhaId: 1,
+          classeId: 2,
+          racaId: 3,
+          elemento: "fogo",
+          corTema: "amber",
+          sobre: "Cronista",
+          canEdit: false,
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }
+      )
+    );
+
+    render(<PersonagemClient />);
+
+    await screen.findByText("Ficha");
+    await user.click(screen.getByRole("button", { name: /expandir ficha/i }));
+
+    expect(screen.getByTestId("personagem-view")).toHaveAttribute(
+      "data-expanded",
+      "true"
+    );
+    expect(storageSpy).not.toHaveBeenCalledWith(
+      "meg-pocket:ficha:7:expandida:v1",
+      expect.any(String)
+    );
+  });
 });

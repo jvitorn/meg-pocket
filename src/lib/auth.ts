@@ -6,6 +6,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 
+const SESSION_MAX_AGE_SECONDS = 2 * 24 * 60 * 60;
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -81,6 +82,12 @@ export const authOptions: NextAuthOptions = {
 
   session: {
     strategy: "jwt",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+    updateAge: 24 * 60 * 60,
+  },
+
+  jwt: {
+    maxAge: SESSION_MAX_AGE_SECONDS,
   },
 
   callbacks: {

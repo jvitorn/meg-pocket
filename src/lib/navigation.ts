@@ -2,10 +2,6 @@ import { NavbarInterface } from "@/types";
 
 export const BASE_NAV_LINKS = [
   {
-    label: "Início",
-    href: "/",
-  },
-  {
     label: "Campanhas",
     href: "/campanhas",
   },
@@ -17,16 +13,14 @@ export const BASE_NAV_LINKS = [
     label: "Raças",
     href: "/raca",
   },
+  {
+    label: "Ameaças",
+    href: "/ameacas",
+  },
 ] as const satisfies NavbarInterface[];
 
 export function getNavLinks(isAuthenticated: boolean): NavbarInterface[] {
-  if (!isAuthenticated) {
-    return [...BASE_NAV_LINKS, { label: "Login", href: "/login" }];
-  }
+  void isAuthenticated;
 
-  return [
-    ...BASE_NAV_LINKS,
-    { label: "Fichas", href: "/fichas" },
-    { label: "Dashboard", href: "/dashboard" },
-  ];
+  return [...BASE_NAV_LINKS];
 }

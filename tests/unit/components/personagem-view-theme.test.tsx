@@ -179,4 +179,33 @@ describe("PersonagemView tema interno", () => {
       })
     );
   });
+
+  it("nao persiste secoes no localStorage em modo visualizacao", () => {
+    const storageSpy = vi.spyOn(Storage.prototype, "setItem");
+    const setPersonagem = vi.fn();
+
+    render(
+      <PersonagemView
+        personagem={{
+          id: 7,
+          nome: "Arkan",
+          campanhaId: 1,
+          classeId: 2,
+          racaId: 3,
+          elemento: "fogo",
+          hp: 8,
+          mana: 9,
+          sobre: "Cronista",
+          canEdit: false,
+        }}
+        setPersonagem={setPersonagem}
+        canEdit={false}
+      />
+    );
+
+    expect(storageSpy).not.toHaveBeenCalledWith(
+      "meg-pocket:ficha:7:secoes:v1",
+      expect.any(String)
+    );
+  });
 });

@@ -227,16 +227,18 @@ export function PersonagemView({
 }: Props) {
   const sectionsStorageKey = getFichaSectionsStorageKey(personagem.id);
   const [visibleSections, setVisibleSections] = useState(() =>
-    getStoredVisibleSections(personagem.id)
+    canEdit ? getStoredVisibleSections(personagem.id) : defaultVisibleSections
   );
 
   useEffect(() => {
+    if (!canEdit) return;
+
     try {
       window.localStorage.setItem(sectionsStorageKey, JSON.stringify(visibleSections));
     } catch {
       // Prefer rendering normally when storage is unavailable in tests or privacy modes.
     }
-  }, [sectionsStorageKey, visibleSections]);
+  }, [canEdit, sectionsStorageKey, visibleSections]);
 
   const elemento = (
     ["natureza", "agua", "fogo", "vento"].includes(

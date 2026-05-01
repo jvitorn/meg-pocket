@@ -6,12 +6,12 @@ import {
   BookOpenText,
   ChevronDown,
   ChevronRight,
-  Home,
   LayoutDashboard,
   LogIn,
   LogOut,
   Menu,
   Moon,
+  Skull,
   ScrollText,
   Shield,
   Sparkles,
@@ -43,10 +43,10 @@ function isLinkActive(pathname: string, href: string) {
 }
 
 const navIconMap = {
-  "/": Home,
   "/campanhas": ScrollText,
   "/classe": Shield,
   "/raca": Sparkles,
+  "/ameacas": Skull,
   "/login": LogIn,
   "/dashboard": LayoutDashboard,
   "/fichas": Users,
@@ -143,7 +143,7 @@ export function Navbar() {
           </div>
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center justify-end gap-2 sm:gap-3">
           <Button
             type="button"
             variant="ghost"
@@ -211,7 +211,20 @@ export function Navbar() {
                 </DropdownMenuPrimitive.Content>
               </DropdownMenuPrimitive.Portal>
             </DropdownMenuPrimitive.Root>
-          ) : null}
+          ) : (
+            <Button
+              asChild
+              type="button"
+              variant="outline"
+              size="sm"
+              className="hidden rounded-md border-border/80 bg-background/80 text-foreground/80 hover:border-amber-600/30 hover:bg-amber-600/5 hover:text-amber-700 dark:hover:text-amber-600 md:inline-flex"
+            >
+              <Link href="/login">
+                <LogIn className="size-4 text-amber-600 dark:text-amber-700" />
+                Entrar
+              </Link>
+            </Button>
+          )}
 
           <Sheet>
             <SheetTrigger asChild>
@@ -227,7 +240,7 @@ export function Navbar() {
 
             <SheetContent
               side="right"
-              className="w-[21rem] max-w-[calc(100vw-1.25rem)] gap-0 overflow-hidden border-l border-border/80 bg-background p-0 shadow-2xl sm:w-96"
+              className="w-84 max-w-[calc(100vw-1.25rem)] gap-0 overflow-hidden border-l border-border/80 bg-background p-0 shadow-2xl sm:w-96"
             >
               <SheetHeader className="border-b border-border/80 bg-muted/20 p-5 text-left">
                 <SheetTitle asChild>
