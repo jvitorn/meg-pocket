@@ -13,23 +13,24 @@ enum Elemento {
   vento
 }
 
-
 /// Raça
 model Raca {
-  id          Int          @id @default(autoincrement())
-  nome        String
-  descricao   String?
-  img         String?
-  icone       String?
-  corTema     String?
+  id                            Int                  @id @default(autoincrement())
+  nome                          String
+  descricao                     String?
+  img                           String?
+  icone                         String?
+  corTema                       String?
   habilidadeDiariaNome          String?
-  habilidadeDiariaCombate      String?
+  habilidadeDiariaCombate       String?
   habilidadeDiariaForaDeCombate String?
-  hp          Int?         @default(0)
-  mana        Int?         @default(0)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  personagens Personagem[]
+  hp                            Int?                 @default(0)
+  mana                          Int?                 @default(0)
+  createdAt                     DateTime             @default(now())
+  updatedAt                     DateTime             @updatedAt
+  personagens                   Personagem[]
+  campanhaNpcs                  CampanhaNpc[]
+  npcTemplates                  NpcTemplateGeracao[]
 }
 
 /// Classe
@@ -51,13 +52,15 @@ model Classe {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  personagens Personagem[]
-  Magias      MagiaCatalog[] @relation("ClasseMagias")
+  personagens  Personagem[]
+  campanhaNpcs CampanhaNpc[]
+  npcTemplates NpcTemplateGeracao[]
+  Magias       MagiaCatalog[]       @relation("ClasseMagias")
 }
 
 /// Campanha
 model Campanha {
-  id              Int          @id @default(autoincrement())
+  id              Int           @id @default(autoincrement())
   nome            String
   sinopse         String?
   capa            String?
@@ -65,47 +68,126 @@ model Campanha {
   mestre          String?
   userId          String?
   tags            Json?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   personagens     Personagem[]
-  user            User?        @relation(fields: [userId], references: [id])
+  npcs            CampanhaNpc[]
+  user            User?         @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
 
+/// NPC salvo na campanha
+model CampanhaNpc {
+  id               Int      @id @default(autoincrement())
+  campanhaId       Int
+  criadoPor        String?
+  nome             String
+  racaId           Int?
+  racaNome         String
+  genero           String
+  classeId         Int?
+  classeNome       String?
+  profissao        String?
+  importancia      String?
+  tom              String?
+  personalidade    String?
+  aparencia        String?
+  segredo          String?
+  objetivoCampanha String
+  gancho           String?
+  frase            String?
+  relacaoComGrupo  String?
+  detalheVisual    String?
+  descricao        String?
+  dadosJson        Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  campanha Campanha @relation(fields: [campanhaId], references: [id], onDelete: Cascade)
+  raca     Raca?    @relation(fields: [racaId], references: [id], onDelete: SetNull)
+  classe   Classe?  @relation(fields: [classeId], references: [id], onDelete: SetNull)
+
+  @@index([campanhaId])
+  @@index([racaId])
+  @@index([classeId])
+  @@map("campanha_npc")
+}
+
+/// Template interno para geração procedural de NPC
+model NpcTemplateGeracao {
+  id          Int      @id @default(autoincrement())
+  tipo        String
+  valor       String
+  racaId      Int?
+  racaNome    String?
+  genero      String?
+  classeId    Int?
+  classeNome  String?
+  profissao   String?
+  tom         String?
+  importancia String?
+  peso        Int      @default(1)
+  ativo       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  raca   Raca?   @relation(fields: [racaId], references: [id], onDelete: SetNull)
+  classe Classe? @relation(fields: [classeId], references: [id], onDelete: SetNull)
+
+  @@index([tipo, ativo])
+  @@index([racaId])
+  @@index([classeId])
+  @@map("npc_template_geracao")
+}
+
+/// Estilo narrativo interno para descrições de NPC
+model NpcEstiloNarrativo {
+  id        Int      @id @default(autoincrement())
+  chave     String   @unique
+  nome      String
+  descricao String?
+  template  String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("npc_estilo_narrativo")
+}
+
 /// Personagem
 model Personagem {
-  id                Int                 @id @default(autoincrement())
-  nome              String
-  apelido           String?
-  descricao         String?
-  anotacoes         String?
-  userId            String?
-  campanhaId        Int
-  classeId          Int
-  racaId            Int
-  elemento          Elemento
-  hp_atual          Int?
-  mana_atual        Int?
-  defesa_atual      Int?                @default(0)
-  defesa_max        Int?                @default(0)
-  habilidadeDiariaUsada Boolean         @default(false)
-  hp_base           Int?
-  mana_base         Int?
-  imagemPerfil      String?             @map("imagem_perfil")
-  imagemPrincipal   String?             @map("imagem_principal")
-  statusEspecial    String?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  especialId        Int?
-  itensInventario   ItemInventario[]
-  magiaPersonagem   MagiaPersonagem[]
-  periciaPersonagem PericiaPersonagem[]
-  especial          Especial?            @relation(fields: [especialId], references: [id])
-  campanha          Campanha            @relation(fields: [campanhaId], references: [id])
-  classe            Classe              @relation(fields: [classeId], references: [id])
-  raca              Raca                @relation(fields: [racaId], references: [id])
-  user              User?               @relation(fields: [userId], references: [id])
+  id                    Int                 @id @default(autoincrement())
+  nome                  String
+  apelido               String?
+  descricao             String?
+  anotacoes             String?
+  userId                String?
+  campanhaId            Int
+  classeId              Int
+  racaId                Int
+  elemento              Elemento
+  hp_atual              Int?
+  mana_atual            Int?
+  defesa_atual          Int?                @default(0)
+  defesa_max            Int?                @default(0)
+  habilidadeDiariaUsada Boolean             @default(false)
+  hp_base               Int?
+  mana_base             Int?
+  imagemPerfil          String?             @map("imagem_perfil")
+  imagemPrincipal       String?             @map("imagem_principal")
+  statusEspecial        String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  especialId            Int?
+  itensInventario       ItemInventario[]
+  magiaPersonagem       MagiaPersonagem[]
+  periciaPersonagem     PericiaPersonagem[]
+  especial              Especial?           @relation(fields: [especialId], references: [id])
+  campanha              Campanha            @relation(fields: [campanhaId], references: [id])
+  classe                Classe              @relation(fields: [classeId], references: [id])
+  raca                  Raca                @relation(fields: [racaId], references: [id])
+  user                  User?               @relation(fields: [userId], references: [id])
 
   slotsDefensivos SlotsDefensivos?
 
@@ -186,20 +268,20 @@ enum ItemTipo {
 }
 
 model Item {
-  id                Int              @id @default(autoincrement())
-  nome              String
-  tipo              ItemTipo
-  descricao         String?
-  notacaoRolagem    String?
-  slots             Float            @default(1)
-  durabilidadeBase  Int?
-  durabilidadeMax   Int?
-  empilhavel        Boolean          @default(true)
-  meta              Json?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  efeito            ItemEfeito?
-  inventarios       ItemInventario[]
+  id               Int              @id @default(autoincrement())
+  nome             String
+  tipo             ItemTipo
+  descricao        String?
+  notacaoRolagem   String?
+  slots            Float            @default(1)
+  durabilidadeBase Int?
+  durabilidadeMax  Int?
+  empilhavel       Boolean          @default(true)
+  meta             Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  efeito           ItemEfeito?
+  inventarios      ItemInventario[]
 
   @@index([tipo])
   @@index([nome])
@@ -217,14 +299,14 @@ enum ItemEfeitoOperacao {
 }
 
 model ItemEfeito {
-  id         Int                 @id @default(autoincrement())
-  itemId     Int                 @unique
-  modulo     ItemEfeitoModulo
-  operacao   ItemEfeitoOperacao  @default(ADICIONAR)
-  valor      Int
-  createdAt  DateTime            @default(now())
-  updatedAt  DateTime            @updatedAt
-  item       Item                @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  id        Int                @id @default(autoincrement())
+  itemId    Int                @unique
+  modulo    ItemEfeitoModulo
+  operacao  ItemEfeitoOperacao @default(ADICIONAR)
+  valor     Int
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  item      Item               @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([modulo])
 }
@@ -244,9 +326,9 @@ model ItemInventario {
   item              Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
   personagem        Personagem @relation(fields: [personagemId], references: [id], onDelete: Cascade)
 
+  @@unique([personagemId, itemId])
   @@index([personagemId])
   @@index([itemId])
-  @@unique([personagemId, itemId])
 }
 
 model Especial {
@@ -261,13 +343,13 @@ model Especial {
 }
 
 model EspecialRoleAction {
-  id         Int       @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   especialId Int
   tipo       String
   acoes      Json
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  especial   Especial  @relation(fields: [especialId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  especial   Especial @relation(fields: [especialId], references: [id], onDelete: Cascade)
 
   @@index([especialId, tipo])
 }
@@ -279,31 +361,30 @@ model SlotsDefensivos {
   bloqueioUsado     Int @default(0)
   contraAtaqueUsado Int @default(0)
 
-  personagem        Personagem @relation(fields: [personagemId], references: [id], onDelete: Cascade)
+  personagem Personagem @relation(fields: [personagemId], references: [id], onDelete: Cascade)
 
   @@map("slots_defensivos")
 }
 
 model User {
-  id            String   @id @default(cuid())
-  name          String?
-  email         String   @unique
-  image         String?
-  emailVerified DateTime?
-  sessionVersion Int     @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String    @id @default(cuid())
+  name           String?
+  email          String    @unique
+  image          String?
+  emailVerified  DateTime?
+  sessionVersion Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  campanhas     Campanha[]
-  personagens   Personagem[]
+  accounts            Account[]
+  sessions            Session[]
+  campanhas           Campanha[]
+  personagens         Personagem[]
   passwordResetTokens PasswordResetToken[]
 }
 
-
 model Account {
-  id                String @id @default(cuid())
+  id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
@@ -316,13 +397,12 @@ model Account {
   id_token          String?
 
   // 👇 senha apenas para credentials
-  password          String?
+  password String?
 
   user User @relation(fields: [userId], references: [id])
 
   @@unique([provider, providerAccountId])
 }
-
 
 model Session {
   id           String   @id @default(cuid())

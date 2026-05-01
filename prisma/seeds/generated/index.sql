@@ -1,9 +1,10 @@
 \set ON_ERROR_STOP on
 BEGIN;
-TRUNCATE TABLE "ItemEfeito", "ItemInventario", "Item", "PericiaPersonagem", "MagiaPersonagem", "slots_defensivos", "Personagem", "Session", "Account", "User", "EspecialRoleAction", "Especial", "MagiaCatalog", "PericiaCatalog", "Campanha", "Classe", "Raca" RESTART IDENTITY CASCADE;
+TRUNCATE TABLE "ItemEfeito", "ItemInventario", "Item", "PericiaPersonagem", "MagiaPersonagem", "slots_defensivos", "campanha_npc", "Personagem", "Session", "Account", "User", "EspecialRoleAction", "Especial", "MagiaCatalog", "PericiaCatalog", "Campanha", "npc_template_geracao", "npc_estilo_narrativo", "Classe", "Raca" RESTART IDENTITY CASCADE;
 \ir 000_auth_seed.sql
 \ir 001_raca.sql
 \ir 002_classe.sql
+\ir 013_npc_templates.sql
 \ir 003_campanha.sql
 \ir 004_pericia_catalog.sql
 \ir 005_magia_catalog.sql

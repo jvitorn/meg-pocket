@@ -111,6 +111,54 @@ export const tipoAmeacaConfig: Record<
     surfaceClass:
       "border-amber-200 bg-amber-50/75 dark:border-amber-500/20 dark:bg-amber-500/[0.08]",
   },
+  Lobo: {
+    icon: Feather,
+    chipClass:
+      "border-zinc-300 bg-zinc-50 text-zinc-700 dark:border-zinc-500/30 dark:bg-zinc-500/10 dark:text-zinc-100",
+    iconClass: "text-zinc-600 dark:text-zinc-200",
+    surfaceClass:
+      "border-zinc-200 bg-zinc-50/75 dark:border-zinc-500/20 dark:bg-zinc-500/[0.08]",
+  },
+  Sombra: {
+    icon: MoonStar,
+    chipClass:
+      "border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-500/30 dark:bg-purple-500/10 dark:text-purple-100",
+    iconClass: "text-purple-600 dark:text-purple-200",
+    surfaceClass:
+      "border-purple-200 bg-purple-50/75 dark:border-purple-500/20 dark:bg-purple-500/[0.08]",
+  },
+  Espírito: {
+    icon: Sparkles,
+    chipClass:
+      "border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-100",
+    iconClass: "text-indigo-600 dark:text-indigo-200",
+    surfaceClass:
+      "border-indigo-200 bg-indigo-50/75 dark:border-indigo-500/20 dark:bg-indigo-500/[0.08]",
+  },
+  Ave: {
+    icon: Feather,
+    chipClass:
+      "border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-100",
+    iconClass: "text-sky-600 dark:text-sky-200",
+    surfaceClass:
+      "border-sky-200 bg-sky-50/75 dark:border-sky-500/20 dark:bg-sky-500/[0.08]",
+  },
+  Celestial: {
+    icon: SunMedium,
+    chipClass:
+      "border-yellow-300 bg-yellow-50 text-yellow-800 dark:border-yellow-500/30 dark:bg-yellow-500/10 dark:text-yellow-100",
+    iconClass: "text-yellow-700 dark:text-yellow-200",
+    surfaceClass:
+      "border-yellow-200 bg-yellow-50/75 dark:border-yellow-500/20 dark:bg-yellow-500/[0.08]",
+  },
+  Entidade: {
+    icon: Orbit,
+    chipClass:
+      "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100",
+    iconClass: "text-rose-600 dark:text-rose-200",
+    surfaceClass:
+      "border-rose-200 bg-rose-50/75 dark:border-rose-500/20 dark:bg-rose-500/[0.08]",
+  },
 };
 
 export const elementoAmeacaConfig: Record<
@@ -159,6 +207,11 @@ export const elementoAmeacaConfig: Record<
     icon: SunMedium,
     chipClass:
       "border-yellow-300 bg-yellow-50 text-yellow-800 dark:border-yellow-500/30 dark:bg-yellow-500/10 dark:text-yellow-100",
+  },
+  "Fogo ou Radiante": {
+    icon: SunMedium,
+    chipClass:
+      "border-orange-300 bg-orange-50 text-orange-800 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-100",
   },
   Terra: {
     icon: Mountain,

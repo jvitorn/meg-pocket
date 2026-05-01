@@ -7,7 +7,6 @@ import {
   BookOpen,
   Boxes,
   ClipboardList,
-  Drama,
   LogOut,
   Plus,
   RotateCcw,
@@ -26,6 +25,11 @@ import {
   normalizeCampanhaTags,
   type CampanhaInfoValues,
 } from "@/components/campanhas/campanha-info-dialog";
+import {
+  CampanhaNpcsSection,
+  type CampanhaNpcItem,
+  type NpcEstiloNarrativoOption,
+} from "@/components/campanhas/campanha-npcs-section";
 import { Button } from "@/components/ui/button";
 import { AppBreadcrumb } from "@/components/app-breadcrumb";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -98,6 +102,11 @@ type Props = {
   campanha: CampaignEditItem;
   personagens: CampaignCharacter[];
   catalogoItens: CatalogItem[];
+  npcs?: CampanhaNpcItem[];
+  racas?: Array<{ id: number; nome: string }>;
+  classes?: Array<{ id: number; nome: string }>;
+  estilosNarrativos?: NpcEstiloNarrativoOption[];
+  npcLimit?: number;
 };
 
 function clampDurability(value: string, max: number | null | undefined) {
@@ -111,6 +120,11 @@ export function CampanhaEditClient({
   campanha,
   personagens,
   catalogoItens,
+  npcs = [],
+  racas = [],
+  classes = [],
+  estilosNarrativos = [],
+  npcLimit = 50,
 }: Props) {
   const router = useRouter();
   const [infoOpen, setInfoOpen] = useState(false);
@@ -278,11 +292,6 @@ export function CampanhaEditClient({
       icon: ClipboardList,
     },
     {
-      title: "Criação de NPCs",
-      text: "Aliados, rivais, vilões e rostos recorrentes.",
-      icon: Drama,
-    },
-    {
       title: "Bestiário",
       text: "Criaturas preparadas para aparecer na mesa.",
       icon: Skull,
@@ -304,6 +313,7 @@ export function CampanhaEditClient({
         }}
         personagensCount={personagens.length}
         inventarioCount={totalItens}
+        npcsCount={npcs.length}
         onAddItem={() => setItemDialogOpen(true)}
         onEditInfo={() => setInfoOpen(true)}
       />
@@ -590,6 +600,15 @@ export function CampanhaEditClient({
           </div>
         </section>
       </section>
+
+      <CampanhaNpcsSection
+        campanhaId={campanha.id}
+        npcs={npcs}
+        racas={racas}
+        classes={classes}
+        estilosNarrativos={estilosNarrativos}
+        limite={npcLimit}
+      />
 
       <section id="ferramentas" className="grid scroll-mt-24 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
         {quickSections.map((section) => {

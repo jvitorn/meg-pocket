@@ -12,6 +12,7 @@ import {
   ScrollText,
   Settings,
   Shield,
+  UserRoundPlus,
   Users,
 } from "lucide-react"
 import Link from "next/link"
@@ -38,6 +39,7 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   }
   personagensCount?: number
   inventarioCount?: number
+  npcsCount?: number
   onAddItem?: () => void
   onEditInfo?: () => void
 }
@@ -46,6 +48,7 @@ export function AppSidebar({
   campanha,
   personagensCount = 0,
   inventarioCount = 0,
+  npcsCount = 0,
   onAddItem,
   onEditInfo,
   ...props
@@ -131,6 +134,15 @@ export function AppSidebar({
                   </a>
                 </SidebarMenuButton>
                 <SidebarMenuBadge>{inventarioCount}</SidebarMenuBadge>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <a href="#npcs">
+                    <UserRoundPlus />
+                    <span>NPCs</span>
+                  </a>
+                </SidebarMenuButton>
+                <SidebarMenuBadge>{npcsCount}</SidebarMenuBadge>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>

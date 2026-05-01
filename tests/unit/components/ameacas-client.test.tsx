@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -23,11 +23,11 @@ import { AmeacasClient } from "@/components/ameacas/AmeacasClient";
 
 describe("AmeacasClient", () => {
   it("filtra a busca por texto ignorando acentos", async () => {
-    const user = userEvent.setup();
-
     render(<AmeacasClient ameacas={dataBestiario} />);
 
-    await user.type(screen.getByLabelText("Buscar ameaças"), "dragao glacial");
+    fireEvent.change(screen.getByLabelText("Buscar ameaças"), {
+      target: { value: "dragao glacial" },
+    });
 
     expect(await screen.findByText("Dragão Glacial")).toBeInTheDocument();
     await waitFor(() => {
@@ -42,7 +42,7 @@ describe("AmeacasClient", () => {
 
     await user.click(screen.getAllByRole("button", { name: /elemental/i })[0]);
 
-    expect(await screen.findByText("Elemental de Chamas")).toBeInTheDocument();
+    expect(await screen.findByText("Elemental de Fogo")).toBeInTheDocument();
     expect(screen.queryByText("Goblin")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /limpar filtros/i }));
@@ -71,6 +71,6 @@ describe("AmeacasClient", () => {
     await user.click(screen.getByRole("button", { name: "Boss" }));
 
     expect(screen.getByLabelText("Buscar ameaças")).toHaveValue("boss");
-    expect(await screen.findByText("Anjo Fraturado")).toBeInTheDocument();
+    expect(await screen.findByText("Fênix Celeste")).toBeInTheDocument();
   });
 });

@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import { CampanhaEditClient } from "@/components/campanhas/campanha-edit-client";
 import { prisma } from "@/lib/prisma";
 import { validarMestreDaCampanha } from "@/lib/regras/campanhaPermissao";
+import {
+  getNpcCampanhaLimit,
+  isClasseNpcSelecionavel,
+} from "@/lib/regras/campanhaNpc";
 
 function parseCampaignId(value: string) {
   const parsed = Number(value);
@@ -54,7 +58,8 @@ export default async function EditarCampanhaPage({
     );
   }
 
-  const [campanha, catalogoItens] = await prisma.$transaction([
+  const [campanha, catalogoItens, racas, classes, estilosNarrativos] =
+    await prisma.$transaction([
     prisma.campanha.findUnique({
       where: { id: campanhaId },
       include: {
@@ -68,6 +73,9 @@ export default async function EditarCampanhaPage({
             },
           },
         },
+        npcs: {
+          orderBy: [{ updatedAt: "desc" }, { nome: "asc" }],
+        },
       },
     }),
     prisma.item.findMany({
@@ -79,6 +87,23 @@ export default async function EditarCampanhaPage({
         descricao: true,
         durabilidadeBase: true,
         durabilidadeMax: true,
+      },
+    }),
+    prisma.raca.findMany({
+      orderBy: { nome: "asc" },
+      select: { id: true, nome: true },
+    }),
+    prisma.classe.findMany({
+      orderBy: { nome: "asc" },
+      select: { id: true, nome: true },
+    }),
+    prisma.npcEstiloNarrativo.findMany({
+      where: { ativo: true },
+      orderBy: { nome: "asc" },
+      select: {
+        chave: true,
+        nome: true,
+        descricao: true,
       },
     }),
   ]);
@@ -125,6 +150,32 @@ export default async function EditarCampanhaPage({
         })),
       }))}
       catalogoItens={catalogoItens}
+      racas={racas}
+      classes={classes.filter((classe) => isClasseNpcSelecionavel(classe.nome))}
+      estilosNarrativos={estilosNarrativos}
+      npcLimit={getNpcCampanhaLimit()}
+      npcs={campanha.npcs.map((npc) => ({
+        id: npc.id,
+        nome: npc.nome,
+        racaId: npc.racaId,
+        racaNome: npc.racaNome,
+        genero: npc.genero,
+        classeId: npc.classeId,
+        classeNome: npc.classeNome,
+        profissao: npc.profissao,
+        importancia: npc.importancia,
+        tom: npc.tom,
+        personalidade: npc.personalidade,
+        aparencia: npc.aparencia,
+        segredo: npc.segredo,
+        objetivoCampanha: npc.objetivoCampanha,
+        gancho: npc.gancho,
+        frase: npc.frase,
+        relacaoComGrupo: npc.relacaoComGrupo,
+        detalheVisual: npc.detalheVisual,
+        descricao: npc.descricao,
+        dadosJson: npc.dadosJson,
+      }))}
     />
   );
 }

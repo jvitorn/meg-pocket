@@ -8,7 +8,13 @@ export type AmeacaTipo =
   | "Dragão"
   | "Colosso"
   | "Elemental"
-  | "Humanoide";
+  | "Humanoide"
+  | "Lobo"
+  | "Sombra"
+  | "Espírito"
+  | "Ave"
+  | "Celestial"
+  | "Entidade";
 
 export type AmeacaElemento =
   | "Neutro"
@@ -19,7 +25,8 @@ export type AmeacaElemento =
   | "Água"
   | "Sombrio"
   | "Radiante"
-  | "Terra";
+  | "Terra"
+  | "Fogo ou Radiante";
 
 export type AmeacaGolpe = {
   nome: string;
@@ -54,1651 +61,2189 @@ export type Ameaca = {
   golpes: AmeacaGolpe[];
 };
 
-export const dataBestiario = [
+export const dataBestiario: Ameaca[] = [
   {
-    id: "capitao-goblin",
-    nome: "Capitão Goblin",
-    tipo: "Goblinoide",
-    elemento: "Neutro",
-    va: 3,
-    pv: 16,
-    mana: 8,
-    danoBase: "1d8",
-    danoMedio: 4,
-    defesa: 12,
-    funcao: "Líder",
-    reacoes: { bloqueio: 0, esquiva: 1, contraAtaque: 1 },
-    fraquezas: ["Área", "Perfurante"],
-    resistencias: [],
-    imunidades: [],
-    descricao:
-      "Goblin veterano, maior e mais cruel, que sobreviveu tempo suficiente para comandar outros.",
-    narrativa: "Use como chefe de bando antes do Rei Goblin.",
-    golpes: [
-      { nome: "Corte de Comando", descricao: "Ataque direto com arma curta.", dano: "1d8" },
+    "id": "goblin",
+    "nome": "Goblin",
+    "tipo": "Goblinoide",
+    "elemento": "Neutro",
+    "va": 0.5,
+    "pv": 4,
+    "mana": 3,
+    "danoBase": "1d4",
+    "danoMedio": 2,
+    "defesa": 11,
+    "funcao": "Lacaio",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 0,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Área",
+      "Perfurante"
+    ],
+    "resistencias": [],
+    "imunidades": [],
+    "descricao": "Pequena criatura covarde, barulhenta e oportunista. Sozinho, um Goblin raramente é perigoso. Em grupo, vira problema.",
+    "narrativa": "Use Goblins em bandos, emboscadas simples, saques de estrada e invasões de acampamento.",
+    "golpes": [
       {
-        nome: "Ordem de Ataque",
-        descricao: "Um goblin aliado ataca imediatamente.",
-        custoMana: 2,
+        "nome": "Facada Suja",
+        "descricao": "1d4 físico",
+        "dano": "1d4"
       },
       {
-        nome: "Grito Covarde",
-        descricao: "Goblins próximos recebem +1 em defesa por 1 turno.",
-      },
-    ],
-  },
-  {
-    id: "rei-goblin",
-    nome: "Rei Goblin",
-    tipo: "Goblinoide",
-    elemento: "Neutro",
-    va: 5,
-    pv: 24,
-    mana: 14,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 13,
-    funcao: "Elite / Mini-chefe",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 1 },
-    fraquezas: ["Área", "Corpo a corpo"],
-    resistencias: [],
-    imunidades: [],
-    descricao:
-      "Cruel, barulhento e astuto. O Rei Goblin governa pelo medo e pela promessa de pilhagem.",
-    narrativa:
-      "Nunca use sozinho. Ele deve comandar goblins, gritar ordens e se esconder atrás dos lacaios.",
-    golpes: [
-      { nome: "Corte Real", descricao: "Golpe principal do monarca.", dano: "2d6" },
-      {
-        nome: "Comando Covarde",
-        descricao: "Um goblin aliado ataca imediatamente.",
-        custoMana: 2,
+        "nome": "Pedrada",
+        "descricao": "1d3 físico",
+        "dano": "1d3"
       },
       {
-        nome: "Rajada de Ordens",
-        descricao: "Até 2 goblins recebem +1 em acerto.",
-        custoMana: 2,
+        "nome": "Fuga Covarde",
+        "descricao": "gasta 1 mana e se afasta.",
+        "custoMana": 1
+      }
+    ]
+  },
+  {
+    "id": "goblin-saqueador",
+    "nome": "Goblin Saqueador",
+    "tipo": "Goblinoide",
+    "elemento": "Neutro",
+    "va": 0.5,
+    "pv": 5,
+    "mana": 2,
+    "danoBase": "1d4",
+    "danoMedio": 2,
+    "defesa": 11,
+    "funcao": "Lacaio agressivo",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 1,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Área",
+      "Perfurante"
+    ],
+    "resistencias": [],
+    "imunidades": [],
+    "descricao": "Goblin mais ousado, que tenta roubar objetos pequenos no meio do caos.",
+    "narrativa": "Bom para ataques a carroças, feiras, acampamentos e vilarejos.",
+    "golpes": [
+      {
+        "nome": "Facada Rápida",
+        "descricao": "1d4",
+        "dano": "1d4"
       },
       {
-        nome: "Golpe do Rei",
-        descricao: "Ataque pesado que reduz a defesa do alvo em 1.",
-        dano: "2d8",
-        custoMana: 3,
-      },
-    ],
-  },
-  {
-    id: "falcao-das-brumas",
-    nome: "Falcão das Brumas",
-    tipo: "Besta",
-    tipoSecundario: "Místico",
-    elemento: "Vento",
-    va: 2,
-    pv: 10,
-    mana: 6,
-    danoBase: "1d6",
-    danoMedio: 3,
-    defesa: 14,
-    funcao: "Suporte tático",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 0 },
-    fraquezas: ["Perfurante", "Área"],
-    resistencias: ["Vento"],
-    imunidades: [],
-    descricao: "Ave envolta por brumas, rápida e difícil de atingir.",
-    narrativa: "Use em penhascos, torres, florestas altas e regiões de névoa.",
-    golpes: [
-      { nome: "Rasante Rápido", descricao: "Ataque veloz contra um alvo.", dano: "1d6" },
-      { nome: "Asas Cortantes", descricao: "Corte curto com penas afiadas.", dano: "1d3" },
-      {
-        nome: "Corte de Vento",
-        descricao: "Rajada em linha que atravessa a formação inimiga.",
-        dano: "2d4",
-        custoMana: 2,
+        "nome": "Roubo Rápido",
+        "descricao": "se acertar, o alvo sofre −1 no próximo teste ou perde um item pequeno"
       },
       {
-        nome: "Fenda de Bruma",
-        descricao: "Inimigos sofrem -2 em ataques por 1 turno.",
-        custoMana: 3,
-      },
-    ],
+        "nome": "Recuo Sujo",
+        "descricao": "afasta-se após atacar."
+      }
+    ]
   },
   {
-    id: "ogro",
-    nome: "Ogro",
-    tipo: "Gigante",
-    elemento: "Neutro",
-    va: 3,
-    pv: 18,
-    mana: 5,
-    danoBase: "1d10",
-    danoMedio: 5,
-    defesa: 9,
-    funcao: "Atacante bruto",
-    reacoes: { bloqueio: 1, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Longa distância"],
-    resistencias: ["Neutro"],
-    imunidades: [],
-    descricao: "Grande, violento e pouco inteligente. Se alcança o alvo, algo quebra.",
-    narrativa:
-      "Use como guarda de ponte, ameaça de vilarejo ou força bruta manipulada por alguém mais esperto.",
-    golpes: [
-      { nome: "Pancada Pesada", descricao: "Golpe direto com força esmagadora.", dano: "1d10" },
-      { nome: "Esmagar", descricao: "Ataque brutal contra um alvo no alcance.", dano: "2d6", custoMana: 2 },
-      { nome: "Arremesso de Pedra", descricao: "Ataque à distância improvisado.", dano: "1d8" },
-      { nome: "Rugido Brutal", descricao: "Alvo sofre -1 em acerto por 1 turno." },
+    "id": "goblin-atirador",
+    "nome": "Goblin Atirador",
+    "tipo": "Goblinoide",
+    "elemento": "Neutro",
+    "va": 1,
+    "pv": 6,
+    "mana": 4,
+    "danoBase": "1d4",
+    "danoMedio": 2,
+    "defesa": 12,
+    "funcao": "Atacante à distância",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 1,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Corpo a corpo",
+      "Área"
     ],
-  },
-  {
-    id: "gigante-de-ferro",
-    nome: "Gigante de Ferro",
-    tipo: "Constructo",
-    tipoSecundario: "Gigante",
-    elemento: "Neutro",
-    va: 5,
-    pv: 26,
-    mana: 12,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 8,
-    funcao: "Elite tanque",
-    reacoes: { bloqueio: 3, esquiva: 0, contraAtaque: 0 },
-    fraquezas: ["Perfurante", "Etéreo"],
-    resistencias: ["Neutro", "Fogo"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Colosso metálico de força brutal e defesa quase impenetrável.",
-    narrativa: "Use como guardião de ruínas, arma antiga ou criação de Artífices esquecidos.",
-    golpes: [
-      { nome: "Soco de Aço", descricao: "Ataque pesado de curto alcance.", dano: "2d6" },
-      { nome: "Pisada Amedrontadora", descricao: "Causa dano e -1 acerto.", dano: "1d6" },
+    "resistencias": [],
+    "imunidades": [],
+    "descricao": "Goblin esperto que prefere atacar de longe com flechas, pedras e truques.",
+    "narrativa": "Coloque em árvores, ruínas, barricadas ou túneis. Ele deve incomodar, não tankar.",
+    "golpes": [
       {
-        nome: "Golpe Devastador",
-        descricao: "Ataque que empurra o alvo.",
-        dano: "2d8",
-        custoMana: 2,
+        "nome": "Flecha Simples",
+        "descricao": "1d4 perfurante",
+        "dano": "1d4"
       },
       {
-        nome: "Impacto Sismorruína",
-        descricao: "Explosão de impacto em área.",
-        dano: "3d6",
-        custoMana: 4,
-      },
-    ],
-  },
-  {
-    id: "espectro-do-arquivo",
-    nome: "Espectro do Arquivo",
-    tipo: "Morto-vivo",
-    tipoSecundario: "Etéreo",
-    elemento: "Etéreo",
-    va: 4,
-    pv: 18,
-    mana: 16,
-    danoBase: "1d8",
-    danoMedio: 4,
-    defesa: 15,
-    funcao: "Controle",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 0 },
-    fraquezas: ["Luz", "Fogo"],
-    resistencias: ["Neutro", "Perfurante"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao:
-      "Memória rancorosa presa a tomos antigos, capaz de apagar nomes e confundir sentidos.",
-    narrativa:
-      "Use em bibliotecas proibidas, criptas de magos ou salas onde conhecimento tem preço.",
-    golpes: [
-      { nome: "Toque Esmaecido", descricao: "Drena vigor e deixa a pele fria.", dano: "1d8" },
-      {
-        nome: "Sussurro de Página",
-        descricao: "Um alvo sofre -1 em testes mentais por 1 turno.",
-        custoMana: 2,
+        "nome": "Pedrinha Certeira",
+        "descricao": "1d3 e −1 no próximo acerto do alvo",
+        "dano": "1d3"
       },
       {
-        nome: "Nome Riscado",
-        descricao: "Impõe desvantagem narrativa breve contra um alvo isolado.",
-        custoMana: 4,
-      },
-    ],
-  },
-  {
-    id: "serpente-piroclasta",
-    nome: "Serpente Piroclasta",
-    tipo: "Besta",
-    tipoSecundario: "Elemental",
-    elemento: "Fogo",
-    va: 4,
-    pv: 20,
-    mana: 10,
-    danoBase: "1d10",
-    danoMedio: 5,
-    defesa: 12,
-    funcao: "Atacante móvel",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 1 },
-    fraquezas: ["Água", "Gelo"],
-    resistencias: ["Fogo"],
-    imunidades: ["Queimadura"],
-    descricao: "Réptil vulcânico que se move por cinzas quentes e rocha quebradiça.",
-    narrativa:
-      "Funciona bem em minas, crateras, forjas antigas e cavernas próximas a rios de lava.",
-    golpes: [
-      { nome: "Mordida Ígnea", descricao: "Mordida envolta em calor.", dano: "1d10" },
-      { nome: "Bote de Cinzas", descricao: "Avança e reposiciona após atacar.", dano: "1d8" },
-      {
-        nome: "Jorro Piroclasta",
-        descricao: "Cone curto de fogo e cinzas.",
-        dano: "2d6",
-        custoMana: 3,
-      },
-    ],
-  },
-  {
-    id: "sentinela-de-raiz",
-    nome: "Sentinela de Raiz",
-    tipo: "Planta",
-    tipoSecundario: "Guardião",
-    elemento: "Natureza",
-    va: 3,
-    pv: 22,
-    mana: 8,
-    danoBase: "1d8",
-    danoMedio: 4,
-    defesa: 11,
-    funcao: "Defensor de área",
-    reacoes: { bloqueio: 2, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Fogo", "Cortante"],
-    resistencias: ["Natureza", "Neutro"],
-    imunidades: ["Veneno"],
-    descricao: "Guardião vegetal desperto para proteger um bosque, altar ou círculo antigo.",
-    narrativa:
-      "Use quando a floresta precisa parecer viva, vigilante e pouco disposta a negociar.",
-    golpes: [
-      { nome: "Chicote de Raiz", descricao: "Ataque de alcance médio.", dano: "1d8" },
-      {
-        nome: "Prender Tornozelos",
-        descricao: "Reduz o deslocamento do alvo por 1 turno.",
-        custoMana: 2,
+        "nome": "Flecha Venenosa",
+        "descricao": "1d3 + 1d3 veneno, custa 2 mana",
+        "dano": "1d3 + 1d3",
+        "custoMana": 2
       },
       {
-        nome: "Muralha de Casca",
-        descricao: "Recebe +2 bloqueio contra o próximo ataque.",
-        custoMana: 2,
-      },
-    ],
+        "nome": "Armadilha Improvisada",
+        "descricao": "prende o alvo se falhar em teste, custa 2 mana.",
+        "custoMana": 2
+      }
+    ]
   },
   {
-    id: "goblin",
-    nome: "Goblin",
-    tipo: "Goblinoide",
-    elemento: "Neutro",
-    va: 0.5,
-    pv: 4,
-    mana: 3,
-    danoBase: "1d4",
-    danoMedio: 2,
-    defesa: 11,
-    funcao: "Lacaio",
-    reacoes: { bloqueio: 0, esquiva: 0, contraAtaque: 0 },
-    fraquezas: ["Área", "Perfurante"],
-    resistencias: [],
-    imunidades: [],
-    descricao:
-      "Pequena criatura covarde, barulhenta e oportunista. Sozinho, um Goblin raramente é perigoso. Em grupo, vira problema.",
-    narrativa: "Use Goblins em bandos, emboscadas simples, saques de estrada e invasões de acampamento.",
-    golpes: [
-      { nome: "Facada Suja", descricao: "Ataque físico oportunista.", dano: "1d4" },
-      { nome: "Pedrada", descricao: "Ataque físico à distância curta.", dano: "1d3" },
-      {
-        nome: "Fuga Covarde",
-        descricao: "Gasta mana para se afastar e buscar cobertura.",
-        custoMana: 1,
-      },
+    "id": "goblin-xama",
+    "nome": "Goblin Xamã",
+    "tipo": "Goblinoide",
+    "elemento": "Etéreo",
+    "va": 2,
+    "pv": 8,
+    "mana": 8,
+    "danoBase": "1d4",
+    "danoMedio": 2,
+    "defesa": 10,
+    "funcao": "Suporte",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 1,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Corpo a corpo",
+      "Perfurante"
     ],
-  },
-  {
-    id: "dragao-glacial",
-    nome: "Dragão Glacial",
-    tipo: "Dragão",
-    tipoSecundario: "Gelo",
-    elemento: "Água",
-    va: 10,
-    pv: 38,
-    mana: 20,
-    danoBase: "3d6",
-    danoMedio: 10,
-    defesa: 11,
-    funcao: "Boss controlador",
-    reacoes: { bloqueio: 2, esquiva: 0, contraAtaque: 2 },
-    fraquezas: ["Fogo", "Perfurante"],
-    resistencias: ["Água"],
-    imunidades: ["Congelamento"],
-    descricao: "Dragão de escamas glaciais, sopro congelante e presença opressora.",
-    narrativa:
-      "Use em montanhas, cavernas congeladas, lagos antigos e fortalezas tomadas pelo inverno.",
-    golpes: [
-      { nome: "Garra Glacial", descricao: "Ataque cortante coberto por gelo.", dano: "3d6" },
+    "resistencias": [
+      "Etéreo"
+    ],
+    "imunidades": [],
+    "descricao": "Goblin coberto de ossos, marcas tortas e amuletos quebrados. Usa rituais primitivos para fortalecer sua tribo.",
+    "narrativa": "Use como suporte de hordas. Ele deve ficar atrás dos goblins comuns.",
+    "golpes": [
       {
-        nome: "Sopro Congelante",
-        descricao: "Cone de frio que reduz movimento.",
-        dano: "4d3",
-        custoMana: 4,
+        "nome": "Faísca Tribal",
+        "descricao": "1d4 etéreo",
+        "dano": "1d4"
       },
       {
-        nome: "Muralha de Gelo",
-        descricao: "Bloqueia uma passagem ou divide a arena.",
-        custoMana: 5,
-      },
-    ],
-  },
-  {
-    id: "leviata-abissal",
-    nome: "Leviatã Abissal",
-    tipo: "Colosso",
-    tipoSecundario: "Dragão",
-    elemento: "Água",
-    va: 10,
-    pv: 36,
-    mana: 20,
-    danoBase: "3d6",
-    danoMedio: 10,
-    defesa: 10,
-    funcao: "Boss controlador",
-    reacoes: { bloqueio: 3, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Vento", "Perfurante"],
-    resistencias: ["Água"],
-    imunidades: ["Afogamento"],
-    descricao:
-      "Criatura colossal das profundezas, envolta em pressão, água e tempestades.",
-    narrativa: "Use em navios, cidades costeiras, ruínas submersas e arenas com água.",
-    golpes: [
-      { nome: "Mordida das Profundezas", descricao: "Mordida esmagadora de curto alcance.", dano: "3d6" },
-      { nome: "Cauda Voraz", descricao: "Varre uma área próxima.", dano: "4d3" },
-      {
-        nome: "Jato Pressurizado",
-        descricao: "Disparo de água comprimida em linha.",
-        dano: "8d2",
-        custoMana: 3,
+        "nome": "Totem Goblin",
+        "descricao": "até 2 goblins recebem +1 em acerto, custa 2 mana",
+        "custoMana": 2
       },
       {
-        nome: "Tufão do Abismo",
-        descricao: "Área de água violenta que arrasta inimigos.",
-        dano: "6d3",
-        custoMana: 8,
-      },
-    ],
+        "nome": "Maldição Fraca",
+        "descricao": "alvo sofre −1 em defesa, custa 2 mana.",
+        "custoMana": 2
+      }
+    ]
   },
   {
-    id: "elemental-etereo",
-    nome: "Elemental Etéreo",
-    tipo: "Elemental",
-    elemento: "Etéreo",
-    va: 5,
-    pv: 20,
-    mana: 18,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 14,
-    funcao: "Místico",
-    reacoes: { bloqueio: 1, esquiva: 2, contraAtaque: 0 },
-    fraquezas: ["Neutro", "Corpo a corpo"],
-    resistencias: ["Etéreo"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Manifestação de mana pura, alma e energia invisível.",
-    narrativa: "Use em lugares entre mundos, grimórios antigos ou falhas mágicas.",
-    golpes: [
-      { nome: "Pulso Etéreo", descricao: "Onda de mana concentrada.", dano: "2d6" },
-      {
-        nome: "Deslocamento Instável",
-        descricao: "Troca de posição curta.",
-        custoMana: 2,
-      },
-      {
-        nome: "Toque da Mana",
-        descricao: "Reduz 1 mana do alvo.",
-        custoMana: 3,
-      },
+    "id": "capitao-goblin",
+    "nome": "Capitão Goblin",
+    "tipo": "Goblinoide",
+    "elemento": "Neutro",
+    "va": 3,
+    "pv": 16,
+    "mana": 8,
+    "danoBase": "1d8",
+    "danoMedio": 4,
+    "defesa": 12,
+    "funcao": "Líder",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 1,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Área",
+      "Perfurante"
     ],
-  },
-  {
-    id: "elemental-sombrio",
-    nome: "Elemental Sombrio",
-    tipo: "Elemental",
-    elemento: "Sombrio",
-    va: 5,
-    pv: 22,
-    mana: 16,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 13,
-    funcao: "Controlador elite",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 1 },
-    fraquezas: ["Fogo", "Vento", "Radiante"],
-    resistencias: ["Sombrio"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao:
-      "Mana sombria condensada em forma viva. Não anda: desliza pela escuridão.",
-    narrativa:
-      "Use como guardião de portais, ruínas amaldiçoadas ou locais próximos ao vazio.",
-    golpes: [
-      { nome: "Lâmina Sombria", descricao: "Corte de sombra condensada.", dano: "2d6" },
+    "resistencias": [],
+    "imunidades": [],
+    "descricao": "Goblin veterano, maior e mais cruel, que sobreviveu tempo suficiente para comandar outros.",
+    "narrativa": "Use como chefe de bando antes do Rei Goblin.",
+    "golpes": [
       {
-        nome: "Véu de Escuridão",
-        descricao: "Inimigos sofrem -2 em acerto.",
-        custoMana: 3,
+        "nome": "Corte de Comando",
+        "descricao": "1d8",
+        "dano": "1d8"
       },
       {
-        nome: "Afundar na Sombra",
-        descricao: "Usa esquiva com vantagem narrativa.",
-      },
-    ],
-  },
-  {
-    id: "leao-solar",
-    nome: "Leão Solar",
-    tipo: "Besta",
-    tipoSecundario: "Místico",
-    elemento: "Radiante",
-    va: 3,
-    pv: 18,
-    mana: 10,
-    danoBase: "1d8",
-    danoMedio: 4,
-    defesa: 12,
-    funcao: "Suporte ofensivo",
-    reacoes: { bloqueio: 1, esquiva: 1, contraAtaque: 1 },
-    fraquezas: ["Sombrio", "Perfurante"],
-    resistencias: ["Radiante"],
-    imunidades: [],
-    descricao:
-      "Criatura nobre e luminosa, que inspira aliados e desestabiliza inimigos.",
-    narrativa:
-      "Use como guardião solar, fera sagrada ou aliado corrompido por algum ritual.",
-    golpes: [
-      { nome: "Garra Luminosa", descricao: "Ataque físico envolto em luz.", dano: "1d8" },
-      { nome: "Rugido Inspirador", descricao: "Aliados recebem +2 em acerto por 1 turno." },
-      {
-        nome: "Presa Ardente",
-        descricao: "Mordida com fogo solar.",
-        dano: "2d5",
-        custoMana: 2,
+        "nome": "Ordem de Ataque",
+        "descricao": "1 goblin aliado ataca imediatamente, custa 2 mana",
+        "custoMana": 2
       },
       {
-        nome: "Explosão Solar",
-        descricao: "Inimigos sofrem -1 defesa.",
-        custoMana: 2,
-      },
-    ],
+        "nome": "Grito Covarde",
+        "descricao": "goblins próximos recebem +1 em defesa por 1 turno."
+      }
+    ]
   },
   {
-    id: "mago-inimigo",
-    nome: "Mago Inimigo",
-    tipo: "Humanoide",
-    tipoSecundario: "Místico",
-    elemento: "Etéreo",
-    va: 3,
-    pv: 14,
-    mana: 14,
-    danoBase: "2d4",
-    danoMedio: 5,
-    defesa: 11,
-    funcao: "Conjurador",
-    reacoes: { bloqueio: 1, esquiva: 1, contraAtaque: 0 },
-    fraquezas: ["Corpo a corpo", "Perfurante"],
-    resistencias: ["Etéreo"],
-    imunidades: [],
-    descricao:
-      "Conjurador hostil que manipula energia mística, barreiras e ataques à distância.",
-    narrativa:
-      "Use protegido por lacaios. Ele é perigoso à distância, mas frágil se encurralado.",
-    golpes: [
-      { nome: "Raio Místico", descricao: "Disparo arcano direto.", dano: "2d4" },
-      { nome: "Orbe Elemental", descricao: "Projétil mágico instável.", dano: "2d6", custoMana: 2 },
-      { nome: "Barreira Mística", descricao: "Reduz 1d4 de dano.", custoMana: 2 },
+    "id": "rei-goblin",
+    "nome": "Rei Goblin",
+    "tipo": "Goblinoide",
+    "elemento": "Neutro",
+    "va": 5,
+    "pv": 24,
+    "mana": 14,
+    "danoBase": "2d6",
+    "danoMedio": 7,
+    "defesa": 13,
+    "funcao": "Elite / Mini-chefe",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 2,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Área",
+      "Corpo a corpo"
+    ],
+    "resistencias": [],
+    "imunidades": [],
+    "descricao": "Cruel, barulhento e astuto. O Rei Goblin governa pelo medo e pela promessa de pilhagem.",
+    "narrativa": "Nunca use sozinho. Ele deve comandar goblins, gritar ordens e se esconder atrás dos lacaios.",
+    "golpes": [
       {
-        nome: "Explosão Instável",
-        descricao: "Área curta de energia caótica.",
-        dano: "2d4",
-        custoMana: 3,
+        "nome": "Corte Real",
+        "descricao": "2d6",
+        "dano": "2d6"
       },
-    ],
+      {
+        "nome": "Comando Covarde",
+        "descricao": "1 goblin aliado ataca, custa 2 mana",
+        "custoMana": 2
+      },
+      {
+        "nome": "Rajada de Ordens",
+        "descricao": "até 2 goblins recebem +1 em acerto, custa 2 mana",
+        "custoMana": 2
+      },
+      {
+        "nome": "Golpe do Rei",
+        "descricao": "2d8 e −1 defesa, custa 3 mana.",
+        "dano": "2d8",
+        "custoMana": 3
+      }
+    ]
   },
   {
-    id: "lobo-de-cinzas",
-    nome: "Lobo de Cinzas",
-    tipo: "Besta",
-    tipoSecundario: "Feral",
-    elemento: "Fogo",
-    va: 2,
-    pv: 12,
-    mana: 6,
-    danoBase: "1d6",
-    danoMedio: 3,
-    defesa: 13,
-    funcao: "Caçador móvel",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 1 },
-    fraquezas: ["Água", "Perfurante"],
-    resistencias: ["Fogo"],
-    imunidades: [],
-    descricao: "Predador coberto por cinzas quentes, silencioso até o salto final.",
-    narrativa: "Use em florestas queimadas, ruínas fumegantes e perseguições noturnas.",
-    golpes: [
-      { nome: "Mordida Incandescente", descricao: "Mordida rápida com calor residual.", dano: "1d6" },
-      { nome: "Salto de Brasa", descricao: "Avança até um alvo isolado.", dano: "1d4", custoMana: 1 },
-      { nome: "Uivo Fumegante", descricao: "Inimigos próximos sofrem -1 em percepção por 1 turno." },
+    "id": "lobo-jovem",
+    "nome": "Lobo Jovem",
+    "tipo": "Lobo",
+    "elemento": "Neutro",
+    "va": 0.5,
+    "pv": 5,
+    "mana": 3,
+    "danoBase": "1d4",
+    "danoMedio": 2,
+    "defesa": 12,
+    "funcao": "Lacaio rápido",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 1,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Fogo",
+      "Perfurante"
     ],
+    "resistencias": [],
+    "imunidades": [],
+    "descricao": "Predador jovem e veloz. Não deve ser usado sozinho; seu perigo aparece em alcateia.",
+    "narrativa": "Use em perseguições, florestas, estradas e ataques noturnos.",
+    "golpes": [
+      {
+        "nome": "Mordida Rápida",
+        "descricao": "1d4",
+        "dano": "1d4"
+      },
+      {
+        "nome": "Arranhão",
+        "descricao": "1d4",
+        "dano": "1d4"
+      },
+      {
+        "nome": "Bote Voraz",
+        "descricao": "1d6, custa 2 mana.",
+        "dano": "1d6",
+        "custoMana": 2
+      }
+    ]
   },
   {
-    id: "harpia-cortavento",
-    nome: "Harpia Cortavento",
-    tipo: "Humanoide",
-    tipoSecundario: "Besta",
-    elemento: "Vento",
-    va: 3,
-    pv: 15,
-    mana: 9,
-    danoBase: "1d8",
-    danoMedio: 4,
-    defesa: 14,
-    funcao: "Assediadora aérea",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 1 },
-    fraquezas: ["Área", "Radiante"],
-    resistencias: ["Vento"],
-    imunidades: [],
-    descricao: "Caçadora alada que corta o campo de batalha com rasantes e gritos agudos.",
-    narrativa: "Use em desfiladeiros, torres abertas, navios e combate vertical.",
-    golpes: [
-      { nome: "Garras em Rasante", descricao: "Ataque e reposicionamento curto.", dano: "1d8" },
-      { nome: "Grito Desorientador", descricao: "Um alvo sofre -1 em acerto por 1 turno.", custoMana: 2 },
-      { nome: "Vendaval de Penas", descricao: "Ataque em cone curto.", dano: "2d4", custoMana: 3 },
+    "id": "lobo-cinzento",
+    "nome": "Lobo Cinzento",
+    "tipo": "Lobo",
+    "elemento": "Neutro",
+    "va": 1,
+    "pv": 7,
+    "mana": 4,
+    "danoBase": "1d6",
+    "danoMedio": 3,
+    "defesa": 12,
+    "funcao": "Predador",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 1,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Fogo",
+      "Perfurante"
     ],
+    "resistencias": [],
+    "imunidades": [],
+    "descricao": "Lobo adulto e experiente. Sabe atacar alvos feridos e recuar no momento certo.",
+    "narrativa": "Use como ameaça principal em uma pequena alcateia.",
+    "golpes": [
+      {
+        "nome": "Mordida",
+        "descricao": "1d6",
+        "dano": "1d6"
+      },
+      {
+        "nome": "Caçada em Dupla",
+        "descricao": "se outro lobo atacou o mesmo alvo, causa +1 dano"
+      },
+      {
+        "nome": "Rasgo Rápido",
+        "descricao": "1d4 e recua 1 metro.",
+        "dano": "1d4"
+      }
+    ]
   },
   {
-    id: "golem-de-cristal",
-    nome: "Golem de Cristal",
-    tipo: "Constructo",
-    tipoSecundario: "Guardião",
-    elemento: "Terra",
-    va: 6,
-    pv: 30,
-    mana: 8,
-    danoBase: "2d8",
-    danoMedio: 9,
-    defesa: 10,
-    funcao: "Tanque refletor",
-    reacoes: { bloqueio: 3, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Contundente", "Sombrio"],
-    resistencias: ["Radiante", "Neutro"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Guardião lapidado por magia antiga, belo e terrível quando rachado.",
-    narrativa: "Use em templos, cofres arcanos e minas onde cristais cantam sob pressão.",
-    golpes: [
-      { nome: "Punho Prismático", descricao: "Impacto sólido com fragmentos cortantes.", dano: "2d8" },
-      { nome: "Refração", descricao: "Reduz dano mágico recebido em 1d6.", custoMana: 2 },
-      { nome: "Estilhaçar", descricao: "Dano em área ao redor do golem.", dano: "3d4", custoMana: 4 },
+    "id": "lobo-alfa",
+    "nome": "Lobo Alfa",
+    "tipo": "Lobo",
+    "elemento": "Neutro",
+    "va": 1,
+    "pv": 8,
+    "mana": 5,
+    "danoBase": "1d6",
+    "danoMedio": 3,
+    "defesa": 13,
+    "funcao": "Líder de alcateia",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 1,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Fogo",
+      "Perfurante"
     ],
+    "resistencias": [],
+    "imunidades": [],
+    "descricao": "Maior, mais imponente e marcado por disputas antigas. Seu uivo organiza a alcateia.",
+    "narrativa": "Use para transformar lobos comuns em um encontro mais coordenado.",
+    "golpes": [
+      {
+        "nome": "Mordida",
+        "descricao": "1d6",
+        "dano": "1d6"
+      },
+      {
+        "nome": "Uivo de Caça",
+        "descricao": "lobos aliados recebem +1 em acerto, custa 1 mana",
+        "custoMana": 1
+      },
+      {
+        "nome": "Bote Coordenado",
+        "descricao": "1d6; se houver outro lobo adjacente, +1 dano.",
+        "dano": "1d6"
+      }
+    ]
   },
   {
-    id: "troll-das-pontes",
-    nome: "Troll das Pontes",
-    tipo: "Gigante",
-    tipoSecundario: "Regenerador",
-    elemento: "Natureza",
-    va: 5,
-    pv: 28,
-    mana: 7,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 10,
-    funcao: "Atacante resistente",
-    reacoes: { bloqueio: 2, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Fogo", "Ácido"],
-    resistencias: ["Natureza", "Neutro"],
-    imunidades: [],
-    descricao: "Monstro territorial que cobra passagem com força bruta e fome antiga.",
-    narrativa: "Use em pontes, gargantas, estradas alagadas e rotas comerciais isoladas.",
-    golpes: [
-      { nome: "Tacape de Tronco", descricao: "Golpe amplo e pesado.", dano: "2d6" },
-      { nome: "Regenerar Carne", descricao: "Recupera 1d6 PV se não sofreu fogo neste turno.", custoMana: 3 },
-      { nome: "Agarrão", descricao: "Prende um alvo pequeno ou médio.", dano: "1d8", custoMana: 2 },
+    "id": "lobo-sombrio",
+    "nome": "Lobo Sombrio",
+    "tipo": "Lobo",
+    "tipoSecundario": "Sombra",
+    "elemento": "Sombrio",
+    "va": 2,
+    "pv": 12,
+    "mana": 8,
+    "danoBase": "1d6",
+    "danoMedio": 3,
+    "defesa": 13,
+    "funcao": "Predador corrompido",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 2,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Fogo",
+      "Vento",
+      "Radiante"
     ],
+    "resistencias": [
+      "Sombrio"
+    ],
+    "imunidades": [],
+    "descricao": "Lobo tocado por energia sombria. Seus olhos brilham no escuro e sua mordida parece ferir corpo e espírito.",
+    "narrativa": "Use como sinal de corrupção em florestas, cemitérios ou regiões afetadas por mana sombria.",
+    "golpes": [
+      {
+        "nome": "Mordida Umbral",
+        "descricao": "1d6 sombrio",
+        "dano": "1d6"
+      },
+      {
+        "nome": "Salto Sombrio",
+        "descricao": "move-se pelas sombras e ataca, custa 2 mana",
+        "custoMana": 2
+      },
+      {
+        "nome": "Uivo Frio",
+        "descricao": "alvo sofre −1 em acerto por 1 turno."
+      }
+    ]
   },
   {
-    id: "cavaleiro-sepulcral",
-    nome: "Cavaleiro Sepulcral",
-    tipo: "Morto-vivo",
-    tipoSecundario: "Humanoide",
-    elemento: "Sombrio",
-    va: 6,
-    pv: 26,
-    mana: 12,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 14,
-    funcao: "Duelista elite",
-    reacoes: { bloqueio: 2, esquiva: 1, contraAtaque: 2 },
-    fraquezas: ["Radiante", "Fogo"],
-    resistencias: ["Sombrio", "Neutro"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Armadura funerária habitada por juramento quebrado e lâmina fria.",
-    narrativa: "Use como guardião de mausoléu, campeão amaldiçoado ou rival recorrente.",
-    golpes: [
-      { nome: "Corte Funerário", descricao: "Ataque preciso com lâmina sombria.", dano: "2d6" },
-      { nome: "Duelo Marcado", descricao: "Marca um alvo; contra-ataques contra ele recebem +1.", custoMana: 2 },
-      { nome: "Passo da Cripta", descricao: "Teleporte curto entre sombras.", custoMana: 3 },
+    "id": "serpente-esmeralda",
+    "nome": "Serpente Esmeralda",
+    "tipo": "Besta",
+    "tipoSecundario": "Venenoso",
+    "elemento": "Natureza",
+    "va": 1,
+    "pv": 6,
+    "mana": 4,
+    "danoBase": "1d3 + veneno",
+    "danoMedio": 2,
+    "defesa": 13,
+    "funcao": "Controlador",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 1,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Natureza",
+      "Longa distância"
     ],
+    "resistencias": [
+      "Veneno"
+    ],
+    "imunidades": [],
+    "descricao": "Serpente encantada, rápida e venenosa. Prefere prender, enfraquecer e atacar de surpresa.",
+    "narrativa": "Boa para florestas, templos antigos, jardins mágicos e covis de alquimistas.",
+    "golpes": [
+      {
+        "nome": "Bote Rápido",
+        "descricao": "1d3",
+        "dano": "1d3"
+      },
+      {
+        "nome": "Mordida Venenosa",
+        "descricao": "1d3 + 1d4 veneno, custa 2 mana",
+        "dano": "1d3 + 1d4",
+        "custoMana": 2
+      },
+      {
+        "nome": "Enroscar",
+        "descricao": "alvo faz teste; se falhar, fica preso por 1 turno"
+      },
+      {
+        "nome": "Sibilo Paralisante",
+        "descricao": "−2 em agilidade, custa 2 mana.",
+        "custoMana": 2
+      }
+    ]
   },
   {
-    id: "anjo-fraturado",
-    nome: "Anjo Fraturado",
-    tipo: "Humanoide",
-    tipoSecundario: "Místico",
-    elemento: "Radiante",
-    va: 7,
-    pv: 24,
-    mana: 18,
-    danoBase: "2d8",
-    danoMedio: 9,
-    defesa: 13,
-    funcao: "Suporte boss",
-    reacoes: { bloqueio: 1, esquiva: 2, contraAtaque: 1 },
-    fraquezas: ["Sombrio", "Perfurante"],
-    resistencias: ["Radiante", "Etéreo"],
-    imunidades: ["Medo"],
-    descricao: "Ser luminoso quebrado por magia antiga, alternando bênção e punição.",
-    narrativa: "Use em catedrais arruinadas, pactos celestes falhos e rituais de purificação.",
-    golpes: [
-      { nome: "Lança de Luz", descricao: "Projétil radiante concentrado.", dano: "2d8" },
-      { nome: "Coro Partido", descricao: "Aliados recebem +1 defesa por 1 turno.", custoMana: 3 },
-      { nome: "Julgamento Fraturado", descricao: "Dano radiante em área curta.", dano: "3d6", custoMana: 5 },
+    "id": "javali-blindado",
+    "nome": "Javali Blindado",
+    "tipo": "Besta",
+    "elemento": "Neutro",
+    "va": 2,
+    "pv": 14,
+    "mana": 6,
+    "danoBase": "1d6",
+    "danoMedio": 3,
+    "defesa": 9,
+    "funcao": "Tanque",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 0,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Longa distância",
+      "Perfurante"
     ],
+    "resistencias": [
+      "Neutro"
+    ],
+    "imunidades": [],
+    "descricao": "Javali robusto e territorial, coberto por placas naturais endurecidas.",
+    "narrativa": "Use como primeiro inimigo resistente para ensinar posicionamento.",
+    "golpes": [
+      {
+        "nome": "Chifrada",
+        "descricao": "1d6",
+        "dano": "1d6"
+      },
+      {
+        "nome": "Investida Curta",
+        "descricao": "1d6",
+        "dano": "1d6"
+      },
+      {
+        "nome": "Investida Carregada",
+        "descricao": "2d4 e empurra, custa 2 mana",
+        "dano": "2d4",
+        "custoMana": 2
+      },
+      {
+        "nome": "Rugido Territorial",
+        "descricao": "inimigos próximos sofrem −1 em resistência, custa 3 mana.",
+        "custoMana": 3
+      }
+    ]
   },
   {
-    id: "kobold-de-mina",
-    nome: "Kobold de Mina",
-    tipo: "Goblinoide",
-    tipoSecundario: "Escavador",
-    elemento: "Terra",
-    va: 1,
-    pv: 8,
-    mana: 4,
-    danoBase: "1d6",
-    danoMedio: 3,
-    defesa: 12,
-    funcao: "Lacaio tático",
-    reacoes: { bloqueio: 0, esquiva: 1, contraAtaque: 0 },
-    fraquezas: ["Área", "Radiante"],
-    resistencias: ["Terra"],
-    imunidades: [],
-    descricao: "Pequeno escavador que conhece túneis, armadilhas e passagens estreitas.",
-    narrativa: "Use em minas abandonadas, cavernas instáveis e emboscadas subterrâneas.",
-    golpes: [
-      { nome: "Picareta Rápida", descricao: "Ataque curto em ponto vulnerável.", dano: "1d6" },
-      { nome: "Areia nos Olhos", descricao: "Alvo sofre -1 em acerto por 1 turno.", custoMana: 1 },
-      { nome: "Túnel de Fuga", descricao: "Reposiciona-se por uma passagem curta.", custoMana: 2 },
+    "id": "falcao-das-brumas",
+    "nome": "Falcão das Brumas",
+    "tipo": "Besta",
+    "tipoSecundario": "Místico",
+    "elemento": "Vento",
+    "va": 2,
+    "pv": 10,
+    "mana": 6,
+    "danoBase": "1d6",
+    "danoMedio": 3,
+    "defesa": 14,
+    "funcao": "Suporte tático",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 2,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Perfurante",
+      "Área"
     ],
+    "resistencias": [
+      "Vento"
+    ],
+    "imunidades": [],
+    "descricao": "Ave envolta por brumas, rápida e difícil de atingir.",
+    "narrativa": "Use em penhascos, torres, florestas altas e regiões de névoa.",
+    "golpes": [
+      {
+        "nome": "Rasante Rápido",
+        "descricao": "1d6",
+        "dano": "1d6"
+      },
+      {
+        "nome": "Asas Cortantes",
+        "descricao": "1d3",
+        "dano": "1d3"
+      },
+      {
+        "nome": "Corte de Vento",
+        "descricao": "2d4 em linha, custa 2 mana",
+        "dano": "2d4",
+        "custoMana": 2
+      },
+      {
+        "nome": "Fenda de Bruma",
+        "descricao": "inimigos sofrem −2 em ataques por 1 turno, custa 3 mana.",
+        "custoMana": 3
+      }
+    ]
   },
   {
-    id: "xama-goblin",
-    nome: "Xamã Goblin",
-    tipo: "Goblinoide",
-    tipoSecundario: "Místico",
-    elemento: "Etéreo",
-    va: 2,
-    pv: 10,
-    mana: 12,
-    danoBase: "1d6",
-    danoMedio: 3,
-    defesa: 11,
-    funcao: "Suporte de bando",
-    reacoes: { bloqueio: 0, esquiva: 1, contraAtaque: 0 },
-    fraquezas: ["Corpo a corpo", "Perfurante"],
-    resistencias: ["Etéreo"],
-    imunidades: [],
-    descricao: "Conjurador barulhento que mistura fetiches, ossos e mana instável.",
-    narrativa: "Use atrás de lacaios, fortalecendo goblins e atrapalhando aventureiros.",
-    golpes: [
-      { nome: "Faísca Totêmica", descricao: "Projétil místico irregular.", dano: "1d6" },
-      { nome: "Totem de Medo", descricao: "Inimigos próximos sofrem -1 em defesa.", custoMana: 2 },
-      { nome: "Benção Suja", descricao: "Um aliado recebe +1 em acerto por 1 turno.", custoMana: 2 },
+    "id": "sombra-fraca",
+    "nome": "Sombra Fraca",
+    "tipo": "Sombra",
+    "elemento": "Sombrio",
+    "va": 1,
+    "pv": 6,
+    "mana": 5,
+    "danoBase": "1d4",
+    "danoMedio": 2,
+    "defesa": 13,
+    "funcao": "Controlador",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 1,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Fogo",
+      "Vento",
+      "Radiante"
     ],
+    "resistencias": [
+      "Sombrio"
+    ],
+    "imunidades": [
+      "Veneno",
+      "Sangramento"
+    ],
+    "descricao": "Forma escura e instável que sussurra pensamentos ruins e ataca pelas frestas da coragem.",
+    "narrativa": "Use em ruínas, casas abandonadas, tumbas e lugares sem luz.",
+    "golpes": [
+      {
+        "nome": "Toque da Escuridão",
+        "descricao": "1d4",
+        "dano": "1d4"
+      },
+      {
+        "nome": "Sussurro da Perdição",
+        "descricao": "1d4 e −1 resistência",
+        "dano": "1d4"
+      },
+      {
+        "nome": "Lâmina de Sombra",
+        "descricao": "1d6, custa 2 mana",
+        "dano": "1d6",
+        "custoMana": 2
+      },
+      {
+        "nome": "Manto Noturno",
+        "descricao": "+2 defesa por 1 turno, custa 2 mana.",
+        "custoMana": 2
+      }
+    ]
   },
   {
-    id: "urso-musgoso",
-    nome: "Urso Musgoso",
-    tipo: "Besta",
-    tipoSecundario: "Natureza",
-    elemento: "Natureza",
-    va: 3,
-    pv: 22,
-    mana: 6,
-    danoBase: "1d10",
-    danoMedio: 5,
-    defesa: 11,
-    funcao: "Tanque selvagem",
-    reacoes: { bloqueio: 2, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Fogo", "Perfurante"],
-    resistencias: ["Natureza", "Neutro"],
-    imunidades: [],
-    descricao: "Predador antigo coberto por musgo, raízes e cicatrizes de território.",
-    narrativa: "Use em florestas fechadas, ruínas tomadas por raízes e clareiras sagradas.",
-    golpes: [
-      { nome: "Pata Esmagadora", descricao: "Golpe pesado contra um alvo.", dano: "1d10" },
-      { nome: "Abraço Brutal", descricao: "Prende e causa dano contínuo narrativo.", dano: "1d8", custoMana: 2 },
-      { nome: "Rugido de Território", descricao: "Inimigos próximos sofrem -1 em acerto.", custoMana: 2 },
+    "id": "sombra-atormentada",
+    "nome": "Sombra Atormentada",
+    "tipo": "Sombra",
+    "elemento": "Sombrio",
+    "va": 2,
+    "pv": 12,
+    "mana": 8,
+    "danoBase": "1d6",
+    "danoMedio": 3,
+    "defesa": 13,
+    "funcao": "Controlador / Anti-cura",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 2,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Fogo",
+      "Vento",
+      "Radiante"
     ],
+    "resistencias": [
+      "Sombrio"
+    ],
+    "imunidades": [
+      "Veneno",
+      "Sangramento"
+    ],
+    "descricao": "Sombra mais densa, formada por dor e memórias quebradas. Sua presença torna a cura mais difícil.",
+    "narrativa": "Boa para combates sombrios e psicológicos.",
+    "golpes": [
+      {
+        "nome": "Garras Nebulosas",
+        "descricao": "1d6",
+        "dano": "1d6"
+      },
+      {
+        "nome": "Risada Sombria",
+        "descricao": "−1 em teste mental do alvo"
+      },
+      {
+        "nome": "Corrente da Dor",
+        "descricao": "2d4 + 1d4 no turno seguinte, custa 2 mana",
+        "dano": "2d4 + 1d4",
+        "custoMana": 2
+      },
+      {
+        "nome": "Chamado do Vazio",
+        "descricao": "2d4 e impede cura por 1 turno, custa 4 mana.",
+        "dano": "2d4",
+        "custoMana": 4
+      }
+    ]
   },
   {
-    id: "vespa-rubra",
-    nome: "Vespa Rubra",
-    tipo: "Besta",
-    tipoSecundario: "Enxame",
-    elemento: "Fogo",
-    va: 1,
-    pv: 6,
-    mana: 5,
-    danoBase: "1d4",
-    danoMedio: 2,
-    defesa: 14,
-    funcao: "Assediadora aérea",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 0 },
-    fraquezas: ["Área", "Água"],
-    resistencias: ["Fogo"],
-    imunidades: [],
-    descricao: "Inseto agressivo de ferrão quente, difícil de acertar enquanto voa em zigue-zague.",
-    narrativa: "Use em colmeias queimadas, matas secas e trilhas sob calor extremo.",
-    golpes: [
-      { nome: "Ferrão Incandescente", descricao: "Picada rápida e ardente.", dano: "1d4" },
-      { nome: "Enxame Irritante", descricao: "Alvo sofre -1 em acerto por 1 turno.", custoMana: 1 },
-      { nome: "Rajada Rubra", descricao: "Dano curto em linha.", dano: "2d3", custoMana: 2 },
+    "id": "aparicao-penitente",
+    "nome": "Aparição Penitente",
+    "tipo": "Espírito",
+    "tipoSecundario": "Sombra",
+    "elemento": "Sombrio",
+    "va": 4,
+    "pv": 18,
+    "mana": 12,
+    "danoBase": "1d8",
+    "danoMedio": 4,
+    "defesa": 12,
+    "funcao": "Controlador mental",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 1,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Fogo",
+      "Radiante"
     ],
+    "resistencias": [
+      "Sombrio"
+    ],
+    "imunidades": [
+      "Veneno",
+      "Sangramento"
+    ],
+    "descricao": "Espírito preso ao peso de culpas antigas. Sua presença obriga os vivos a encararem remorso.",
+    "narrativa": "Funciona melhor como encontro narrativo, em igrejas destruídas, campos de batalha ou mansões antigas.",
+    "golpes": [
+      {
+        "nome": "Lamento Espectral",
+        "descricao": "1d8",
+        "dano": "1d8"
+      },
+      {
+        "nome": "Mãos das Almas",
+        "descricao": "−1 em testes do alvo"
+      },
+      {
+        "nome": "Corrente do Remorso",
+        "descricao": "3d4 e reduz movimento, custa 2 mana",
+        "dano": "3d4",
+        "custoMana": 2
+      },
+      {
+        "nome": "Toque da Culpa",
+        "descricao": "se o alvo falhar, perde a próxima ação, custa 4 mana.",
+        "custoMana": 4
+      }
+    ]
   },
   {
-    id: "pantera-sombria",
-    nome: "Pantera Sombria",
-    tipo: "Besta",
-    tipoSecundario: "Predador",
-    elemento: "Sombrio",
-    va: 3,
-    pv: 16,
-    mana: 9,
-    danoBase: "1d8",
-    danoMedio: 4,
-    defesa: 13,
-    funcao: "Caçadora móvel",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 1 },
-    fraquezas: ["Radiante", "Área"],
-    resistencias: ["Sombrio"],
-    imunidades: [],
-    descricao: "Felino silencioso que desaparece na penumbra antes de saltar sobre presas isoladas.",
-    narrativa: "Use em florestas noturnas, becos escuros e salões com pouca luz.",
-    golpes: [
-      { nome: "Salto da Sombra", descricao: "Ataque após reposicionamento curto.", dano: "1d8" },
-      { nome: "Arranhar Tendão", descricao: "Reduz movimento do alvo por 1 turno.", dano: "1d6", custoMana: 2 },
-      { nome: "Manto Noturno", descricao: "Recebe vantagem narrativa para se esconder.", custoMana: 2 },
+    "id": "ogro",
+    "nome": "Ogro",
+    "tipo": "Gigante",
+    "elemento": "Neutro",
+    "va": 3,
+    "pv": 18,
+    "mana": 5,
+    "danoBase": "1d10",
+    "danoMedio": 5,
+    "defesa": 9,
+    "funcao": "Atacante bruto",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 0,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Longa distância"
     ],
+    "resistencias": [
+      "Neutro"
+    ],
+    "imunidades": [],
+    "descricao": "Grande, violento e pouco inteligente. Se alcança o alvo, algo quebra.",
+    "narrativa": "Use como guarda de ponte, ameaça de vilarejo ou força bruta manipulada por alguém mais esperto.",
+    "golpes": [
+      {
+        "nome": "Pancada Pesada",
+        "descricao": "1d10",
+        "dano": "1d10"
+      },
+      {
+        "nome": "Esmagar",
+        "descricao": "2d6, custa 2 mana",
+        "dano": "2d6",
+        "custoMana": 2
+      },
+      {
+        "nome": "Arremesso de Pedra",
+        "descricao": "1d8 à distância",
+        "dano": "1d8"
+      },
+      {
+        "nome": "Rugido Brutal",
+        "descricao": "alvo sofre −1 em acerto por 1 turno."
+      }
+    ]
   },
   {
-    id: "corvo-agourento",
-    nome: "Corvo Agourento",
-    tipo: "Besta",
-    tipoSecundario: "Místico",
-    elemento: "Vento",
-    va: 1,
-    pv: 7,
-    mana: 8,
-    danoBase: "1d4",
-    danoMedio: 2,
-    defesa: 15,
-    funcao: "Suporte aéreo",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 0 },
-    fraquezas: ["Área", "Radiante"],
-    resistencias: ["Vento"],
-    imunidades: [],
-    descricao: "Ave de mau presságio que observa o campo e anuncia golpes antes que aconteçam.",
-    narrativa: "Use como familiar hostil, espião de bruxos ou sinal de maldição próxima.",
-    golpes: [
-      { nome: "Bicada Precisa", descricao: "Ataque rápido contra olhos ou mãos.", dano: "1d4" },
-      { nome: "Agouro", descricao: "Um aliado recebe +1 no próximo ataque.", custoMana: 2 },
-      { nome: "Revoada", descricao: "Inimigos próximos sofrem -1 em acerto.", custoMana: 3 },
+    "id": "mago-inimigo",
+    "nome": "Mago Inimigo",
+    "tipo": "Humanoide",
+    "tipoSecundario": "Místico",
+    "elemento": "Etéreo",
+    "va": 3,
+    "pv": 14,
+    "mana": 14,
+    "danoBase": "2d4",
+    "danoMedio": 5,
+    "defesa": 11,
+    "funcao": "Conjurador",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 1,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Corpo a corpo",
+      "Perfurante"
     ],
+    "resistencias": [
+      "Etéreo"
+    ],
+    "imunidades": [],
+    "descricao": "Conjurador hostil que manipula energia mística, barreiras e ataques à distância.",
+    "narrativa": "Use protegido por lacaios. Ele é perigoso à distância, mas frágil se encurralado.",
+    "golpes": [
+      {
+        "nome": "Raio Místico",
+        "descricao": "2d4",
+        "dano": "2d4"
+      },
+      {
+        "nome": "Orbe Elemental",
+        "descricao": "2d6, custa 2 mana",
+        "dano": "2d6",
+        "custoMana": 2
+      },
+      {
+        "nome": "Barreira Mística",
+        "descricao": "reduz 1d4 de dano, custa 2 mana",
+        "dano": "1d4",
+        "custoMana": 2
+      },
+      {
+        "nome": "Explosão Instável",
+        "descricao": "2d4 em área curta, custa 3 mana.",
+        "dano": "2d4",
+        "custoMana": 3
+      }
+    ]
   },
   {
-    id: "javali-de-pedra",
-    nome: "Javali de Pedra",
-    tipo: "Besta",
-    tipoSecundario: "Bruto",
-    elemento: "Terra",
-    va: 2,
-    pv: 18,
-    mana: 4,
-    danoBase: "1d8",
-    danoMedio: 4,
-    defesa: 12,
-    funcao: "Atacante bruto",
-    reacoes: { bloqueio: 1, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Água", "Perfurante"],
-    resistencias: ["Terra", "Neutro"],
-    imunidades: [],
-    descricao: "Besta compacta de couro pedregoso, feroz quando sente cheiro de sangue.",
-    narrativa: "Use em ravinas, campos rochosos e como montaria selvagem de goblinoides.",
-    golpes: [
-      { nome: "Investida Rochosa", descricao: "Avança e empurra o alvo.", dano: "1d8" },
-      { nome: "Pisotear", descricao: "Dano contra alvo caído ou cercado.", dano: "1d6" },
-      { nome: "Casco Duro", descricao: "Reduz 1d4 de dano recebido.", custoMana: 1 },
+    "id": "urso-de-pedra",
+    "nome": "Urso de Pedra",
+    "tipo": "Besta",
+    "tipoSecundario": "Místico",
+    "elemento": "Natureza",
+    "va": 3,
+    "pv": 20,
+    "mana": 10,
+    "danoBase": "1d8",
+    "danoMedio": 4,
+    "defesa": 9,
+    "funcao": "Tanque",
+    "reacoes": {
+      "bloqueio": 2,
+      "esquiva": 0,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Água",
+      "Perfurante"
     ],
+    "resistencias": [
+      "Natureza",
+      "Neutro"
+    ],
+    "imunidades": [],
+    "descricao": "Criatura pesada, de pele endurecida como rocha. Lenta, resistente e difícil de derrubar.",
+    "narrativa": "Use como guardião natural ou protetor de cavernas.",
+    "golpes": [
+      {
+        "nome": "Patada Rápida",
+        "descricao": "1d8",
+        "dano": "1d8"
+      },
+      {
+        "nome": "Rosnado de Aviso",
+        "descricao": "−2 em ataques do alvo"
+      },
+      {
+        "nome": "Impacto Sísmico",
+        "descricao": "2d6 e pode derrubar, custa 2 mana",
+        "dano": "2d6",
+        "custoMana": 2
+      },
+      {
+        "nome": "Pelagem de Rocha",
+        "descricao": "+2 defesa por 1 turno, custa 2 mana.",
+        "custoMana": 2
+      }
+    ]
   },
   {
-    id: "aranha-de-vidro",
-    nome: "Aranha de Vidro",
-    tipo: "Besta",
-    tipoSecundario: "Emboscadora",
-    elemento: "Terra",
-    va: 2,
-    pv: 12,
-    mana: 7,
-    danoBase: "1d6",
-    danoMedio: 3,
-    defesa: 13,
-    funcao: "Controladora",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 0 },
-    fraquezas: ["Contundente", "Fogo"],
-    resistencias: ["Perfurante"],
-    imunidades: [],
-    descricao: "Aracnídeo translúcido que some entre cristais e fios quase invisíveis.",
-    narrativa: "Use em cavernas cristalinas, minas antigas e salões espelhados.",
-    golpes: [
-      { nome: "Mordida Vítrea", descricao: "Corte pequeno e preciso.", dano: "1d6" },
-      { nome: "Teia Cortante", descricao: "Reduz movimento do alvo por 1 turno.", custoMana: 2 },
-      { nome: "Estilhaço Reflexivo", descricao: "Contra medida que causa dano leve.", dano: "1d4", custoMana: 2 },
+    "id": "leao-solar",
+    "nome": "Leão Solar",
+    "tipo": "Besta",
+    "tipoSecundario": "Místico",
+    "elemento": "Radiante",
+    "va": 3,
+    "pv": 18,
+    "mana": 10,
+    "danoBase": "1d8",
+    "danoMedio": 4,
+    "defesa": 12,
+    "funcao": "Suporte ofensivo",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 1,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Sombrio",
+      "Perfurante"
     ],
+    "resistencias": [
+      "Radiante"
+    ],
+    "imunidades": [],
+    "descricao": "Criatura nobre e luminosa, que inspira aliados e desestabiliza inimigos.",
+    "narrativa": "Use como guardião solar, fera sagrada ou aliado corrompido por algum ritual.",
+    "golpes": [
+      {
+        "nome": "Garra Luminosa",
+        "descricao": "1d8",
+        "dano": "1d8"
+      },
+      {
+        "nome": "Rugido Inspirador",
+        "descricao": "aliados recebem +2 em acerto por 1 turno"
+      },
+      {
+        "nome": "Presa Ardente",
+        "descricao": "2d5 fogo, custa 2 mana",
+        "dano": "2d5",
+        "custoMana": 2
+      },
+      {
+        "nome": "Explosão Solar",
+        "descricao": "inimigos sofrem −1 defesa, custa 2 mana.",
+        "custoMana": 2
+      }
+    ]
   },
   {
-    id: "crocodilo-de-pantano",
-    nome: "Crocodilo de Pântano",
-    tipo: "Besta",
-    tipoSecundario: "Aquático",
-    elemento: "Água",
-    va: 3,
-    pv: 20,
-    mana: 5,
-    danoBase: "1d10",
-    danoMedio: 5,
-    defesa: 12,
-    funcao: "Emboscador",
-    reacoes: { bloqueio: 1, esquiva: 1, contraAtaque: 1 },
-    fraquezas: ["Vento", "Perfurante"],
-    resistencias: ["Água"],
-    imunidades: [],
-    descricao: "Predador paciente que transforma margens lamacentas em armadilhas naturais.",
-    narrativa: "Use em brejos, canais de cidade velha e ruínas parcialmente alagadas.",
-    golpes: [
-      { nome: "Mordida de Trava", descricao: "Prende o alvo se acertar bem.", dano: "1d10" },
-      { nome: "Rolamento Brutal", descricao: "Dano alto contra alvo agarrado.", dano: "2d6", custoMana: 2 },
-      { nome: "Submergir", descricao: "Esconde-se na água e reposiciona.", custoMana: 1 },
+    "id": "urso-coruja",
+    "nome": "Urso-Coruja",
+    "tipo": "Besta",
+    "tipoSecundario": "Místico",
+    "elemento": "Neutro",
+    "va": 4,
+    "pv": 22,
+    "mana": 8,
+    "danoBase": "2d6",
+    "danoMedio": 7,
+    "defesa": 11,
+    "funcao": "Predador forte",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 0,
+      "contraAtaque": 2
+    },
+    "fraquezas": [
+      "Fogo",
+      "Perfurante"
     ],
+    "resistencias": [
+      "Neutro"
+    ],
+    "imunidades": [],
+    "descricao": "Mistura brutal de urso com coruja. Forte, territorial e assustadoramente ágil para seu tamanho.",
+    "narrativa": "Use como predador de floresta antiga ou lenda local.",
+    "golpes": [
+      {
+        "nome": "Garra Brutal",
+        "descricao": "2d6",
+        "dano": "2d6"
+      },
+      {
+        "nome": "Bicada Profunda",
+        "descricao": "1d10",
+        "dano": "1d10"
+      },
+      {
+        "nome": "Voo Predatório",
+        "descricao": "move-se e ataca, custa 2 mana",
+        "custoMana": 2
+      },
+      {
+        "nome": "Uivo Lunar",
+        "descricao": "inimigos próximos sofrem −1 defesa."
+      }
+    ]
   },
   {
-    id: "grifo-jovem",
-    nome: "Grifo Jovem",
-    tipo: "Besta",
-    tipoSecundario: "Místico",
-    elemento: "Vento",
-    va: 4,
-    pv: 22,
-    mana: 10,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 13,
-    funcao: "Atacante aéreo",
-    reacoes: { bloqueio: 1, esquiva: 2, contraAtaque: 1 },
-    fraquezas: ["Área", "Sombrio"],
-    resistencias: ["Vento"],
-    imunidades: [],
-    descricao: "Caçador nobre e impetuoso, ainda jovem demais para medir todos os riscos.",
-    narrativa: "Use em montanhas, ninhos altos, patrulhas reais ou como criatura territorial.",
-    golpes: [
-      { nome: "Garras do Alto", descricao: "Ataque em mergulho aéreo.", dano: "2d6" },
-      { nome: "Bater de Asas", descricao: "Empurra criaturas próximas.", custoMana: 2 },
-      { nome: "Rasante Duplo", descricao: "Ataque e deslocamento sem provocar reação.", dano: "1d8", custoMana: 3 },
+    "id": "elemental-de-fogo",
+    "nome": "Elemental de Fogo",
+    "tipo": "Elemental",
+    "elemento": "Fogo",
+    "va": 4,
+    "pv": 20,
+    "mana": 14,
+    "danoBase": "2d4",
+    "danoMedio": 5,
+    "defesa": 11,
+    "funcao": "Atacante",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 1,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Água",
+      "Longa distância"
     ],
+    "resistencias": [
+      "Fogo"
+    ],
+    "imunidades": [
+      "Queimadura"
+    ],
+    "descricao": "Corpo flamejante, instável e agressivo. Suas chamas queimam tudo ao redor.",
+    "narrativa": "Use em vulcões, forjas antigas, incêndios mágicos e templos solares corrompidos.",
+    "golpes": [
+      {
+        "nome": "Toque Flamejante",
+        "descricao": "2d4 fogo",
+        "dano": "2d4"
+      },
+      {
+        "nome": "Explosão Curta",
+        "descricao": "2d6 em área pequena, custa 3 mana",
+        "dano": "2d6",
+        "custoMana": 3
+      },
+      {
+        "nome": "Corpo Incandescente",
+        "descricao": "quem atacar corpo a corpo sofre 1 dano."
+      }
+    ]
   },
   {
-    id: "dragao-de-brasa-jovem",
-    nome: "Dragão de Brasa Jovem",
-    tipo: "Dragão",
-    tipoSecundario: "Fogo",
-    elemento: "Fogo",
-    va: 6,
-    pv: 28,
-    mana: 16,
-    danoBase: "2d8",
-    danoMedio: 9,
-    defesa: 12,
-    funcao: "Elite agressivo",
-    reacoes: { bloqueio: 1, esquiva: 1, contraAtaque: 2 },
-    fraquezas: ["Água", "Perfurante"],
-    resistencias: ["Fogo"],
-    imunidades: ["Queimadura"],
-    descricao: "Dragão jovem de escamas rubras, orgulhoso e ansioso por provar domínio.",
-    narrativa: "Use em vulcões, forjas antigas, ruínas tomadas por cinzas e covis recentes.",
-    golpes: [
-      { nome: "Garra de Brasa", descricao: "Ataque físico com calor residual.", dano: "2d8" },
-      { nome: "Sopro Curto", descricao: "Fogo em cone pequeno.", dano: "3d4", custoMana: 3 },
-      { nome: "Asas Incandescentes", descricao: "Empurra e causa dano leve em volta.", dano: "1d6", custoMana: 2 },
+    "id": "elemental-de-gelo",
+    "nome": "Elemental de Gelo",
+    "tipo": "Elemental",
+    "elemento": "Água",
+    "va": 4,
+    "pv": 20,
+    "mana": 14,
+    "danoBase": "2d4",
+    "danoMedio": 5,
+    "defesa": 10,
+    "funcao": "Controlador",
+    "reacoes": {
+      "bloqueio": 2,
+      "esquiva": 0,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Fogo"
     ],
+    "resistencias": [
+      "Água"
+    ],
+    "imunidades": [
+      "Congelamento"
+    ],
+    "descricao": "Entidade cristalina e gelada, capaz de reduzir movimento e controlar terreno.",
+    "narrativa": "Use em cavernas glaciais, montanhas nevadas e locais tomados por frio mágico.",
+    "golpes": [
+      {
+        "nome": "Toque Congelante",
+        "descricao": "2d4 água/gelo",
+        "dano": "2d4"
+      },
+      {
+        "nome": "Estilhaço de Gelo",
+        "descricao": "1d8",
+        "dano": "1d8"
+      },
+      {
+        "nome": "Prisão Glacial",
+        "descricao": "alvo perde movimento por 1 turno, custa 3 mana",
+        "custoMana": 3
+      },
+      {
+        "nome": "Névoa Polar",
+        "descricao": "área causa −2 em acerto, custa 3 mana.",
+        "custoMana": 3
+      }
+    ]
   },
   {
-    id: "draconoide-errante",
-    nome: "Draconoide Errante",
-    tipo: "Dragão",
-    tipoSecundario: "Humanoide",
-    elemento: "Neutro",
-    va: 4,
-    pv: 24,
-    mana: 9,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 13,
-    funcao: "Duelista",
-    reacoes: { bloqueio: 1, esquiva: 1, contraAtaque: 2 },
-    fraquezas: ["Etéreo", "Perfurante"],
-    resistencias: ["Neutro"],
-    imunidades: [],
-    descricao: "Guerreiro de sangue dracônico, exilado por honra quebrada ou pacto antigo.",
-    narrativa: "Use como rival, guarda de elite ou mercenário em busca de redenção.",
-    golpes: [
-      { nome: "Lâmina Escamada", descricao: "Corte disciplinado e pesado.", dano: "2d6" },
-      { nome: "Postura Dracônica", descricao: "Recebe +1 defesa por 1 turno.", custoMana: 2 },
-      { nome: "Golpe de Cauda", descricao: "Empurra alvo adjacente.", dano: "1d8", custoMana: 2 },
+    "id": "elemental-verdejante",
+    "nome": "Elemental Verdejante",
+    "tipo": "Elemental",
+    "elemento": "Natureza",
+    "va": 4,
+    "pv": 22,
+    "mana": 12,
+    "danoBase": "2d4",
+    "danoMedio": 5,
+    "defesa": 10,
+    "funcao": "Controlador",
+    "reacoes": {
+      "bloqueio": 2,
+      "esquiva": 0,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Fogo",
+      "Vento"
     ],
+    "resistencias": [
+      "Natureza"
+    ],
+    "imunidades": [
+      "Veneno"
+    ],
+    "descricao": "Massa viva de raízes, galhos, folhas e mana natural.",
+    "narrativa": "Use em florestas antigas, santuários naturais e áreas dominadas por plantas.",
+    "golpes": [
+      {
+        "nome": "Chicote de Raízes",
+        "descricao": "2d4",
+        "dano": "2d4"
+      },
+      {
+        "nome": "Prisão de Cipós",
+        "descricao": "prende o alvo, custa 3 mana",
+        "custoMana": 3
+      },
+      {
+        "nome": "Regeneração Natural",
+        "descricao": "cura 1d4, custa 2 mana.",
+        "dano": "1d4",
+        "custoMana": 2
+      }
+    ]
   },
   {
-    id: "serpe-do-rio-antigo",
-    nome: "Serpe do Rio Antigo",
-    tipo: "Dragão",
-    tipoSecundario: "Aquático",
-    elemento: "Água",
-    va: 5,
-    pv: 26,
-    mana: 14,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 12,
-    funcao: "Controlador",
-    reacoes: { bloqueio: 1, esquiva: 1, contraAtaque: 1 },
-    fraquezas: ["Vento", "Perfurante"],
-    resistencias: ["Água"],
-    imunidades: ["Afogamento"],
-    descricao: "Serpente dracônica que guarda leitos antigos e memórias submersas.",
-    narrativa: "Use em rios sagrados, pontes antigas, balsas perdidas e cavernas inundadas.",
-    golpes: [
-      { nome: "Mordida Sinuosa", descricao: "Ataque que ignora cobertura leve.", dano: "2d6" },
-      { nome: "Laço de Correnteza", descricao: "Arrasta um alvo em curta distância.", custoMana: 3 },
-      { nome: "Jato de Rio", descricao: "Ataque em linha e empurra.", dano: "3d4", custoMana: 3 },
+    "id": "elemental-dos-vendavais",
+    "nome": "Elemental dos Vendavais",
+    "tipo": "Elemental",
+    "elemento": "Vento",
+    "va": 4,
+    "pv": 18,
+    "mana": 14,
+    "danoBase": "2d4",
+    "danoMedio": 5,
+    "defesa": 14,
+    "funcao": "Evasivo",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 2,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Natureza",
+      "Área"
     ],
+    "resistencias": [
+      "Vento"
+    ],
+    "imunidades": [
+      "Queda"
+    ],
+    "descricao": "Forma instável de ar cortante, poeira e movimento constante.",
+    "narrativa": "Use em penhascos, tempestades, torres abertas e campos de batalha com vento forte.",
+    "golpes": [
+      {
+        "nome": "Corte de Ar",
+        "descricao": "2d4",
+        "dano": "2d4"
+      },
+      {
+        "nome": "Rajada Repulsora",
+        "descricao": "empurra 3 metros, custa 2 mana",
+        "custoMana": 2
+      },
+      {
+        "nome": "Turbilhão",
+        "descricao": "área pequena causa 2d4, custa 3 mana.",
+        "dano": "2d4",
+        "custoMana": 3
+      }
+    ]
   },
   {
-    id: "dragao-sombrio-menor",
-    nome: "Dragão Sombrio Menor",
-    tipo: "Dragão",
-    tipoSecundario: "Sombrio",
-    elemento: "Sombrio",
-    va: 7,
-    pv: 30,
-    mana: 18,
-    danoBase: "2d10",
-    danoMedio: 11,
-    defesa: 13,
-    funcao: "Mini-chefe",
-    reacoes: { bloqueio: 1, esquiva: 2, contraAtaque: 2 },
-    fraquezas: ["Radiante", "Fogo"],
-    resistencias: ["Sombrio"],
-    imunidades: ["Medo"],
-    descricao: "Dragão de sombra compacta, menor em tamanho, mas cruel em intenção.",
-    narrativa: "Use em fortalezas tomadas pelo vazio, cavernas sem luz e rituais interrompidos.",
-    golpes: [
-      { nome: "Garra Umbral", descricao: "Ataque sombrio que fere corpo e coragem.", dano: "2d10" },
-      { nome: "Sopro de Breu", descricao: "Cone de sombras que reduz acerto.", dano: "3d6", custoMana: 4 },
-      { nome: "Sumir na Penumbra", descricao: "Reposiciona-se entre sombras.", custoMana: 3 },
+    "id": "elemental-sombrio",
+    "nome": "Elemental Sombrio",
+    "tipo": "Elemental",
+    "elemento": "Sombrio",
+    "va": 5,
+    "pv": 22,
+    "mana": 16,
+    "danoBase": "2d6",
+    "danoMedio": 7,
+    "defesa": 13,
+    "funcao": "Controlador elite",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 2,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Fogo",
+      "Vento",
+      "Radiante"
     ],
+    "resistencias": [
+      "Sombrio"
+    ],
+    "imunidades": [
+      "Veneno",
+      "Sangramento"
+    ],
+    "descricao": "Mana sombria condensada em forma viva. Não anda: desliza pela escuridão.",
+    "narrativa": "Use como guardião de portais, ruínas amaldiçoadas ou locais próximos ao vazio.",
+    "golpes": [
+      {
+        "nome": "Lâmina Sombria",
+        "descricao": "2d6",
+        "dano": "2d6"
+      },
+      {
+        "nome": "Véu de Escuridão",
+        "descricao": "inimigos sofrem −2 em acerto, custa 3 mana",
+        "custoMana": 3
+      },
+      {
+        "nome": "Afundar na Sombra",
+        "descricao": "usa esquiva com vantagem narrativa."
+      }
+    ]
   },
   {
-    id: "colosso-de-basalto",
-    nome: "Colosso de Basalto",
-    tipo: "Colosso",
-    tipoSecundario: "Gigante",
-    elemento: "Terra",
-    va: 8,
-    pv: 40,
-    mana: 10,
-    danoBase: "3d6",
-    danoMedio: 10,
-    defesa: 9,
-    funcao: "Boss tanque",
-    reacoes: { bloqueio: 3, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Água", "Etéreo"],
-    resistencias: ["Terra", "Fogo"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Massa colossal de pedra escura que avança como uma muralha viva.",
-    narrativa: "Use em crateras, templos vulcânicos, portões antigos e campos de cerco.",
-    golpes: [
-      { nome: "Punho Sísmico", descricao: "Impacto que abala o chão.", dano: "3d6" },
-      { nome: "Muralha de Basalto", descricao: "Cria cobertura pesada no campo.", custoMana: 4 },
-      { nome: "Tremor de Cerco", descricao: "Dano em área ao redor.", dano: "4d4", custoMana: 5 },
+    "id": "elemental-radiante",
+    "nome": "Elemental Radiante",
+    "tipo": "Elemental",
+    "elemento": "Radiante",
+    "va": 5,
+    "pv": 22,
+    "mana": 16,
+    "danoBase": "2d6",
+    "danoMedio": 7,
+    "defesa": 13,
+    "funcao": "Suporte elite",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 2,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Sombrio"
     ],
+    "resistencias": [
+      "Radiante"
+    ],
+    "imunidades": [
+      "Medo"
+    ],
+    "descricao": "Ser de aurora viva, brilho intenso e energia elevada.",
+    "narrativa": "Pode ser guardião sagrado, prova divina ou criatura corrompida pela própria luz.",
+    "golpes": [
+      {
+        "nome": "Raio Radiante",
+        "descricao": "2d6",
+        "dano": "2d6"
+      },
+      {
+        "nome": "Clarão Ofuscante",
+        "descricao": "inimigos sofrem −2 em acerto, custa 3 mana",
+        "custoMana": 3
+      },
+      {
+        "nome": "Pulso Restaurador",
+        "descricao": "cura 1d6 em aliado, custa 3 mana.",
+        "dano": "1d6",
+        "custoMana": 3
+      }
+    ]
   },
   {
-    id: "colosso-solar-quebrado",
-    nome: "Colosso Solar Quebrado",
-    tipo: "Colosso",
-    tipoSecundario: "Constructo",
-    elemento: "Radiante",
-    va: 9,
-    pv: 34,
-    mana: 18,
-    danoBase: "3d6",
-    danoMedio: 10,
-    defesa: 11,
-    funcao: "Boss suporte",
-    reacoes: { bloqueio: 2, esquiva: 0, contraAtaque: 2 },
-    fraquezas: ["Sombrio", "Terra"],
-    resistencias: ["Radiante", "Fogo"],
-    imunidades: ["Cegueira"],
-    descricao: "Estátua solar rachada, ainda movida por uma ordem sagrada mal interpretada.",
-    narrativa: "Use em templos destruídos, observatórios e cidades que cultuavam o sol.",
-    golpes: [
-      { nome: "Raio Partido", descricao: "Feixe radiante concentrado.", dano: "3d6" },
-      { nome: "Pulso de Aurora", descricao: "Aliados recebem +1 defesa por 1 turno.", custoMana: 4 },
-      { nome: "Explosão Solar", descricao: "Dano radiante em área.", dano: "5d4", custoMana: 6 },
+    "id": "elemental-etereo",
+    "nome": "Elemental Etéreo",
+    "tipo": "Elemental",
+    "elemento": "Etéreo",
+    "va": 5,
+    "pv": 20,
+    "mana": 18,
+    "danoBase": "2d6",
+    "danoMedio": 7,
+    "defesa": 14,
+    "funcao": "Místico",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 2,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Neutro",
+      "Corpo a corpo"
     ],
+    "resistencias": [
+      "Etéreo"
+    ],
+    "imunidades": [
+      "Veneno",
+      "Sangramento"
+    ],
+    "descricao": "Manifestação de mana pura, alma e energia invisível.",
+    "narrativa": "Use em lugares entre mundos, grimórios antigos ou falhas mágicas.",
+    "golpes": [
+      {
+        "nome": "Pulso Etéreo",
+        "descricao": "2d6",
+        "dano": "2d6"
+      },
+      {
+        "nome": "Deslocamento Instável",
+        "descricao": "troca de posição curta, custa 2 mana",
+        "custoMana": 2
+      },
+      {
+        "nome": "Toque da Mana",
+        "descricao": "reduz 1 mana do alvo, custa 3 mana.",
+        "custoMana": 3
+      }
+    ]
   },
   {
-    id: "colosso-de-mare",
-    nome: "Colosso de Maré",
-    tipo: "Colosso",
-    tipoSecundario: "Elemental",
-    elemento: "Água",
-    va: 8,
-    pv: 36,
-    mana: 18,
-    danoBase: "3d6",
-    danoMedio: 10,
-    defesa: 10,
-    funcao: "Boss controlador",
-    reacoes: { bloqueio: 2, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Vento", "Etéreo"],
-    resistencias: ["Água"],
-    imunidades: ["Afogamento"],
-    descricao: "Forma gigantesca de água pesada, conchas e ruínas arrastadas pelo fundo.",
-    narrativa: "Use em portos atacados, arenas inundadas e santuários costeiros.",
-    golpes: [
-      { nome: "Punho de Maré", descricao: "Impacto líquido que empurra.", dano: "3d6" },
-      { nome: "Prisões de Água", descricao: "Reduz movimento de até dois alvos.", custoMana: 4 },
-      { nome: "Onda Devastadora", descricao: "Dano em linha larga e arrasto.", dano: "4d6", custoMana: 6 },
+    "id": "elemental-neutro",
+    "nome": "Elemental Neutro",
+    "tipo": "Elemental",
+    "elemento": "Neutro",
+    "va": 5,
+    "pv": 26,
+    "mana": 10,
+    "danoBase": "2d6",
+    "danoMedio": 7,
+    "defesa": 10,
+    "funcao": "Tanque",
+    "reacoes": {
+      "bloqueio": 3,
+      "esquiva": 0,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Etéreo",
+      "Perfurante"
     ],
+    "resistencias": [
+      "Neutro"
+    ],
+    "imunidades": [
+      "Veneno",
+      "Sangramento"
+    ],
+    "descricao": "Massa bruta de mana material, pesada e difícil de destruir.",
+    "narrativa": "Use como guardião bruto, criatura invocada incompleta ou defesa antiga.",
+    "golpes": [
+      {
+        "nome": "Pancada Bruta",
+        "descricao": "2d6",
+        "dano": "2d6"
+      },
+      {
+        "nome": "Endurecer",
+        "descricao": "reduz 5 de dano no próximo ataque, custa 2 mana",
+        "custoMana": 2
+      },
+      {
+        "nome": "Onda de Impacto",
+        "descricao": "derruba inimigos próximos, custa 3 mana.",
+        "custoMana": 3
+      }
+    ]
   },
   {
-    id: "elemental-de-chamas",
-    nome: "Elemental de Chamas",
-    tipo: "Elemental",
-    elemento: "Fogo",
-    va: 4,
-    pv: 18,
-    mana: 14,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 13,
-    funcao: "Atacante místico",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 1 },
-    fraquezas: ["Água", "Terra"],
-    resistencias: ["Fogo"],
-    imunidades: ["Queimadura", "Veneno"],
-    descricao: "Chama consciente que salta entre tochas, brasas e emoções violentas.",
-    narrativa: "Use em incêndios vivos, forjas mágicas e pactos elementais instáveis.",
-    golpes: [
-      { nome: "Toque Ígneo", descricao: "Ataque flamejante corpo a corpo.", dano: "2d6" },
-      { nome: "Labareda Saltante", descricao: "Ataque salta para alvo próximo.", dano: "1d8", custoMana: 2 },
-      { nome: "Corpo em Chamas", descricao: "Causa dano leve a quem o ataca de perto.", custoMana: 3 },
+    "id": "gigante-de-ferro",
+    "nome": "Gigante de Ferro",
+    "tipo": "Constructo",
+    "tipoSecundario": "Gigante",
+    "elemento": "Neutro",
+    "va": 5,
+    "pv": 26,
+    "mana": 12,
+    "danoBase": "2d6",
+    "danoMedio": 7,
+    "defesa": 8,
+    "funcao": "Elite tanque",
+    "reacoes": {
+      "bloqueio": 3,
+      "esquiva": 0,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Perfurante",
+      "Etéreo"
     ],
+    "resistencias": [
+      "Neutro",
+      "Fogo"
+    ],
+    "imunidades": [
+      "Veneno",
+      "Sangramento"
+    ],
+    "descricao": "Colosso metálico de força brutal e defesa quase impenetrável.",
+    "narrativa": "Use como guardião de ruínas, arma antiga ou criação de Artífices esquecidos.",
+    "golpes": [
+      {
+        "nome": "Soco de Aço",
+        "descricao": "2d6",
+        "dano": "2d6"
+      },
+      {
+        "nome": "Pisada Amedrontadora",
+        "descricao": "1d6 e −1 acerto",
+        "dano": "1d6"
+      },
+      {
+        "nome": "Golpe Devastador",
+        "descricao": "2d8 e empurra, custa 2 mana",
+        "dano": "2d8",
+        "custoMana": 2
+      },
+      {
+        "nome": "Impacto Sismorruína",
+        "descricao": "3d6 em área, custa 4 mana.",
+        "dano": "3d6",
+        "custoMana": 4
+      }
+    ]
   },
   {
-    id: "elemental-de-mare",
-    nome: "Elemental de Maré",
-    tipo: "Elemental",
-    elemento: "Água",
-    va: 4,
-    pv: 20,
-    mana: 14,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 12,
-    funcao: "Controlador",
-    reacoes: { bloqueio: 1, esquiva: 1, contraAtaque: 0 },
-    fraquezas: ["Vento", "Etéreo"],
-    resistencias: ["Água", "Fogo"],
-    imunidades: ["Afogamento"],
-    descricao: "Água animada por vontade própria, sempre procurando frestas e gargalos.",
-    narrativa: "Use em reservatórios, templos submersos, chuvas invocadas e navios.",
-    golpes: [
-      { nome: "Chicote de Água", descricao: "Ataque flexível a curta distância.", dano: "2d6" },
-      { nome: "Corrente Repentina", descricao: "Puxa ou empurra um alvo.", custoMana: 2 },
-      { nome: "Bolha Sufocante", descricao: "Reduz acerto e movimento do alvo.", custoMana: 3 },
+    "id": "basilisco-verdejante",
+    "nome": "Basilisco Verdejante",
+    "tipo": "Besta",
+    "tipoSecundario": "Venenoso",
+    "elemento": "Natureza",
+    "va": 5,
+    "pv": 24,
+    "mana": 12,
+    "danoBase": "2d6",
+    "danoMedio": 7,
+    "defesa": 12,
+    "funcao": "Elite controlador",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 1,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Natureza",
+      "Longa distância"
     ],
+    "resistencias": [
+      "Veneno",
+      "Natureza"
+    ],
+    "imunidades": [
+      "Veneno"
+    ],
+    "descricao": "Criatura ancestral de escamas verdes, olhar paralisante e toxinas naturais.",
+    "narrativa": "Use em selvas, templos naturais, ruínas verdes e áreas de cobertura densa.",
+    "golpes": [
+      {
+        "nome": "Cauda Veloz",
+        "descricao": "2d6",
+        "dano": "2d6"
+      },
+      {
+        "nome": "Olhar Paralisante",
+        "descricao": "alvo pode perder ação"
+      },
+      {
+        "nome": "Mordida Tóxica",
+        "descricao": "2d6 + 1d4 veneno, custa 2 mana",
+        "dano": "2d6 + 1d4",
+        "custoMana": 2
+      },
+      {
+        "nome": "Espinhos da Perdição",
+        "descricao": "2d8+2 e −2 defesa, custa 4 mana.",
+        "dano": "2d8+2",
+        "custoMana": 4
+      }
+    ]
   },
   {
-    id: "elemental-de-pedra",
-    nome: "Elemental de Pedra",
-    tipo: "Elemental",
-    elemento: "Terra",
-    va: 4,
-    pv: 24,
-    mana: 10,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 10,
-    funcao: "Tanque místico",
-    reacoes: { bloqueio: 2, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Água", "Etéreo"],
-    resistencias: ["Terra", "Neutro"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Pedras reunidas por mana, lento para reagir e difícil de derrubar.",
-    narrativa: "Use em cavernas, desfiladeiros, ruínas soterradas e círculos rúnicos.",
-    golpes: [
-      { nome: "Martelo de Rocha", descricao: "Golpe pesado de pedra compacta.", dano: "2d6" },
-      { nome: "Erguer Terreno", descricao: "Cria obstáculo baixo ou cobertura.", custoMana: 2 },
-      { nome: "Chuva de Cascalho", descricao: "Dano em área pequena.", dano: "2d4", custoMana: 3 },
+    "id": "lacaio-da-noite-eterna",
+    "nome": "Lacaio da Noite Eterna",
+    "tipo": "Sombra",
+    "elemento": "Sombrio",
+    "va": 5,
+    "pv": 22,
+    "mana": 14,
+    "danoBase": "2d6",
+    "danoMedio": 7,
+    "defesa": 13,
+    "funcao": "Elite sombrio",
+    "reacoes": {
+      "bloqueio": 0,
+      "esquiva": 2,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Fogo",
+      "Vento",
+      "Radiante"
     ],
+    "resistencias": [
+      "Sombrio"
+    ],
+    "imunidades": [
+      "Veneno",
+      "Sangramento"
+    ],
+    "descricao": "Manifestação profunda de escuridão. Não apenas ataca: apaga a confiança dos inimigos.",
+    "narrativa": "Use como comandante de sombras ou servo de uma entidade maior.",
+    "golpes": [
+      {
+        "nome": "Garra da Escuridão",
+        "descricao": "2d6",
+        "dano": "2d6"
+      },
+      {
+        "nome": "Névoa da Agonia",
+        "descricao": "reduz dano do alvo em −1d4",
+        "dano": "1d4"
+      },
+      {
+        "nome": "Grito do Abismo",
+        "descricao": "2d8 e −2 ataque, custa 2 mana",
+        "dano": "2d8",
+        "custoMana": 2
+      },
+      {
+        "nome": "Eclipse Mortal",
+        "descricao": "6d3 em área e −2 defesa, custa 5 mana.",
+        "dano": "6d3",
+        "custoMana": 5
+      }
+    ]
   },
   {
-    id: "elemental-da-tempestade",
-    nome: "Elemental da Tempestade",
-    tipo: "Elemental",
-    elemento: "Vento",
-    va: 5,
-    pv: 20,
-    mana: 16,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 15,
-    funcao: "Assediador aéreo",
-    reacoes: { bloqueio: 0, esquiva: 3, contraAtaque: 0 },
-    fraquezas: ["Terra", "Área"],
-    resistencias: ["Vento"],
-    imunidades: [],
-    descricao: "Nuvem agressiva de vento, pressão e relâmpagos curtos.",
-    narrativa: "Use em torres altas, planícies abertas, navios e tempestades mágicas.",
-    golpes: [
-      { nome: "Descarga Curta", descricao: "Raio rápido contra um alvo.", dano: "2d6" },
-      { nome: "Rajada Deslocante", descricao: "Empurra criaturas em linha.", custoMana: 3 },
-      { nome: "Olho da Tempestade", descricao: "Recebe +2 esquiva até o próximo turno.", custoMana: 3 },
+    "id": "fenix-celeste",
+    "nome": "Fênix Celeste",
+    "tipo": "Ave",
+    "tipoSecundario": "Místico",
+    "elemento": "Fogo ou Radiante",
+    "va": 8,
+    "pv": 28,
+    "mana": 18,
+    "danoBase": "2d6",
+    "danoMedio": 7,
+    "defesa": 14,
+    "funcao": "Boss suporte",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 2,
+      "contraAtaque": 0
+    },
+    "fraquezas": [
+      "Água",
+      "Sombrio"
     ],
+    "resistencias": [
+      "Fogo",
+      "Radiante"
+    ],
+    "imunidades": [
+      "Queimadura"
+    ],
+    "descricao": "Ave sagrada de fogo celestial, símbolo de esperança, renascimento e poder elevado.",
+    "narrativa": "Pode ser inimiga, guardiã, prova divina ou criatura corrompida.",
+    "golpes": [
+      {
+        "nome": "Corte Solar",
+        "descricao": "2d6",
+        "dano": "2d6"
+      },
+      {
+        "nome": "Asas Cegantes",
+        "descricao": "inimigos sofrem −2 em acerto"
+      },
+      {
+        "nome": "Fulgor Restaurador",
+        "descricao": "cura 4d3, custa 4 mana",
+        "dano": "4d3",
+        "custoMana": 4
+      },
+      {
+        "nome": "Renascimento",
+        "descricao": "ao morrer, volta com metade da vida, uma vez por combate."
+      }
+    ]
   },
   {
-    id: "elemental-radiante",
-    nome: "Elemental Radiante",
-    tipo: "Elemental",
-    elemento: "Radiante",
-    va: 5,
-    pv: 18,
-    mana: 18,
-    danoBase: "2d8",
-    danoMedio: 9,
-    defesa: 13,
-    funcao: "Suporte ofensivo",
-    reacoes: { bloqueio: 1, esquiva: 2, contraAtaque: 0 },
-    fraquezas: ["Sombrio", "Corpo a corpo"],
-    resistencias: ["Radiante"],
-    imunidades: ["Cegueira"],
-    descricao: "Luz viva com forma instável, capaz de curar ou queimar conforme a vontade.",
-    narrativa: "Use em santuários, portais celestes, relíquias danificadas e rituais solares.",
-    golpes: [
-      { nome: "Raio Alvo", descricao: "Feixe de luz concentrada.", dano: "2d8" },
-      { nome: "Clarão Protetor", descricao: "Aliado recebe +1 defesa por 1 turno.", custoMana: 2 },
-      { nome: "Explodir Luz", descricao: "Dano em área curta e revela escondidos.", dano: "2d6", custoMana: 4 },
+    "id": "dragao-das-cinzas",
+    "nome": "Dragão das Cinzas",
+    "tipo": "Dragão",
+    "elemento": "Fogo",
+    "va": 10,
+    "pv": 38,
+    "mana": 20,
+    "danoBase": "3d6",
+    "danoMedio": 10,
+    "defesa": 12,
+    "funcao": "Boss",
+    "reacoes": {
+      "bloqueio": 2,
+      "esquiva": 1,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Água",
+      "Perfurante"
     ],
+    "resistencias": [
+      "Fogo"
+    ],
+    "imunidades": [
+      "Queimadura"
+    ],
+    "descricao": "Dragão antigo marcado por cinzas, fogo e destruição.",
+    "narrativa": "Use como ameaça central de arco.",
+    "golpes": [
+      {
+        "nome": "Garra Flamejante",
+        "descricao": "3d6",
+        "dano": "3d6"
+      },
+      {
+        "nome": "Cauda Cortante",
+        "descricao": "4d3",
+        "dano": "4d3"
+      },
+      {
+        "nome": "Sopro de Cinzas",
+        "descricao": "4d3 em cone, custa 4 mana",
+        "dano": "4d3",
+        "custoMana": 4
+      },
+      {
+        "nome": "Ira Ancestral",
+        "descricao": "4d10 em área, recarga de 3 rodadas.",
+        "dano": "4d10"
+      }
+    ]
   },
   {
-    id: "bandido-de-estrada",
-    nome: "Bandido de Estrada",
-    tipo: "Humanoide",
-    elemento: "Neutro",
-    va: 1,
-    pv: 10,
-    mana: 4,
-    danoBase: "1d6",
-    danoMedio: 3,
-    defesa: 12,
-    funcao: "Lacaio",
-    reacoes: { bloqueio: 1, esquiva: 1, contraAtaque: 0 },
-    fraquezas: ["Área", "Medo"],
-    resistencias: [],
-    imunidades: [],
-    descricao: "Assaltante comum, mais perigoso em grupo do que por habilidade individual.",
-    narrativa: "Use em estradas, tavernas ruins, becos e emboscadas de baixa escala.",
-    golpes: [
-      { nome: "Golpe de Cutelo", descricao: "Ataque simples e direto.", dano: "1d6" },
-      { nome: "Areia no Rosto", descricao: "Alvo sofre -1 em acerto por 1 turno.", custoMana: 1 },
-      { nome: "Chamar Reforço", descricao: "Um aliado se reposiciona ou pressiona o alvo.", custoMana: 2 },
+    "id": "dragao-glacial",
+    "nome": "Dragão Glacial",
+    "tipo": "Dragão",
+    "elemento": "Água",
+    "va": 10,
+    "pv": 38,
+    "mana": 20,
+    "danoBase": "3d6",
+    "danoMedio": 10,
+    "defesa": 11,
+    "funcao": "Boss controlador",
+    "reacoes": {
+      "bloqueio": 2,
+      "esquiva": 0,
+      "contraAtaque": 2
+    },
+    "fraquezas": [
+      "Fogo",
+      "Perfurante"
     ],
+    "resistencias": [
+      "Água"
+    ],
+    "imunidades": [
+      "Congelamento"
+    ],
+    "descricao": "Dragão de escamas glaciais, sopro congelante e presença opressora.",
+    "narrativa": "Use em montanhas, cavernas congeladas, lagos antigos e fortalezas tomadas pelo inverno.",
+    "golpes": [
+      {
+        "nome": "Garra Glacial",
+        "descricao": "3d6",
+        "dano": "3d6"
+      },
+      {
+        "nome": "Sopro Congelante",
+        "descricao": "4d3 em cone e reduz movimento, custa 4 mana",
+        "dano": "4d3",
+        "custoMana": 4
+      },
+      {
+        "nome": "Muralha de Gelo",
+        "descricao": "bloqueia passagem, custa 5 mana.",
+        "custoMana": 5
+      }
+    ]
   },
   {
-    id: "duelista-renegado",
-    nome: "Duelista Renegado",
-    tipo: "Humanoide",
-    elemento: "Neutro",
-    va: 4,
-    pv: 18,
-    mana: 10,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 14,
-    funcao: "Duelista elite",
-    reacoes: { bloqueio: 1, esquiva: 2, contraAtaque: 2 },
-    fraquezas: ["Área", "Etéreo"],
-    resistencias: ["Neutro"],
-    imunidades: [],
-    descricao: "Espadachim expulso de uma ordem, preciso, arrogante e difícil de encurralar.",
-    narrativa: "Use como rival recorrente, guarda pessoal ou campeão de arena clandestina.",
-    golpes: [
-      { nome: "Estocada Limpa", descricao: "Ataque preciso de lâmina fina.", dano: "2d6" },
-      { nome: "Finta Baixa", descricao: "Próximo contra-ataque recebe +1.", custoMana: 2 },
-      { nome: "Ripostar", descricao: "Contra-ataca após bloquear ou esquivar.", dano: "1d8", custoMana: 2 },
+    "id": "dragao-verdejante",
+    "nome": "Dragão Verdejante",
+    "tipo": "Dragão",
+    "elemento": "Natureza",
+    "va": 10,
+    "pv": 40,
+    "mana": 18,
+    "danoBase": "3d6",
+    "danoMedio": 10,
+    "defesa": 11,
+    "funcao": "Boss territorial",
+    "reacoes": {
+      "bloqueio": 2,
+      "esquiva": 1,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Fogo",
+      "Vento"
     ],
+    "resistencias": [
+      "Natureza"
+    ],
+    "imunidades": [
+      "Veneno"
+    ],
+    "descricao": "Dragão coberto de vinhas, espinhos e escamas verdes antigas.",
+    "narrativa": "Use como guardião de floresta proibida ou criatura venerada por cultos naturais.",
+    "golpes": [
+      {
+        "nome": "Garra Verdejante",
+        "descricao": "3d6",
+        "dano": "3d6"
+      },
+      {
+        "nome": "Sopro de Esporos",
+        "descricao": "dano e veneno, custa 4 mana",
+        "custoMana": 4
+      },
+      {
+        "nome": "Raízes Ancestrais",
+        "descricao": "prende inimigos, custa 5 mana.",
+        "custoMana": 5
+      }
+    ]
   },
   {
-    id: "clerigo-corrompido",
-    nome: "Clérigo Corrompido",
-    tipo: "Humanoide",
-    tipoSecundario: "Místico",
-    elemento: "Sombrio",
-    va: 4,
-    pv: 16,
-    mana: 16,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 12,
-    funcao: "Suporte controlador",
-    reacoes: { bloqueio: 1, esquiva: 1, contraAtaque: 0 },
-    fraquezas: ["Radiante", "Corpo a corpo"],
-    resistencias: ["Sombrio"],
-    imunidades: [],
-    descricao: "Sacerdote que trocou bênçãos por promessas vazias e milagres escuros.",
-    narrativa: "Use em cultos, criptas, vilarejos manipulados e templos profanados.",
-    golpes: [
-      { nome: "Prece Sombria", descricao: "Dano místico contra um alvo.", dano: "2d6" },
-      { nome: "Benção Profana", descricao: "Aliado recebe +1 defesa e +1 acerto.", custoMana: 3 },
-      { nome: "Selo de Culpa", descricao: "Alvo sofre -1 em defesa por 1 turno.", custoMana: 2 },
+    "id": "dragao-dos-vendavais",
+    "nome": "Dragão dos Vendavais",
+    "tipo": "Dragão",
+    "elemento": "Vento",
+    "va": 10,
+    "pv": 34,
+    "mana": 22,
+    "danoBase": "3d6",
+    "danoMedio": 10,
+    "defesa": 14,
+    "funcao": "Boss evasivo",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 2,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Natureza",
+      "Área"
     ],
+    "resistencias": [
+      "Vento"
+    ],
+    "imunidades": [
+      "Queda"
+    ],
+    "descricao": "Dragão veloz, cercado por correntes de ar cortante e trovões distantes.",
+    "narrativa": "Use em penhascos, céus abertos, torres partidas e batalhas com terreno instável.",
+    "golpes": [
+      {
+        "nome": "Garra de Vento",
+        "descricao": "3d6",
+        "dano": "3d6"
+      },
+      {
+        "nome": "Sopro Cortante",
+        "descricao": "4d3 em linha, custa 4 mana",
+        "dano": "4d3",
+        "custoMana": 4
+      },
+      {
+        "nome": "Voo Turbulento",
+        "descricao": "desloca todos próximos, custa 5 mana.",
+        "custoMana": 5
+      }
+    ]
   },
   {
-    id: "arqueira-fantasma",
-    nome: "Arqueira Fantasma",
-    tipo: "Morto-vivo",
-    tipoSecundario: "Humanoide",
-    elemento: "Sombrio",
-    va: 3,
-    pv: 14,
-    mana: 12,
-    danoBase: "1d8",
-    danoMedio: 4,
-    defesa: 14,
-    funcao: "Atiradora móvel",
-    reacoes: { bloqueio: 0, esquiva: 2, contraAtaque: 1 },
-    fraquezas: ["Radiante", "Corpo a corpo"],
-    resistencias: ["Sombrio", "Perfurante"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Espírito de sentinela que ainda vigia muralhas destruídas.",
-    narrativa: "Use em fortalezas abandonadas, campos de batalha e estradas assombradas.",
-    golpes: [
-      { nome: "Flecha Espectral", descricao: "Disparo que ignora cobertura leve.", dano: "1d8" },
-      { nome: "Passo Fantasma", descricao: "Reposiciona atravessando obstáculo fino.", custoMana: 2 },
-      { nome: "Tiro Marcado", descricao: "Próximo ataque contra o alvo recebe +1.", custoMana: 2 },
+    "id": "dragao-umbral",
+    "nome": "Dragão Umbral",
+    "tipo": "Dragão",
+    "tipoSecundario": "Sombra",
+    "elemento": "Sombrio",
+    "va": 10,
+    "pv": 36,
+    "mana": 22,
+    "danoBase": "3d6",
+    "danoMedio": 10,
+    "defesa": 13,
+    "funcao": "Boss sombrio",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 2,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Fogo",
+      "Vento",
+      "Radiante"
     ],
+    "resistencias": [
+      "Sombrio"
+    ],
+    "imunidades": [
+      "Veneno",
+      "Sangramento",
+      "Medo"
+    ],
+    "descricao": "Dragão de sombras densas, olhos frios e presença que apaga a coragem.",
+    "narrativa": "Use como ameaça ligada a ruínas Umbra, vazios dimensionais ou pactos antigos.",
+    "golpes": [
+      {
+        "nome": "Garra Umbral",
+        "descricao": "3d6",
+        "dano": "3d6"
+      },
+      {
+        "nome": "Sopro de Trevas",
+        "descricao": "4d3 sombrio, custa 4 mana",
+        "dano": "4d3",
+        "custoMana": 4
+      },
+      {
+        "nome": "Devorar Luz",
+        "descricao": "reduz acerto dos inimigos, custa 5 mana.",
+        "custoMana": 5
+      }
+    ]
   },
   {
-    id: "carnical-de-cripta",
-    nome: "Carniçal de Cripta",
-    tipo: "Morto-vivo",
-    elemento: "Sombrio",
-    va: 2,
-    pv: 14,
-    mana: 5,
-    danoBase: "1d6",
-    danoMedio: 3,
-    defesa: 11,
-    funcao: "Lacaio agressivo",
-    reacoes: { bloqueio: 0, esquiva: 1, contraAtaque: 1 },
-    fraquezas: ["Radiante", "Fogo"],
-    resistencias: ["Sombrio"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Morto-vivo faminto, guiado por cheiro de carne e ruído de passos.",
-    narrativa: "Use em catacumbas, cemitérios, necrotérios e masmorras recém-abertas.",
-    golpes: [
-      { nome: "Garra Faminta", descricao: "Ataque rápido e sujo.", dano: "1d6" },
-      { nome: "Mordida Infecta", descricao: "Alvo sofre -1 em defesa por 1 turno.", dano: "1d4", custoMana: 2 },
-      { nome: "Arrastar", descricao: "Puxa alvo caído ou distraído.", custoMana: 1 },
+    "id": "dragao-da-aurora",
+    "nome": "Dragão da Aurora",
+    "tipo": "Dragão",
+    "elemento": "Radiante",
+    "va": 10,
+    "pv": 36,
+    "mana": 22,
+    "danoBase": "3d6",
+    "danoMedio": 10,
+    "defesa": 13,
+    "funcao": "Boss radiante",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 2,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Sombrio",
+      "Perfurante"
     ],
+    "resistencias": [
+      "Radiante"
+    ],
+    "imunidades": [
+      "Medo"
+    ],
+    "descricao": "Dragão de brilho dourado, asas luminosas e rugido como nascer do sol.",
+    "narrativa": "Pode ser guardião sagrado, juiz antigo ou criatura cuja luz saiu de controle.",
+    "golpes": [
+      {
+        "nome": "Garra Radiante",
+        "descricao": "3d6",
+        "dano": "3d6"
+      },
+      {
+        "nome": "Sopro da Aurora",
+        "descricao": "4d3 radiante, custa 4 mana",
+        "dano": "4d3",
+        "custoMana": 4
+      },
+      {
+        "nome": "Clarão Majestoso",
+        "descricao": "inimigos sofrem −2 em acerto, custa 5 mana.",
+        "custoMana": 5
+      }
+    ]
   },
   {
-    id: "esqueleto-legionario",
-    nome: "Esqueleto Legionário",
-    tipo: "Morto-vivo",
-    tipoSecundario: "Soldado",
-    elemento: "Neutro",
-    va: 2,
-    pv: 12,
-    mana: 4,
-    danoBase: "1d8",
-    danoMedio: 4,
-    defesa: 13,
-    funcao: "Lacaio defensivo",
-    reacoes: { bloqueio: 2, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Contundente", "Radiante"],
-    resistencias: ["Perfurante"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Ossos disciplinados por uma ordem antiga, ainda marchando em formação.",
-    narrativa: "Use em legiões necromânticas, tumbas militares e patrulhas amaldiçoadas.",
-    golpes: [
-      { nome: "Lança Óssea", descricao: "Ataque frontal disciplinado.", dano: "1d8" },
-      { nome: "Formar Escudo", descricao: "Recebe +1 defesa se estiver ao lado de aliado.", custoMana: 1 },
-      { nome: "Avanço Marcial", descricao: "Move e ataca sem perder formação.", custoMana: 2 },
+    "id": "dragao-etereo",
+    "nome": "Dragão Etéreo",
+    "tipo": "Dragão",
+    "elemento": "Etéreo",
+    "va": 10,
+    "pv": 34,
+    "mana": 24,
+    "danoBase": "3d6",
+    "danoMedio": 10,
+    "defesa": 15,
+    "funcao": "Boss místico",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 2,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Neutro",
+      "Corpo a corpo"
     ],
+    "resistencias": [
+      "Etéreo"
+    ],
+    "imunidades": [
+      "Veneno",
+      "Sangramento"
+    ],
+    "descricao": "Dragão que parece existir entre o mundo físico e uma camada espiritual da realidade.",
+    "narrativa": "Use em campanhas envolvendo grimórios antigos, portais, sonhos ou outros mundos.",
+    "golpes": [
+      {
+        "nome": "Garra Etérea",
+        "descricao": "3d6",
+        "dano": "3d6"
+      },
+      {
+        "nome": "Sopro da Alma",
+        "descricao": "4d3 etéreo, custa 4 mana",
+        "dano": "4d3",
+        "custoMana": 4
+      },
+      {
+        "nome": "Distorção",
+        "descricao": "troca de posição ou cria ilusão, custa 5 mana.",
+        "custoMana": 5
+      }
+    ]
   },
   {
-    id: "sombra-faminta",
-    nome: "Sombra Faminta",
-    tipo: "Morto-vivo",
-    elemento: "Sombrio",
-    va: 4,
-    pv: 18,
-    mana: 14,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 15,
-    funcao: "Controlador móvel",
-    reacoes: { bloqueio: 0, esquiva: 3, contraAtaque: 0 },
-    fraquezas: ["Radiante", "Fogo"],
-    resistencias: ["Sombrio", "Neutro"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Ausência viva que devora calor, coragem e lembranças recentes.",
-    narrativa: "Use em casas assombradas, becos sem luz, sonhos ruins e portais do vazio.",
-    golpes: [
-      { nome: "Toque Frio", descricao: "Dano sombrio e sensação de fraqueza.", dano: "2d6" },
-      { nome: "Roubar Fôlego", descricao: "Alvo sofre -1 em acerto por 1 turno.", custoMana: 3 },
-      { nome: "Fundir-se à Sombra", descricao: "Reposiciona-se para uma área escura.", custoMana: 2 },
+    "id": "dragao-primordial",
+    "nome": "Dragão Primordial",
+    "tipo": "Dragão",
+    "elemento": "Neutro",
+    "va": 10,
+    "pv": 42,
+    "mana": 16,
+    "danoBase": "3d6",
+    "danoMedio": 10,
+    "defesa": 10,
+    "funcao": "Boss bruto",
+    "reacoes": {
+      "bloqueio": 3,
+      "esquiva": 0,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Etéreo",
+      "Perfurante"
     ],
+    "resistencias": [
+      "Neutro"
+    ],
+    "imunidades": [],
+    "descricao": "Dragão ancestral de força pura, mais antigo que muitas linhagens conhecidas.",
+    "narrativa": "Use como ameaça física extrema, guardião de eras antigas ou besta impossível de negociar.",
+    "golpes": [
+      {
+        "nome": "Mordida Primordial",
+        "descricao": "3d6",
+        "dano": "3d6"
+      },
+      {
+        "nome": "Cauda Devastadora",
+        "descricao": "4d3 em área",
+        "dano": "4d3"
+      },
+      {
+        "nome": "Rugido Antigo",
+        "descricao": "inimigos sofrem −2 em testes, custa 4 mana.",
+        "custoMana": 4
+      }
+    ]
   },
   {
-    id: "trepadeira-carnivora",
-    nome: "Trepadeira Carnívora",
-    tipo: "Planta",
-    elemento: "Natureza",
-    va: 2,
-    pv: 18,
-    mana: 7,
-    danoBase: "1d6",
-    danoMedio: 3,
-    defesa: 10,
-    funcao: "Controladora",
-    reacoes: { bloqueio: 1, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Fogo", "Cortante"],
-    resistencias: ["Natureza", "Água"],
-    imunidades: [],
-    descricao: "Vinhas carnívoras que se fingem de vegetação comum até envolver tornozelos.",
-    narrativa: "Use em ruínas verdes, jardins abandonados, pântanos e templos naturais.",
-    golpes: [
-      { nome: "Chicote de Vinha", descricao: "Ataque a curta distância.", dano: "1d6" },
-      { nome: "Enroscar", descricao: "Reduz movimento do alvo por 1 turno.", custoMana: 2 },
-      { nome: "Boca Oculta", descricao: "Mordida contra alvo preso.", dano: "1d8", custoMana: 2 },
+    "id": "leviata-abissal",
+    "nome": "Leviatã Abissal",
+    "tipo": "Colosso",
+    "tipoSecundario": "Dragão",
+    "elemento": "Água",
+    "va": 10,
+    "pv": 36,
+    "mana": 20,
+    "danoBase": "3d6",
+    "danoMedio": 10,
+    "defesa": 10,
+    "funcao": "Boss controlador",
+    "reacoes": {
+      "bloqueio": 3,
+      "esquiva": 0,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Vento",
+      "Perfurante"
     ],
+    "resistencias": [
+      "Água"
+    ],
+    "imunidades": [
+      "Afogamento"
+    ],
+    "descricao": "Criatura colossal das profundezas, envolta em pressão, água e tempestades.",
+    "narrativa": "Use em navios, cidades costeiras, ruínas submersas e arenas com água.",
+    "golpes": [
+      {
+        "nome": "Mordida das Profundezas",
+        "descricao": "3d6",
+        "dano": "3d6"
+      },
+      {
+        "nome": "Cauda Voraz",
+        "descricao": "4d3",
+        "dano": "4d3"
+      },
+      {
+        "nome": "Jato Pressurizado",
+        "descricao": "8d2, custa 3 mana",
+        "dano": "8d2",
+        "custoMana": 3
+      },
+      {
+        "nome": "Tufão do Abismo",
+        "descricao": "6d3 em área e arrasta inimigos, custa 8 mana.",
+        "dano": "6d3",
+        "custoMana": 8
+      }
+    ]
   },
   {
-    id: "cogumelo-esporifero",
-    nome: "Cogumelo Esporífero",
-    tipo: "Planta",
-    tipoSecundario: "Fungo",
-    elemento: "Natureza",
-    va: 1,
-    pv: 10,
-    mana: 8,
-    danoBase: "1d4",
-    danoMedio: 2,
-    defesa: 9,
-    funcao: "Suporte controlador",
-    reacoes: { bloqueio: 1, esquiva: 0, contraAtaque: 0 },
-    fraquezas: ["Fogo", "Vento"],
-    resistencias: ["Natureza"],
-    imunidades: ["Veneno"],
-    descricao: "Fungo ambulante que libera nuvens de esporos quando ameaçado.",
-    narrativa: "Use em cavernas úmidas, bosques fechados, esgotos e laboratórios naturais.",
-    golpes: [
-      { nome: "Batida Mole", descricao: "Ataque fraco com corpo elástico.", dano: "1d4" },
-      { nome: "Nuvem de Esporos", descricao: "Inimigos sofrem -1 em acerto por 1 turno.", custoMana: 2 },
-      { nome: "Crescimento Rápido", descricao: "Cria terreno difícil próximo.", custoMana: 3 },
+    "id": "serafim-da-aurora",
+    "nome": "Serafim da Aurora",
+    "tipo": "Celestial",
+    "elemento": "Radiante",
+    "va": 10,
+    "pv": 34,
+    "mana": 22,
+    "danoBase": "2d6",
+    "danoMedio": 7,
+    "defesa": 14,
+    "funcao": "Boss suporte",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 2,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Sombrio",
+      "Perfurante"
     ],
+    "resistencias": [
+      "Radiante"
+    ],
+    "imunidades": [
+      "Medo"
+    ],
+    "descricao": "Entidade de luz elevada, majestosa e severa. Sua presença inspira aliados e julga inimigos.",
+    "narrativa": "Use em provas divinas, templos antigos ou conflitos morais.",
+    "golpes": [
+      {
+        "nome": "Lâmina da Aurora",
+        "descricao": "2d6",
+        "dano": "2d6"
+      },
+      {
+        "nome": "Voz Celestial",
+        "descricao": "aliados recebem +3 em testes, custa 3 mana",
+        "custoMana": 3
+      },
+      {
+        "nome": "Asas do Refúgio",
+        "descricao": "cura 2d6, custa 5 mana",
+        "dano": "2d6",
+        "custoMana": 5
+      },
+      {
+        "nome": "Exílio Divino",
+        "descricao": "4d6 e remove alvo por 1 turno se falhar, custa 8 mana.",
+        "dano": "4d6",
+        "custoMana": 8
+      }
+    ]
   },
   {
-    id: "mandragora-gritante",
-    nome: "Mandrágora Gritante",
-    tipo: "Planta",
-    tipoSecundario: "Místico",
-    elemento: "Etéreo",
-    va: 2,
-    pv: 12,
-    mana: 12,
-    danoBase: "1d6",
-    danoMedio: 3,
-    defesa: 12,
-    funcao: "Controladora mística",
-    reacoes: { bloqueio: 0, esquiva: 1, contraAtaque: 0 },
-    fraquezas: ["Fogo", "Radiante"],
-    resistencias: ["Etéreo", "Natureza"],
-    imunidades: [],
-    descricao: "Raiz viva que grita memórias enterradas quando é arrancada do solo.",
-    narrativa: "Use em hortos mágicos, mercados ilegais, cemitérios e covis de bruxas.",
-    golpes: [
-      { nome: "Arranhão de Raiz", descricao: "Ataque rápido com raízes finas.", dano: "1d6" },
-      { nome: "Grito Agudo", descricao: "Inimigos próximos sofrem -1 em defesa.", custoMana: 3 },
-      { nome: "Raiz Prensora", descricao: "Prende um alvo em curta distância.", custoMana: 2 },
+    "id": "entidade-do-vazio",
+    "nome": "Entidade do Vazio",
+    "tipo": "Entidade",
+    "tipoSecundario": "Cósmico",
+    "elemento": "Sombrio",
+    "va": 12,
+    "pv": 36,
+    "mana": 22,
+    "danoBase": "4d4",
+    "danoMedio": 10,
+    "defesa": 15,
+    "funcao": "Boss final",
+    "reacoes": {
+      "bloqueio": 1,
+      "esquiva": 2,
+      "contraAtaque": 1
+    },
+    "fraquezas": [
+      "Fogo",
+      "Vento",
+      "Radiante"
     ],
-  },
-  {
-    id: "carvalho-anciao-hostil",
-    nome: "Carvalho Ancião Hostil",
-    tipo: "Planta",
-    tipoSecundario: "Guardião",
-    elemento: "Natureza",
-    va: 6,
-    pv: 34,
-    mana: 12,
-    danoBase: "2d8",
-    danoMedio: 9,
-    defesa: 11,
-    funcao: "Tanque controlador",
-    reacoes: { bloqueio: 3, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Fogo", "Cortante"],
-    resistencias: ["Natureza", "Terra"],
-    imunidades: [],
-    descricao: "Árvore antiga desperta por invasão, dor ou corrupção de suas raízes.",
-    narrativa: "Use como guardião de bosque, chefe de encontro natural ou vítima corrompida.",
-    golpes: [
-      { nome: "Galho Pesado", descricao: "Golpe amplo de madeira antiga.", dano: "2d8" },
-      { nome: "Raízes de Prisão", descricao: "Cria área de terreno difícil.", custoMana: 3 },
-      { nome: "Chamado do Bosque", descricao: "Aliados planta recebem +1 defesa.", custoMana: 3 },
+    "resistencias": [
+      "Sombrio",
+      "Etéreo"
     ],
-  },
-  {
-    id: "automato-de-cobre",
-    nome: "Autômato de Cobre",
-    tipo: "Constructo",
-    elemento: "Neutro",
-    va: 2,
-    pv: 16,
-    mana: 6,
-    danoBase: "1d8",
-    danoMedio: 4,
-    defesa: 12,
-    funcao: "Guarda mecânico",
-    reacoes: { bloqueio: 2, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Etéreo", "Água"],
-    resistencias: ["Neutro", "Fogo"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Máquina simples de patrulha, oxidada, mas obediente às últimas instruções.",
-    narrativa: "Use em oficinas antigas, casas nobres, cofres e ruínas de artífices.",
-    golpes: [
-      { nome: "Braço de Cobre", descricao: "Golpe mecânico previsível e forte.", dano: "1d8" },
-      { nome: "Trava Defensiva", descricao: "Recebe +1 bloqueio por 1 turno.", custoMana: 1 },
-      { nome: "Apito de Alarme", descricao: "Atrai reforços ou ativa armadilha próxima.", custoMana: 2 },
+    "imunidades": [
+      "Veneno",
+      "Sangramento",
+      "Medo"
     ],
-  },
-  {
-    id: "sentinela-runica",
-    nome: "Sentinela Rúnica",
-    tipo: "Constructo",
-    tipoSecundario: "Místico",
-    elemento: "Etéreo",
-    va: 5,
-    pv: 24,
-    mana: 16,
-    danoBase: "2d6",
-    danoMedio: 7,
-    defesa: 13,
-    funcao: "Guardião místico",
-    reacoes: { bloqueio: 2, esquiva: 1, contraAtaque: 1 },
-    fraquezas: ["Neutro", "Perfurante"],
-    resistencias: ["Etéreo"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Constructo gravado por runas que reage a intrusos, mentiras e mana hostil.",
-    narrativa: "Use em bibliotecas arcanas, portais selados, academias e câmaras proibidas.",
-    golpes: [
-      { nome: "Punho Rúnico", descricao: "Impacto com descarga mágica.", dano: "2d6" },
-      { nome: "Selo de Repulsão", descricao: "Empurra o alvo e cria distância.", custoMana: 3 },
-      { nome: "Campo de Anulação", descricao: "Reduz 1 mana de inimigos próximos.", custoMana: 4 },
-    ],
-  },
-  {
-    id: "balista-viva",
-    nome: "Balista Viva",
-    tipo: "Constructo",
-    tipoSecundario: "Artilharia",
-    elemento: "Neutro",
-    va: 4,
-    pv: 22,
-    mana: 8,
-    danoBase: "2d8",
-    danoMedio: 9,
-    defesa: 9,
-    funcao: "Atiradora pesada",
-    reacoes: { bloqueio: 1, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Fogo", "Etéreo"],
-    resistencias: ["Perfurante", "Neutro"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Arma de cerco animada que gira lentamente em busca de alvos prioritários.",
-    narrativa: "Use em muralhas, fortalezas abandonadas, navios de guerra e corredores longos.",
-    golpes: [
-      { nome: "Virote Pesado", descricao: "Disparo de alto impacto em linha.", dano: "2d8" },
-      { nome: "Recalibrar Mira", descricao: "Próximo disparo recebe +1 em acerto.", custoMana: 2 },
-      { nome: "Rajada de Estilhaços", descricao: "Dano em cone curto.", dano: "2d4", custoMana: 3 },
-    ],
-  },
-  {
-    id: "armadura-animada",
-    nome: "Armadura Animada",
-    tipo: "Constructo",
-    tipoSecundario: "Assombrado",
-    elemento: "Sombrio",
-    va: 3,
-    pv: 18,
-    mana: 10,
-    danoBase: "1d8",
-    danoMedio: 4,
-    defesa: 15,
-    funcao: "Tanque duelista",
-    reacoes: { bloqueio: 2, esquiva: 1, contraAtaque: 1 },
-    fraquezas: ["Radiante", "Etéreo"],
-    resistencias: ["Sombrio", "Neutro"],
-    imunidades: ["Veneno", "Sangramento"],
-    descricao: "Conjunto vazio de placas metálicas movido por ordem, espírito ou maldição.",
-    narrativa: "Use em salões nobres, arsenais, castelos abandonados e museus arcanos.",
-    golpes: [
-      { nome: "Espada Vazia", descricao: "Corte preciso de uma mão invisível.", dano: "1d8" },
-      { nome: "Muralha de Placas", descricao: "Recebe +1 defesa por 1 turno.", custoMana: 2 },
-      { nome: "Marcha Sem Alma", descricao: "Ignora medo e avança em linha reta.", custoMana: 1 },
-    ],
-  },
-  {
-    id: "gigante-das-colinas",
-    nome: "Gigante das Colinas",
-    tipo: "Gigante",
-    elemento: "Terra",
-    va: 6,
-    pv: 36,
-    mana: 8,
-    danoBase: "2d10",
-    danoMedio: 11,
-    defesa: 9,
-    funcao: "Atacante bruto",
-    reacoes: { bloqueio: 2, esquiva: 0, contraAtaque: 1 },
-    fraquezas: ["Vento", "Perfurante"],
-    resistencias: ["Terra", "Neutro"],
-    imunidades: [],
-    descricao: "Gigante grosseiro que trata rochedos como brinquedos e casas como caixas.",
-    narrativa: "Use em vales, vilarejos ameaçados, estradas montanhosas e pastos devastados.",
-    golpes: [
-      { nome: "Clava de Carvalho", descricao: "Golpe massivo contra um alvo.", dano: "2d10" },
-      { nome: "Arremessar Rocha", descricao: "Ataque à distância com impacto pesado.", dano: "2d8", custoMana: 2 },
-      { nome: "Pisada de Colina", descricao: "Dano em área curta e empurra.", dano: "2d6", custoMana: 3 },
-    ],
-  },
-  {
-    id: "gigante-tempestuoso",
-    nome: "Gigante Tempestuoso",
-    tipo: "Gigante",
-    tipoSecundario: "Místico",
-    elemento: "Vento",
-    va: 8,
-    pv: 34,
-    mana: 18,
-    danoBase: "3d6",
-    danoMedio: 10,
-    defesa: 11,
-    funcao: "Elite controlador",
-    reacoes: { bloqueio: 2, esquiva: 1, contraAtaque: 1 },
-    fraquezas: ["Terra", "Perfurante"],
-    resistencias: ["Vento"],
-    imunidades: [],
-    descricao: "Gigante de barba carregada por eletricidade, cercado por ventos obedientes.",
-    narrativa: "Use em cumes, fortalezas aéreas, tempestades eternas e duelos lendários.",
-    golpes: [
-      { nome: "Martelo Trovejante", descricao: "Golpe com impacto de trovão.", dano: "3d6" },
-      { nome: "Raio Chamado", descricao: "Dano em alvo distante.", dano: "4d4", custoMana: 4 },
-      { nome: "Vendaval de Guarda", descricao: "Empurra inimigos próximos.", custoMana: 3 },
-    ],
-  },
-  {
-    id: "matriarca-ogro",
-    nome: "Matriarca Ogro",
-    tipo: "Gigante",
-    tipoSecundario: "Líder",
-    elemento: "Neutro",
-    va: 5,
-    pv: 30,
-    mana: 10,
-    danoBase: "2d8",
-    danoMedio: 9,
-    defesa: 10,
-    funcao: "Líder bruto",
-    reacoes: { bloqueio: 2, esquiva: 0, contraAtaque: 2 },
-    fraquezas: ["Longa distância", "Etéreo"],
-    resistencias: ["Neutro"],
-    imunidades: [],
-    descricao: "Ogra experiente que comanda pela força, memória de guerras e ameaças diretas.",
-    narrativa: "Use como chefe de clã, guarda de ponte maior ou comandante de saqueadores.",
-    golpes: [
-      { nome: "Marreta de Guerra", descricao: "Golpe pesado e brutal.", dano: "2d8" },
-      { nome: "Ordem Esmagadora", descricao: "Um aliado gigante ataca ou se move.", custoMana: 3 },
-      { nome: "Grito de Matriarca", descricao: "Aliados recebem +1 defesa por 1 turno.", custoMana: 2 },
-    ],
-  },
-] satisfies Ameaca[];
+    "descricao": "Uma existência nascida do nada absoluto. Não é apenas uma criatura, mas uma falha viva na realidade.",
+    "narrativa": "Use como ameaça final de campanha, manifestação de desequilíbrio cósmico ou entidade ligada a mundos externos.",
+    "golpes": [
+      {
+        "nome": "Garras do Vazio",
+        "descricao": "4d4",
+        "dano": "4d4"
+      },
+      {
+        "nome": "Aura Espectral",
+        "descricao": "inimigos sofrem −2 em acerto"
+      },
+      {
+        "nome": "Corrente Dimensional",
+        "descricao": "puxa o inimigo e causa 4d3, custa 4 mana",
+        "dano": "4d3",
+        "custoMana": 4
+      },
+      {
+        "nome": "Ruína Final",
+        "descricao": "8d3 sombrio; se o alvo estiver com 16 PV ou menos, explode causando 2d6 em área, custa 6 mana.",
+        "dano": "8d3",
+        "custoMana": 6
+      }
+    ]
+  }
+];
 
 export function getAmeacaById(id: string) {
   return dataBestiario.find((ameaca) => ameaca.id === id) ?? null;

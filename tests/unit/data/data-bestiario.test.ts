@@ -6,7 +6,7 @@ describe("dataBestiario", () => {
   it("mantem o bestiario expandido com ids unicos", () => {
     const ids = dataBestiario.map((ameaca) => ameaca.id);
 
-    expect(dataBestiario).toHaveLength(61);
+    expect(dataBestiario).toHaveLength(44);
     expect(new Set(ids).size).toBe(ids.length);
   });
 

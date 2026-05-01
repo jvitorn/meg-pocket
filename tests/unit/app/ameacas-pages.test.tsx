@@ -69,7 +69,7 @@ describe("rotas de ameacas", () => {
 
     expect(screen.getByRole("heading", { name: "Ameaças" })).toBeInTheDocument();
     expect(screen.getByText("Bestiário público")).toBeInTheDocument();
-    expect(screen.getAllByText("61").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("44").length).toBeGreaterThan(0);
   });
 
   it("renderiza a pagina de detalhe da ameaca", async () => {
