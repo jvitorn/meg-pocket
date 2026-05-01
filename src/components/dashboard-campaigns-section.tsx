@@ -276,9 +276,9 @@ export function DashboardCampaignsSection({
                         </Button>
                       ) : null}
                       <Button asChild size="sm" className="gap-2">
-                        <Link href={`/campanhas/editar/${campanha.id}`}>
+                        <Link href={`/campanhas/escudo/${campanha.id}`}>
                           <ExternalLink className="h-4 w-4" />
-                          Abrir campanha
+                          Abrir escudo
                         </Link>
                       </Button>
                     </div>

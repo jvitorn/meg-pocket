@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps, ReactNode } from "react";
 
@@ -129,9 +128,7 @@ describe("CampanhaEditClient", () => {
       />
     );
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /vincular item à ficha/i })
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Vincular item" }));
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).queryByText("Notação")).not.toBeInTheDocument();
@@ -177,10 +174,7 @@ describe("CampanhaEditClient", () => {
     );
   });
 
-  it("recupera item expirado com a durabilidade escolhida no drawer", async () => {
-    const user = userEvent.setup();
-    const fetchMock = mockFetchOk();
-
+  it("mostra resumo de inventário e aponta para a tela completa", () => {
     render(
       <CampanhaEditClient
         campanha={campanha}
@@ -189,25 +183,19 @@ describe("CampanhaEditClient", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Recuperar item" }));
-    const drawer = await screen.findByRole("dialog");
-    await user.click(
-      within(drawer).getByRole("button", { name: "Diminuir durabilidade" })
+    expect(
+      screen.getByRole("heading", { name: "Inventário da campanha" })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Recuperar item" })).not.toBeInTheDocument();
+
+    const inventarioLinks = screen.getAllByRole("link", { name: /abrir inventário/i });
+    expect(inventarioLinks[0]).toHaveAttribute(
+      "href",
+      "/campanhas/escudo/4/inventario"
     );
-    await user.click(within(drawer).getByRole("button", { name: "Confirmar" }));
 
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/campanhas/4/inventario/30",
-        expect.objectContaining({ method: "PATCH" })
-      );
-    });
-
-    const [, init] = fetchMock.mock.calls[0];
-    expect(JSON.parse(String(init?.body))).toEqual({
-      action: "recover",
-      durabilidadeAtual: 3,
-    });
-    expect(toastMocks.success).toHaveBeenCalledWith("Item recuperado.");
+    expect(
+      screen.getByRole("link", { name: /Ayla/i })
+    ).toHaveAttribute("href", "/campanhas/escudo/4/inventario#personagem-10");
   });
 });

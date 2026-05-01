@@ -8,14 +8,10 @@ import {
   Boxes,
   ClipboardList,
   LogOut,
-  Plus,
-  RotateCcw,
   Save,
-  Send,
   Shield,
   Skull,
   Swords,
-  Trash2,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -49,7 +45,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { StatDrawer } from "@/components/stat-drawer";
 import type { ItemTipo } from "@/types";
 
 const ITEM_TIPO_LABEL: Record<ItemTipo, string> = {
@@ -140,8 +135,6 @@ export function CampanhaEditClient({
   const [allowItemOverride, setAllowItemOverride] = useState(false);
   const [durabilidadeAtual, setDurabilidadeAtual] = useState("");
   const [durabilidadeMax, setDurabilidadeMax] = useState("");
-  const [recoveringItem, setRecoveringItem] =
-    useState<(CampaignInventoryItem & { personagemNome: string }) | null>(null);
   const [loading, setLoading] = useState(false);
 
   const selectedCatalogItem = useMemo(
@@ -233,48 +226,6 @@ export function CampanhaEditClient({
     }
   }
 
-  async function updateInventoryItem(
-    inventoryItemId: number,
-    body: Record<string, unknown>,
-    message: string
-  ) {
-    setLoading(true);
-
-    try {
-      await mutate(`/api/campanhas/${campanha.id}/inventario/${inventoryItemId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      toast.success(message);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao alterar item.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function deleteExpiredItem(inventoryItemId: number) {
-    setLoading(true);
-
-    try {
-      await mutate(`/api/campanhas/${campanha.id}/inventario/${inventoryItemId}`, {
-        method: "DELETE",
-      });
-      toast.success("Item expirado apagado do histórico.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao apagar item.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function openRecoverDrawer(
-    item: CampaignInventoryItem & { personagemNome: string }
-  ) {
-    setRecoveringItem(item);
-  }
-
   const quickSections = [
     {
       title: "Escudo do mestre",
@@ -327,7 +278,7 @@ export function CampanhaEditClient({
               items={[
                 { label: "Início", href: "/" },
                 { label: "Dashboard", href: "/dashboard" },
-                { label: "Editar campanha" },
+                { label: "Escudo do mestre" },
               ]}
             />
           </div>
@@ -359,7 +310,7 @@ export function CampanhaEditClient({
           <div className="relative flex min-h-70 flex-col justify-between gap-8 p-4 sm:p-8">
             <div className="max-w-3xl">
               <p className="text-xs uppercase tracking-[0.28em] text-primary/85">
-                Mesa do mestre
+                Escudo do mestre
               </p>
               <h1 className="mt-2 text-3xl font-semibold sm:text-5xl">
                 {campanha.nome}
@@ -369,9 +320,17 @@ export function CampanhaEditClient({
                   "A campanha ainda não tem sinopse. Defina o tom inicial e deixe a mesa pronta para aventura."}
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
-                <Button type="button" className="gap-2" onClick={() => setItemDialogOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  Vincular item à ficha
+                <Button asChild className="gap-2">
+                  <a href={`/campanhas/escudo/${campanha.id}/inventario`}>
+                    <Boxes className="h-4 w-4" />
+                    Abrir inventário
+                  </a>
+                </Button>
+                <Button asChild variant="outline" className="gap-2">
+                  <a href={`/campanhas/escudo/${campanha.id}/npcs`}>
+                    <Users className="h-4 w-4" />
+                    Abrir NPCs
+                  </a>
                 </Button>
                 <Button type="button" variant="outline" className="gap-2" onClick={() => setInfoOpen(true)}>
                   <Save className="h-4 w-4" />
@@ -383,7 +342,7 @@ export function CampanhaEditClient({
         </div>
       </section>
 
-      <section className="grid gap-3 sm:gap-4 md:grid-cols-3">
+      <section className="grid gap-3 sm:gap-4 md:grid-cols-4">
         <div className="rounded-lg border bg-card/70 p-4 sm:p-5">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Mestre
@@ -404,6 +363,12 @@ export function CampanhaEditClient({
             {totalItens} item{totalItens !== 1 ? "s" : ""} · {itensExpirados} expirado
             {itensExpirados !== 1 ? "s" : ""}
           </p>
+        </div>
+        <div className="rounded-lg border bg-card/70 p-4 sm:p-5">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            NPCs
+          </p>
+          <p className="mt-2 text-xl font-semibold">{npcs.length}</p>
         </div>
       </section>
 
@@ -437,165 +402,71 @@ export function CampanhaEditClient({
           </div>
         </section>
 
-        <section id="inventario" className="-mx-2 scroll-mt-24 rounded-none border-y bg-card/70 p-3 sm:mx-0 sm:rounded-lg sm:border sm:p-5">
+        <section
+          id="inventario"
+          className="scroll-mt-24 overflow-hidden rounded-lg border bg-card/70"
+        >
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <Boxes className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Inventário da campanha</h2>
+            <div className="flex items-center gap-3 p-4 sm:p-5">
+              <div className="flex h-11 w-11 items-center justify-center rounded-md border bg-background">
+                <Boxes className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">Inventário da campanha</h2>
+                <p className="text-sm text-muted-foreground">
+                  Resumo por jogador. A organização completa fica na tela de inventário.
+                </p>
+              </div>
             </div>
-            <Button type="button" size="sm" className="w-full gap-2 sm:w-auto" onClick={() => setItemDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Vincular item
+            <Button asChild size="sm" className="mx-4 mb-4 gap-2 sm:mx-5 sm:mb-0">
+              <a href={`/campanhas/escudo/${campanha.id}/inventario`}>
+                <Boxes className="h-4 w-4" />
+                Abrir inventário
+              </a>
             </Button>
           </div>
 
-          <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5">
+          <div className="grid gap-3 border-t p-4 sm:grid-cols-2 sm:p-5">
             {personagens.map((personagem) => (
-              <div key={personagem.id} className="rounded-md border bg-background/60 sm:rounded-lg">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b px-3 py-3 sm:px-4">
-                  <div>
-                    <h3 className="font-semibold">{personagem.nome}</h3>
-                    <p className="text-xs text-muted-foreground">{personagem.jogador}</p>
+              <a
+                key={personagem.id}
+                href={`/campanhas/escudo/${campanha.id}/inventario#personagem-${personagem.id}`}
+                className="group relative overflow-hidden rounded-lg border bg-background/70 p-4 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+              >
+                <div className="absolute inset-0 bg-linear-to-br from-amber-500/10 via-transparent to-sky-500/10 opacity-70 transition group-hover:opacity-100" />
+                <div className="relative flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-semibold">{personagem.nome}</h3>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {personagem.jogador}
+                    </p>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {personagem.inventario.length} registro
+                  <span className="rounded-full border bg-card px-2.5 py-1 text-xs text-muted-foreground">
+                    {personagem.inventario.length} item
                     {personagem.inventario.length !== 1 ? "s" : ""}
                   </span>
                 </div>
-
-                {personagem.inventario.length > 0 ? (
-                  <div className="divide-y">
-                    {personagem.inventario.map((item) => (
-                      <div
-                        key={item.id}
-                        className="grid gap-3 px-3 py-4 sm:gap-4 sm:px-4 xl:grid-cols-[minmax(0,1.2fr)_0.7fr_0.9fr_auto]"
-                      >
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium">{item.nome}</p>
-                            <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">
-                              {ITEM_TIPO_LABEL[item.tipo]}
-                            </span>
-                            {item.esgotado ? (
-                              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
-                                Expirado
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                            {item.descricao || item.observacoes || "Sem observações."}
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 text-xs sm:max-w-xs xl:max-w-none">
-                          <span>
-                            Qtd.
-                            <Input
-                              defaultValue={item.quantidade}
-                              type="number"
-                              min="0"
-                              className="mt-1 h-8"
-                              onBlur={(event) =>
-                                updateInventoryItem(
-                                  item.id,
-                                  { quantidade: event.target.value },
-                                  "Quantidade atualizada."
-                                )
-                              }
-                              disabled={loading}
-                            />
-                          </span>
-                          <span>
-                            Dur.
-                            <p className="mt-1 rounded-md border px-2 py-1.5">
-                              {item.durabilidadeAtual ?? "-"} / {item.durabilidadeMax ?? "-"}
-                            </p>
-                          </span>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <select
-                            id={`destino-${item.id}`}
-                            className="h-9 min-w-0 flex-1 rounded-md border bg-background px-2 text-sm xl:min-w-32 xl:flex-none"
-                            defaultValue=""
-                            disabled={loading}
-                          >
-                            <option value="" disabled>
-                              Destino
-                            </option>
-                            {personagens
-                              .filter((destino) => destino.id !== personagem.id)
-                              .map((destino) => (
-                                <option key={destino.id} value={destino.id}>
-                                  {destino.nome}
-                                </option>
-                              ))}
-                          </select>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="outline"
-                            disabled={loading}
-                            onClick={() => {
-                              const select = document.getElementById(
-                                `destino-${item.id}`
-                              ) as HTMLSelectElement | null;
-                              if (!select?.value) return;
-                              updateInventoryItem(
-                                item.id,
-                                {
-                                  action: "transfer",
-                                  targetPersonagemId: select.value,
-                                },
-                                "Item transferido."
-                              );
-                            }}
-                            aria-label="Transferir item"
-                          >
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        </div>
-
-                        <div className="flex justify-start gap-2 xl:justify-end">
-                          {item.esgotado ? (
-                            <>
-                              <Button
-                                type="button"
-                                size="icon"
-                                variant="outline"
-                                disabled={loading}
-                                onClick={() =>
-                                  openRecoverDrawer({
-                                    ...item,
-                                    personagemNome: personagem.nome,
-                                  })
-                                }
-                                aria-label="Recuperar item"
-                              >
-                                <RotateCcw className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                size="icon"
-                                variant="destructive"
-                                disabled={loading}
-                                onClick={() => deleteExpiredItem(item.id)}
-                                aria-label="Apagar item expirado"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="px-3 py-6 text-sm text-muted-foreground sm:px-4">
-                    Nenhum item vinculado a este personagem.
-                  </p>
-                )}
-              </div>
+                <div className="relative mt-4 flex flex-wrap gap-2">
+                  {personagem.inventario.slice(0, 4).map((item) => (
+                    <span
+                      key={item.id}
+                      className="rounded-full border bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground"
+                    >
+                      {item.nome} · {ITEM_TIPO_LABEL[item.tipo]}
+                    </span>
+                  ))}
+                  {personagem.inventario.length === 0 ? (
+                    <span className="text-xs text-muted-foreground">
+                      Nenhum item vinculado a este personagem.
+                    </span>
+                  ) : null}
+                  {personagem.inventario.length > 4 ? (
+                    <span className="rounded-full border bg-card/80 px-2.5 py-1 text-[11px] text-muted-foreground">
+                      +{personagem.inventario.length - 4}
+                    </span>
+                  ) : null}
+                </div>
+              </a>
             ))}
           </div>
         </section>
@@ -820,32 +691,6 @@ export function CampanhaEditClient({
         </DialogContent>
       </Dialog>
 
-      <StatDrawer
-        open={Boolean(recoveringItem)}
-        setOpen={(open) => {
-          if (!open) setRecoveringItem(null);
-        }}
-        title="Recuperar item"
-        description={`Escolha com qual durabilidade o item volta para ${
-          recoveringItem?.personagemNome ?? "a ficha"
-        }.`}
-        current={
-          recoveringItem?.durabilidadeMax ??
-          recoveringItem?.durabilidadeAtual ??
-          1
-        }
-        max={recoveringItem?.durabilidadeMax ?? undefined}
-        unitLabel="durabilidade"
-        onUpdate={async (novoValor) => {
-          if (!recoveringItem) return;
-          await updateInventoryItem(
-            recoveringItem.id,
-            { action: "recover", durabilidadeAtual: novoValor },
-            "Item recuperado."
-          );
-          setRecoveringItem(null);
-        }}
-      />
         </main>
       </SidebarInset>
     </SidebarProvider>

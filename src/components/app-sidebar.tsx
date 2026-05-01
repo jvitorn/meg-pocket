@@ -61,13 +61,13 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href={campanhaId ? `/campanhas/editar/${campanhaId}` : "/dashboard"}>
+              <Link href={campanhaId ? `/campanhas/escudo/${campanhaId}` : "/dashboard"}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
                   <BookOpenText className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">
-                    {campanha?.nome ?? "Mesa do mestre"}
+                    {campanha?.nome ?? "Escudo do mestre"}
                   </span>
                   <span className="truncate text-xs">
                     {campanha?.mestre || "M&G Pocket"}
@@ -101,9 +101,9 @@ export function AppSidebar({
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive>
-                  <Link href={campanhaId ? `/campanhas/editar/${campanhaId}` : "/dashboard"}>
+                  <Link href={campanhaId ? `/campanhas/escudo/${campanhaId}` : "/dashboard"}>
                     <Shield />
-                    <span>Mesa do mestre</span>
+                    <span>Escudo do mestre</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -128,7 +128,7 @@ export function AppSidebar({
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href="#inventario">
+                  <a href={campanhaId ? `/campanhas/escudo/${campanhaId}/inventario` : "#inventario"}>
                     <Boxes />
                     <span>Inventário</span>
                   </a>
@@ -137,7 +137,7 @@ export function AppSidebar({
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href="#npcs">
+                  <a href={campanhaId ? `/campanhas/escudo/${campanhaId}/npcs` : "#npcs"}>
                     <UserRoundPlus />
                     <span>NPCs</span>
                   </a>
