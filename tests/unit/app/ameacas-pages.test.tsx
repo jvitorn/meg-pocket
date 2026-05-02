@@ -57,6 +57,17 @@ vi.mock("@/components/footer", () => ({
   Footer: () => <footer>Footer</footer>,
 }));
 
+vi.mock("@/lib/ameacas", async () => {
+  const data = await vi.importActual<typeof import("@/data/dataBestiario")>(
+    "@/data/dataBestiario"
+  );
+
+  return {
+    listarAmeacas: vi.fn(async () => data.dataBestiario),
+    buscarAmeacaPorSlug: vi.fn(async (slug: string) => data.getAmeacaById(slug)),
+  };
+});
+
 import AmeacasPage from "@/app/ameacas/page";
 import AmeacaDetailPage, {
   generateMetadata,
@@ -64,8 +75,9 @@ import AmeacaDetailPage, {
 } from "@/app/ameacas/[id]/page";
 
 describe("rotas de ameacas", () => {
-  it("renderiza a pagina publica de ameacas", () => {
-    render(<AmeacasPage />);
+  it("renderiza a pagina publica de ameacas", async () => {
+    const page = await AmeacasPage();
+    render(page);
 
     expect(screen.getByRole("heading", { name: "Ameaças" })).toBeInTheDocument();
     expect(screen.getByText("Bestiário público")).toBeInTheDocument();
@@ -96,7 +108,9 @@ describe("rotas de ameacas", () => {
       })
     );
 
-    expect(generateStaticParams()).toContainEqual({ id: "dragao-glacial" });
+    await expect(generateStaticParams()).resolves.toContainEqual({
+      id: "dragao-glacial",
+    });
   });
 
   it("aciona notFound quando o id nao existe", async () => {

@@ -24,6 +24,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:setup": "npm run db:generate && npm run db:deploy",
     "db:seed": "node scripts/run-sql-file.mjs prisma/seeds/generated/index.sql",
+    "db:seed:prod": "node scripts/run-sql-file.mjs prisma/seeds/generated/index.sql --prod",
     "env:local": "node scripts/use-env.mjs local",
     "env:prod": "node scripts/use-env.mjs prod",
     "postinstall": "prisma generate"

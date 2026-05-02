@@ -111,7 +111,6 @@ model CampanhaNpc {
   @@index([campanhaId])
   @@index([racaId])
   @@index([classeId])
-  @@map("campanha_npc")
 }
 
 /// Template interno para geração procedural de NPC
@@ -138,7 +137,6 @@ model NpcTemplateGeracao {
   @@index([tipo, ativo])
   @@index([racaId])
   @@index([classeId])
-  @@map("npc_template_geracao")
 }
 
 /// Estilo narrativo interno para descrições de NPC
@@ -151,8 +149,6 @@ model NpcEstiloNarrativo {
   ativo     Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@map("npc_estilo_narrativo")
 }
 
 /// Personagem
@@ -331,6 +327,35 @@ model ItemInventario {
   @@index([itemId])
 }
 
+model Ameaca {
+  id             Int      @id @default(autoincrement())
+  slug           String   @unique
+  nome           String
+  tipo           String
+  tipoSecundario String?
+  elemento       String
+  va             Float
+  pv             Int
+  mana           Int
+  danoBase       String
+  danoMedio      Int
+  defesa         Int
+  funcao         String
+  reacoes        Json
+  fraquezas      Json
+  resistencias   Json
+  imunidades     Json
+  descricao      String
+  narrativa      String
+  golpes         Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tipo])
+  @@index([elemento])
+  @@index([va])
+}
+
 model Especial {
   id          Int                  @id @default(autoincrement())
   nome        String
@@ -362,8 +387,6 @@ model SlotsDefensivos {
   contraAtaqueUsado Int @default(0)
 
   personagem Personagem @relation(fields: [personagemId], references: [id], onDelete: Cascade)
-
-  @@map("slots_defensivos")
 }
 
 model User {

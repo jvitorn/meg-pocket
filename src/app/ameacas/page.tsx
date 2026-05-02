@@ -7,7 +7,7 @@ import { AmeacasClient } from "@/components/ameacas/AmeacasClient";
 import { AppBreadcrumb } from "@/components/app-breadcrumb";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
-import { dataBestiario } from "@/data/dataBestiario";
+import { listarAmeacas } from "@/lib/ameacas";
 
 export const metadata: Metadata = {
   title: "Ameaças — M&G Pocket",
@@ -15,10 +15,11 @@ export const metadata: Metadata = {
     "Bestiário público de ameaças para campanhas de Magos & Grimórios.",
 };
 
-export default function AmeacasPage() {
-  const totalAmeacas = dataBestiario.length;
-  const totalTipos = new Set(dataBestiario.map((ameaca) => ameaca.tipo)).size;
-  const maiorVa = Math.max(...dataBestiario.map((ameaca) => ameaca.va));
+export default async function AmeacasPage() {
+  const ameacas = await listarAmeacas();
+  const totalAmeacas = ameacas.length;
+  const totalTipos = new Set(ameacas.map((ameaca) => ameaca.tipo)).size;
+  const maiorVa = Math.max(...ameacas.map((ameaca) => ameaca.va));
 
   return (
     <>
@@ -66,7 +67,7 @@ export default function AmeacasPage() {
           </div>
         </section>
 
-        <AmeacasClient ameacas={dataBestiario} />
+        <AmeacasClient ameacas={ameacas} />
       </main>
       <Footer />
     </>

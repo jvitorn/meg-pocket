@@ -1,5 +1,5 @@
 -- Templates internos para geração procedural de NPCs de campanha
-COPY "npc_template_geracao" ("id", "tipo", "valor", "racaId", "racaNome", "genero", "classeId", "classeNome", "profissao", "tom", "importancia", "peso", "ativo", "createdAt", "updatedAt") FROM stdin WITH (FORMAT csv, HEADER true, NULL 'null');
+COPY "NpcTemplateGeracao" ("id", "tipo", "valor", "racaId", "racaNome", "genero", "classeId", "classeNome", "profissao", "tom", "importancia", "peso", "ativo", "createdAt", "updatedAt") FROM stdin WITH (FORMAT csv, HEADER true, NULL 'null');
 id,tipo,valor,racaId,racaNome,genero,classeId,classeNome,profissao,tom,importancia,peso,ativo,createdAt,updatedAt
 1,nome,João,null,null,masculino,null,null,null,null,null,1,true,2026-05-01 12:00:00,2026-05-01 12:00:00
 2,nome,Miguel,null,null,masculino,null,null,null,null,null,1,true,2026-05-01 12:00:00,2026-05-01 12:00:00
@@ -214,9 +214,9 @@ id,tipo,valor,racaId,racaNome,genero,classeId,classeNome,profissao,tom,importanc
 211,detalhe_visual,botas gastas cobertas por poeira de estrada,null,null,null,null,null,null,null,null,1,true,2026-05-01 12:00:00,2026-05-01 12:00:00
 212,detalhe_visual,um símbolo rúnico escondido sob a manga,null,null,null,null,null,null,null,null,1,true,2026-05-01 12:00:00,2026-05-01 12:00:00
 \.
-SELECT setval(pg_get_serial_sequence('"npc_template_geracao"', 'id'), COALESCE((SELECT MAX("id") FROM "npc_template_geracao"), 1), true);
+SELECT setval(pg_get_serial_sequence('"NpcTemplateGeracao"', 'id'), COALESCE((SELECT MAX("id") FROM "NpcTemplateGeracao"), 1), true);
 
-COPY "npc_estilo_narrativo" ("id", "chave", "nome", "descricao", "template", "ativo", "createdAt", "updatedAt") FROM stdin WITH (FORMAT csv, HEADER true, NULL 'null');
+COPY "NpcEstiloNarrativo" ("id", "chave", "nome", "descricao", "template", "ativo", "createdAt", "updatedAt") FROM stdin WITH (FORMAT csv, HEADER true, NULL 'null');
 id,chave,nome,descricao,template,ativo,createdAt,updatedAt
 1,classico,Clássico,"Narração tradicional de RPG, clara e equilibrada.","{{nome}} é {{artigo}} {{raca}} que atua como {{profissao}}. Conhecido por ser {{personalidade}}, costuma chamar atenção por sua aparência: {{aparencia}}. Em segredo, {{segredo}}. Seu objetivo na campanha é {{objetivo_campanha}}. O grupo pode se envolver com {{nome}} quando {{gancho}}. Frase marcante: ""{{frase}}""",true,2026-05-01 12:00:00,2026-05-01 12:00:00
 2,simples,Simples,"Descrição direta, curta e fácil de usar em mesa.","{{nome}} é {{artigo}} {{raca}}, {{profissao}}, de personalidade {{personalidade}}. {{aparencia}}. Esconde que {{segredo}}. Seu objetivo na campanha é {{objetivo_campanha}}.",true,2026-05-01 12:00:00,2026-05-01 12:00:00
@@ -224,4 +224,4 @@ id,chave,nome,descricao,template,ativo,createdAt,updatedAt
 4,heroico,Heroico,Narração com tom épico e aventureiro.,"{{nome}} é {{artigo}} {{raca}} de espírito firme, conhecido por atuar como {{profissao}} e por manter uma postura {{personalidade}} mesmo diante do perigo. Sua aparência, marcada por {{aparencia}}, revela alguém que já enfrentou dias difíceis. Seu objetivo na campanha é {{objetivo_campanha}}, e os aventureiros podem cruzar seu caminho quando {{gancho}}. Para {{nome}}, uma verdade permanece: ""{{frase}}""",true,2026-05-01 12:00:00,2026-05-01 12:00:00
 5,mistico,Místico,"Narração com foco em magia, presságios e mistério.","Os caminhos da mana parecem se dobrar discretamente ao redor de {{nome}}. {{artigoMaiusculo}} {{raca}}, {{profissao}}, possui uma presença difícil de ignorar: {{aparencia}}. Sua personalidade {{personalidade}} esconde camadas mais profundas, pois {{segredo}}. Seu objetivo na campanha é {{objetivo_campanha}}. Quando {{gancho}}, os aventureiros podem ser puxados para uma trama maior do que imaginam.",true,2026-05-01 12:00:00,2026-05-01 12:00:00
 \.
-SELECT setval(pg_get_serial_sequence('"npc_estilo_narrativo"', 'id'), COALESCE((SELECT MAX("id") FROM "npc_estilo_narrativo"), 1), true);
+SELECT setval(pg_get_serial_sequence('"NpcEstiloNarrativo"', 'id'), COALESCE((SELECT MAX("id") FROM "NpcEstiloNarrativo"), 1), true);

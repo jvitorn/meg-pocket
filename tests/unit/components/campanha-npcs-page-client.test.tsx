@@ -97,7 +97,7 @@ describe("CampanhaNpcsPageClient", () => {
       expect(serviceMocks.gerarNpcCampanha).toHaveBeenCalledWith(4, {});
     });
 
-    expect(screen.getByDisplayValue("Mira")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Mira" })).toBeInTheDocument();
     expect(toastMocks.success).toHaveBeenCalledWith("NPC gerado para revisão.");
   });
 });

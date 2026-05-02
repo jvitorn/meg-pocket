@@ -3,10 +3,12 @@ import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 
-const sqlArg = process.argv[2];
+const args = process.argv.slice(2);
+const sqlArg = args.find((arg) => !arg.startsWith("-"));
+const allowProdSeed = args.includes("--prod") || args.includes("-prod");
 
 if (!sqlArg) {
-  console.error("Uso: node scripts/run-sql-file.mjs <sql-file>");
+  console.error("Uso: node scripts/run-sql-file.mjs <sql-file> [--prod]");
   process.exit(1);
 }
 
@@ -59,13 +61,13 @@ const isSeedFile = sqlArg.startsWith("prisma/seeds/");
 if (
   isSeedFile &&
   !isLocalDatabaseUrl(rawDbUrl) &&
-  process.env.ALLOW_NON_LOCAL_DB_SEED !== "1"
+  !allowProdSeed
 ) {
   console.error(
     "Seed bloqueada: DATABASE_URL/DIRECT_URL nao aponta para banco local."
   );
   console.error(
-    "Use npm run env:local antes de semear localmente. Para override consciente, defina ALLOW_NON_LOCAL_DB_SEED=1."
+    "Use npm run env:local antes de semear localmente. Para ambiente online de teste, execute novamente com --prod."
   );
   process.exit(1);
 }

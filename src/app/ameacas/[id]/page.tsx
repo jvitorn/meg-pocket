@@ -23,20 +23,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
-import { dataBestiario, getAmeacaById } from "@/data/dataBestiario";
+import { buscarAmeacaPorSlug, listarAmeacas } from "@/lib/ameacas";
 import { cn } from "@/lib/utils";
 
 type PageParams = {
   params: Promise<{ id: string }>;
 };
 
-export function generateStaticParams() {
-  return dataBestiario.map((ameaca) => ({ id: ameaca.id }));
+export async function generateStaticParams() {
+  const ameacas = await listarAmeacas();
+  return ameacas.map((ameaca) => ({ id: ameaca.id }));
 }
 
 export async function generateMetadata({ params }: PageParams): Promise<Metadata> {
   const { id } = await params;
-  const ameaca = getAmeacaById(id);
+  const ameaca = await buscarAmeacaPorSlug(id);
 
   if (!ameaca) {
     return {
@@ -52,7 +53,7 @@ export async function generateMetadata({ params }: PageParams): Promise<Metadata
 
 export default async function AmeacaDetailPage({ params }: PageParams) {
   const { id } = await params;
-  const ameaca = getAmeacaById(id);
+  const ameaca = await buscarAmeacaPorSlug(id);
 
   if (!ameaca) notFound();
 

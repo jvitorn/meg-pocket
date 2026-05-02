@@ -12,6 +12,6 @@ Os comandos de seed podem apagar dados existentes nas tabelas alvo antes de inse
 
 Use seeds apenas em ambientes locais ou de desenvolvimento.
 
-O script `run-sql-file.mjs` bloqueia seeds contra bancos nao locais por padrao. Para executar uma seed fora de ambiente local, e necessario definir explicitamente `ALLOW_NON_LOCAL_DB_SEED=1`.
+O script `run-sql-file.mjs` bloqueia seeds contra bancos nao locais por padrao. Para executar uma seed fora de ambiente local, e necessario passar a flag explicita `--prod` ou usar `npm run db:seed:prod`.
 
 Antes de rodar qualquer seed, confirme que `.env.local` aponta para o banco correto.
