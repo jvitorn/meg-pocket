@@ -162,7 +162,7 @@ export default function ClassesListClient({ initialItems }: { initialItems: Item
                 transition={{ duration: 0.2 }}
                 style={theme.style}
                 role="listitem"
-                className="hover-shimmer-card rounded-2xl border border-border/70 bg-card/80 p-4 transition duration-300 hover:-translate-y-1 hover:border-[color:var(--theme-frame)] hover:shadow-xl [--shimmer-color:var(--theme-ring)]"
+                className="hover-shimmer-card rounded-2xl border border-border/70 bg-card/80 p-4 transition duration-300 hover:-translate-y-1 hover:border-(--theme-frame) hover:shadow-xl [--shimmer-color:var(--theme-ring)]"
               >
                 <Link href={`/classe/${classe.id}`} className="block">
                   <div className="flex items-start gap-3">

@@ -289,7 +289,7 @@ export function CampanhaNpcsPageClient({
       inventarioCount={inventarioCount}
       npcsCount={npcs.length}
     >
-      <div className="mx-auto flex w-full max-w-[96rem] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-384 flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
         <section className="overflow-hidden rounded-lg border bg-card/70">
           <CampanhaSectionHeader
             icon={UserRoundPlus}
@@ -384,7 +384,7 @@ export function CampanhaNpcsPageClient({
           <form onSubmit={saveNpc} className="lg:col-start-2 lg:row-start-1">
             <section className="overflow-hidden rounded-lg border bg-card/90">
               <div className="relative overflow-hidden border-b bg-linear-to-br from-zinc-950 via-emerald-950 to-indigo-950 p-5 text-white sm:p-6">
-                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.05)_1px,transparent_1px)] opacity-35 [background-size:28px_28px]" />
+                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.05)_1px,transparent_1px)] opacity-35 bg-size-[28px_28px]" />
                 <div className="absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-amber-200/50 to-transparent" />
                 <div className="relative grid gap-5 md:grid-cols-[auto_minmax(0,1fr)] md:items-end">
                   <div className="flex h-28 w-28 items-center justify-center rounded-full border border-white/20 bg-white/10 shadow-2xl shadow-black/40 backdrop-blur sm:h-32 sm:w-32">
@@ -404,7 +404,7 @@ export function CampanhaNpcsPageClient({
                         className="mt-3 h-11 border-white/20 bg-white/10 text-xl font-semibold text-white placeholder:text-white/45 focus-visible:ring-white/40 sm:text-2xl"
                       />
                     ) : (
-                      <h2 className="mt-2 break-words text-2xl font-black uppercase tracking-[0.08em] sm:text-3xl">
+                      <h2 className="mt-2 wrap-break-word text-2xl font-black uppercase tracking-[0.08em] sm:text-3xl">
                         {form.nome || "Novo NPC"}
                       </h2>
                     )}
@@ -787,7 +787,7 @@ function RpgFrame({
   return (
     <div
       className={cn(
-        "relative isolate overflow-visible bg-[linear-gradient(135deg,#7c2d12_0%,#f97316_14%,#facc15_28%,#9a3412_48%,#fed7aa_56%,#b45309_74%,#7c2d12_100%)] p-[3px] shadow-[0_12px_30px_rgba(124,45,18,0.18),0_0_0_1px_rgba(254,240,138,0.35)]",
+        "relative isolate overflow-visible bg-[linear-gradient(135deg,#7c2d12_0%,#f97316_14%,#facc15_28%,#9a3412_48%,#fed7aa_56%,#b45309_74%,#7c2d12_100%)] p-0.75 shadow-[0_12px_30px_rgba(124,45,18,0.18),0_0_0_1px_rgba(254,240,138,0.35)]",
         compact ? "my-1" : "my-2",
         className
       )}
@@ -795,7 +795,7 @@ function RpgFrame({
     >
       <div
         aria-hidden="true"
-        className="absolute inset-[5px] z-0 border border-amber-200/60 shadow-[inset_0_0_14px_rgba(251,191,36,0.18)]"
+        className="absolute inset-1.25 z-0 border border-amber-200/60 shadow-[inset_0_0_14px_rgba(251,191,36,0.18)]"
         style={clipStyle}
       />
       <span
@@ -981,7 +981,7 @@ function ProfileField({
   return (
     <NpcContentCard className="min-h-28 p-4">
       <NpcCardHeader label={label} />
-      <p className="mt-4 min-w-0 break-words text-base font-semibold leading-6 text-foreground">
+      <p className="mt-4 min-w-0 wrap-break-word text-base font-semibold leading-6 text-foreground">
         {valueOrFallback(value)}
       </p>
     </NpcContentCard>
@@ -1079,7 +1079,7 @@ function TextBlock({
   return (
     <NpcContentCard className="min-h-32 p-4">
       <NpcCardHeader icon={Icon} label={label} />
-      <p className="mt-3 whitespace-pre-line break-words text-sm leading-6 text-muted-foreground">
+      <p className="mt-3 whitespace-pre-line wrap-break-word text-sm leading-6 text-muted-foreground">
         {valueOrFallback(value)}
       </p>
     </NpcContentCard>
@@ -1096,7 +1096,7 @@ function LongTextReadout({
   return (
     <NpcContentCard className="p-4 sm:p-5">
       <NpcCardHeader label={title} />
-      <p className="mt-3 whitespace-pre-line break-words text-sm leading-7 text-muted-foreground">
+      <p className="mt-3 whitespace-pre-line wrap-break-word text-sm leading-7 text-muted-foreground">
         {valueOrFallback(value)}
       </p>
     </NpcContentCard>
