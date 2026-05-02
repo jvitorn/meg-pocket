@@ -4,44 +4,22 @@ import Link from "next/link";
 import { Plus, Sparkles, UserRoundPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CampanhaSectionHeader } from "@/components/campanhas/campanha-section-header";
+import type {
+  CampaignNpcItem,
+  NpcEstiloNarrativoOption,
+} from "@/types/campanha";
+
+export type { CampaignNpcItem as CampanhaNpcItem, NpcEstiloNarrativoOption };
 
 type CatalogOption = {
   id: number;
   nome: string;
 };
 
-export type CampanhaNpcItem = {
-  id: number;
-  nome: string;
-  racaId: number | null;
-  racaNome: string;
-  genero: string;
-  classeId: number | null;
-  classeNome: string | null;
-  profissao: string | null;
-  importancia: string | null;
-  tom: string | null;
-  personalidade: string | null;
-  aparencia: string | null;
-  segredo: string | null;
-  objetivoCampanha: string;
-  gancho: string | null;
-  frase: string | null;
-  relacaoComGrupo: string | null;
-  detalheVisual: string | null;
-  descricao: string | null;
-  dadosJson?: unknown;
-};
-
-export type NpcEstiloNarrativoOption = {
-  chave: string;
-  nome: string;
-  descricao: string | null;
-};
-
 type Props = {
   campanhaId: number;
-  npcs?: CampanhaNpcItem[];
+  npcs?: CampaignNpcItem[];
   racas?: CatalogOption[];
   classes?: CatalogOption[];
   estilosNarrativos?: NpcEstiloNarrativoOption[];
@@ -61,32 +39,26 @@ export function CampanhaNpcsSection({
       id="npcs"
       className="scroll-mt-24 overflow-hidden rounded-lg border bg-card/70"
     >
-      <div className="relative border-b bg-linear-to-br from-indigo-950 via-zinc-950 to-emerald-950 p-5 text-white sm:p-6">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(129,140,248,0.28),transparent_28%),radial-gradient(circle_at_82%_16%,rgba(16,185,129,0.18),transparent_24%)]" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 shadow-lg shadow-black/30 backdrop-blur">
-              <UserRoundPlus className="h-7 w-7 text-emerald-100" />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.26em] text-white/60">
-                Elenco
-              </p>
-              <h2 className="mt-1 text-xl font-semibold">NPCs da campanha</h2>
-              <p className="mt-1 text-sm text-white/70">
-                {npcs.length}/{limite} salvos · {remainingSlots}{" "}
-                {remainingSlots === 1 ? "vaga" : "vagas"}
-              </p>
-            </div>
-          </div>
+      <CampanhaSectionHeader
+        icon={UserRoundPlus}
+        eyebrow="Elenco"
+        title="NPCs da campanha"
+        tone="emerald"
+        meta={
+          <>
+            {npcs.length}/{limite} salvos · {remainingSlots}{" "}
+            {remainingSlots === 1 ? "vaga" : "vagas"}
+          </>
+        }
+        actions={
           <Button asChild className="gap-2 bg-white text-zinc-950 hover:bg-white/90">
             <Link href={`/campanhas/escudo/${campanhaId}/npcs`}>
               <Sparkles className="h-4 w-4" />
               Abrir NPCs
             </Link>
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
         {featuredNpcs.map((npc) => (

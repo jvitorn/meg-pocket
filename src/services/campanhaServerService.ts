@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { CampanhaInterface } from "@/types";
+import type { CampanhaInterface } from "@/types/campanha";
 
 export async function getCampanhas(): Promise<CampanhaInterface[]> {
   const rows = await prisma.campanha.findMany({

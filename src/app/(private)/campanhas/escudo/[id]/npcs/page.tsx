@@ -38,6 +38,14 @@ export default async function CampanhaNpcsPage({
     prisma.campanha.findUnique({
       where: { id: campanhaId },
       include: {
+        personagens: {
+          select: {
+            id: true,
+            itensInventario: {
+              select: { quantidade: true },
+            },
+          },
+        },
         npcs: {
           orderBy: [{ updatedAt: "desc" }, { nome: "asc" }],
         },
@@ -65,6 +73,16 @@ export default async function CampanhaNpcsPage({
   if (!campanha) {
     return <SimpleState title="Campanha não encontrada" />;
   }
+
+  const inventarioCount = campanha.personagens.reduce(
+    (total, personagem) =>
+      total +
+      personagem.itensInventario.reduce(
+        (personagemTotal, item) => personagemTotal + item.quantidade,
+        0
+      ),
+    0
+  );
 
   return (
     <CampanhaNpcsPageClient
@@ -101,6 +119,8 @@ export default async function CampanhaNpcsPage({
       classes={classes.filter((classe) => isClasseNpcSelecionavel(classe.nome))}
       estilosNarrativos={estilosNarrativos}
       limite={getNpcCampanhaLimit()}
+      personagensCount={campanha.personagens.length}
+      inventarioCount={inventarioCount}
     />
   );
 }

@@ -1,10 +1,8 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   FlaskConical,
   Hammer,
   Package,
@@ -18,10 +16,26 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { CampanhaSectionHeader } from "@/components/campanhas/campanha-section-header";
+import { EscudoLayoutShell } from "@/components/campanhas/escudo-layout-shell";
 import { StatDrawer } from "@/components/stat-drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { ItemTipo } from "@/types";
+import {
+  atualizarItemInventarioCampanha,
+  excluirItemInventarioCampanha,
+  vincularItemCampanha,
+} from "@/services/campanhaApiService";
+import type {
+  CampanhaInfo,
+  CampaignCatalogItem,
+  CampaignInventoryCharacter,
+  CampaignInventoryItem,
+  CampaignInventoryUpdatePayload,
+  ItemTipo,
+} from "@/types";
+
+export type { CampaignInventoryCharacter, CampaignInventoryItem };
 
 const ITEM_TIPO_LABEL: Record<ItemTipo, string> = {
   ARMA: "Arma",
@@ -31,47 +45,11 @@ const ITEM_TIPO_LABEL: Record<ItemTipo, string> = {
   EQUIPAMENTO: "Equipamento",
 };
 
-type CampanhaInfo = {
-  id: number;
-  nome: string;
-  mestre: string;
-  capa: string;
-  sinopse: string;
-};
-
-type CatalogItem = {
-  id: number;
-  nome: string;
-  tipo: ItemTipo;
-  descricao: string | null;
-  durabilidadeBase: number | null;
-  durabilidadeMax: number | null;
-};
-
-export type CampaignInventoryItem = {
-  id: number;
-  itemId: number;
-  nome: string;
-  tipo: ItemTipo;
-  descricao: string | null;
-  durabilidadeAtual: number | null;
-  durabilidadeMax: number | null;
-  quantidade: number;
-  esgotado: boolean;
-  observacoes: string;
-};
-
-export type CampaignInventoryCharacter = {
-  id: number;
-  nome: string;
-  jogador: string;
-  inventario: CampaignInventoryItem[];
-};
-
 type Props = {
   campanha: CampanhaInfo;
   personagens: CampaignInventoryCharacter[];
-  catalogoItens: CatalogItem[];
+  catalogoItens: CampaignCatalogItem[];
+  npcsCount: number;
 };
 
 function clampDurability(value: string, max: number | null | undefined) {
@@ -85,6 +63,7 @@ export function CampanhaInventarioPageClient({
   campanha,
   personagens,
   catalogoItens,
+  npcsCount,
 }: Props) {
   const router = useRouter();
   const [selectedPersonagemId, setSelectedPersonagemId] = useState(
@@ -108,43 +87,29 @@ export function CampanhaInventarioPageClient({
     [catalogoItens, selectedItemId]
   );
   const inventario = personagens.flatMap((personagem) =>
-    personagem.inventario.map((item) => ({ ...item, personagemNome: personagem.nome }))
+    personagem.inventario.map((item) => ({ ...item, personagemNome: personagem.jogador }))
   );
   const totalItens = inventario.reduce((total, item) => total + item.quantidade, 0);
   const itensExpirados = inventario.filter((item) => item.esgotado).length;
-
-  async function mutate(url: string, init: RequestInit) {
-    const response = await fetch(url, init);
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Não foi possível salvar a alteração.");
-    }
-
-    router.refresh();
-  }
 
   async function handleAddItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
 
     try {
-      await mutate(`/api/campanhas/${campanha.id}/inventario`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          personagemId: selectedPersonagemId,
-          itemId: selectedItemId,
-          quantidade,
-          observacoes,
-          ...(allowItemOverride
-            ? {
-                durabilidadeAtual,
-                durabilidadeMax,
-              }
-            : {}),
-        }),
+      await vincularItemCampanha(campanha.id, {
+        personagemId: selectedPersonagemId,
+        itemId: selectedItemId,
+        quantidade,
+        observacoes,
+        ...(allowItemOverride
+          ? {
+              durabilidadeAtual,
+              durabilidadeMax,
+            }
+          : {}),
       });
+      router.refresh();
       setObservacoes("");
       setAllowItemOverride(false);
       setDurabilidadeAtual("");
@@ -159,17 +124,14 @@ export function CampanhaInventarioPageClient({
 
   async function updateInventoryItem(
     inventoryItemId: number,
-    body: Record<string, unknown>,
+    body: CampaignInventoryUpdatePayload,
     message: string
   ) {
     setLoading(true);
 
     try {
-      await mutate(`/api/campanhas/${campanha.id}/inventario/${inventoryItemId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      await atualizarItemInventarioCampanha(campanha.id, inventoryItemId, body);
+      router.refresh();
       toast.success(message);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao alterar item.");
@@ -182,9 +144,8 @@ export function CampanhaInventarioPageClient({
     setLoading(true);
 
     try {
-      await mutate(`/api/campanhas/${campanha.id}/inventario/${inventoryItemId}`, {
-        method: "DELETE",
-      });
+      await excluirItemInventarioCampanha(campanha.id, inventoryItemId);
+      router.refresh();
       toast.success("Item expirado apagado do histórico.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao apagar item.");
@@ -194,43 +155,29 @@ export function CampanhaInventarioPageClient({
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <section className="relative isolate overflow-hidden border-b">
-        {campanha.capa ? (
-          <Image
-            src={campanha.capa}
-            alt={`Capa da campanha ${campanha.nome}`}
-            fill
-            sizes="100vw"
-            className="object-cover"
-            priority
+    <EscudoLayoutShell
+      campanha={campanha}
+      activeSection="inventario"
+      currentLabel="Inventário"
+      personagensCount={personagens.length}
+      inventarioCount={totalItens}
+      npcsCount={npcsCount}
+    >
+      <div className="mx-auto flex w-full max-w-[96rem] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+        <section className="overflow-hidden rounded-lg border bg-card/70">
+          <CampanhaSectionHeader
+            icon={Package}
+            eyebrow="Arsenal da mesa"
+            title="Inventário da campanha"
+            description="Distribua recompensas, transfira recursos entre fichas e acompanhe itens expirados em uma visão de mesa."
+            tone="amber"
+            meta={`${totalItens} item${totalItens !== 1 ? "s" : ""} · ${itensExpirados} expirado${
+              itensExpirados !== 1 ? "s" : ""
+            }`}
           />
-        ) : (
-          <div className="absolute inset-0 bg-linear-to-br from-zinc-950 via-amber-950 to-sky-950" />
-        )}
-        <div className="absolute inset-0 bg-linear-to-t from-background via-background/82 to-black/45" />
-        <div className="relative mx-auto flex min-h-90 max-w-7xl flex-col justify-end px-4 py-8 sm:px-6 lg:px-8">
-          <Button asChild variant="outline" size="sm" className="mb-8 w-fit gap-2">
-            <a href={`/campanhas/escudo/${campanha.id}`}>
-              <ArrowLeft className="h-4 w-4" />
-              Voltar ao escudo
-            </a>
-          </Button>
-          <div className="max-w-4xl">
-            <p className="text-xs uppercase tracking-[0.3em] text-primary">
-              Arsenal da mesa
-            </p>
-            <h1 className="mt-3 text-4xl font-black uppercase tracking-[0.08em] sm:text-6xl">
-              Inventário
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Distribua recompensas, transfira recursos entre fichas e acompanhe itens expirados em uma visão de mesa.
-            </p>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[22rem_minmax(0,1fr)] lg:px-8">
+        <section className="grid gap-5 lg:grid-cols-[22rem_minmax(0,1fr)]">
         <aside className="space-y-5">
           <div className="grid grid-cols-2 gap-3">
             <MetricCard label="Itens" value={totalItens} />
@@ -257,7 +204,7 @@ export function CampanhaInventarioPageClient({
                 disabled={personagens.length === 0}
                 options={personagens.map((personagem) => ({
                   value: String(personagem.id),
-                  label: personagem.nome,
+                  label: `${personagem.jogador} - ${personagem.nome}`,
                 }))}
               />
               <SelectField
@@ -381,10 +328,12 @@ export function CampanhaInventarioPageClient({
                 <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-[0.24em] text-white/60">
-                      Bolsa de personagem
+                      Bolsa do jogador
                     </p>
-                    <h2 className="mt-1 text-2xl font-semibold">{personagem.nome}</h2>
-                    <p className="text-sm text-white/70">{personagem.jogador}</p>
+                    <h2 className="mt-1 text-2xl font-semibold">{personagem.jogador}</h2>
+                    <p className="text-sm text-white/70">
+                      Personagem: {personagem.nome}
+                    </p>
                   </div>
                   <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-sm backdrop-blur">
                     {personagem.inventario.length} item
@@ -464,7 +413,7 @@ export function CampanhaInventarioPageClient({
                               .filter((destino) => destino.id !== personagem.id)
                               .map((destino) => (
                                 <option key={destino.id} value={destino.id}>
-                                  {destino.nome}
+                                  {destino.jogador} - {destino.nome}
                                 </option>
                               ))}
                           </select>
@@ -498,7 +447,7 @@ export function CampanhaInventarioPageClient({
                               onClick={() =>
                                 setRecoveringItem({
                                   ...item,
-                                  personagemNome: personagem.nome,
+                                  personagemNome: personagem.jogador,
                                 })
                               }
                             >
@@ -529,7 +478,8 @@ export function CampanhaInventarioPageClient({
             </section>
           ))}
         </div>
-      </section>
+        </section>
+      </div>
 
       <StatDrawer
         open={Boolean(recoveringItem)}
@@ -557,7 +507,7 @@ export function CampanhaInventarioPageClient({
           setRecoveringItem(null);
         }}
       />
-    </main>
+    </EscudoLayoutShell>
   );
 }
 

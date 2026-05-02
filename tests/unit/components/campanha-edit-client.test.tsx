@@ -197,5 +197,14 @@ describe("CampanhaEditClient", () => {
     expect(
       screen.getByRole("link", { name: /Ayla/i })
     ).toHaveAttribute("href", "/campanhas/escudo/4/inventario#personagem-10");
+
+    expect(
+      screen.getByRole("heading", { name: "Ameaças para a mesa" })
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Bestiário").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: /abrir ameaças/i })).toHaveAttribute(
+      "href",
+      "/ameacas"
+    );
   });
 });

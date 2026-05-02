@@ -13,14 +13,9 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import type { CampanhaInfoValues } from "@/types/campanha";
 
-export type CampanhaInfoValues = {
-  nome: string;
-  mestre: string;
-  capa: string;
-  sinopse: string;
-  tags: string;
-};
+export type { CampanhaInfoValues };
 
 type Props = {
   open: boolean;

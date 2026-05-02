@@ -1,5 +1,5 @@
 import CampanhasClient from "@/components/campanhas/campanhasClient";
-import { getCampanhas } from "@/data/campanhas";
+import { getCampanhas } from "@/services/campanhaServerService";
 import type { CampanhaInterface } from "@/types";
 
 export default async function CampanhasServer() {

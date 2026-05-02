@@ -34,6 +34,9 @@ export default async function CampanhaInventarioPage({
     prisma.campanha.findUnique({
       where: { id: campanhaId },
       include: {
+        _count: {
+          select: { npcs: true },
+        },
         personagens: {
           orderBy: { nome: "asc" },
           include: {
@@ -93,6 +96,7 @@ export default async function CampanhaInventarioPage({
         })),
       }))}
       catalogoItens={catalogoItens}
+      npcsCount={campanha._count.npcs}
     />
   );
 }

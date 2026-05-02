@@ -7,7 +7,7 @@ import { HomeQuickStart } from "@/components/home-quick-start";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { authOptions } from "@/lib/auth";
-import { getCampanhas } from "@/data/campanhas";
+import { getCampanhas } from "@/services/campanhaServerService";
 
 export const dynamic = "force-dynamic";
 

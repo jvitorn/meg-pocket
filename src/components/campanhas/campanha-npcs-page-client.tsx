@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   Dice5,
   Edit3,
   RefreshCw,
@@ -15,24 +13,26 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  type CampanhaNpcItem,
-  type NpcEstiloNarrativoOption,
-} from "@/components/campanhas/campanha-npcs-section";
+import { CampanhaSectionHeader } from "@/components/campanhas/campanha-section-header";
+import { EscudoLayoutShell } from "@/components/campanhas/escudo-layout-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  excluirNpcCampanha,
+  gerarNpcCampanha,
+  refinarNarrativaNpcCampanha,
+  salvarNpcCampanha,
+} from "@/services/campanhaApiService";
+import type {
+  CampanhaInfo,
+  CampaignNpcItem as CampanhaNpcItem,
+  CampaignNpcPayload,
+  NpcEstiloNarrativoOption,
+} from "@/types/campanha";
 
 type CatalogOption = {
   id: number;
   nome: string;
-};
-
-type CampanhaInfo = {
-  id: number;
-  nome: string;
-  mestre: string;
-  capa: string;
-  sinopse: string;
 };
 
 type NpcForm = {
@@ -73,6 +73,8 @@ type Props = {
   classes: CatalogOption[];
   estilosNarrativos: NpcEstiloNarrativoOption[];
   limite: number;
+  personagensCount: number;
+  inventarioCount: number;
 };
 
 const EMPTY_FORM: NpcForm = {
@@ -134,6 +136,8 @@ export function CampanhaNpcsPageClient({
   classes,
   estilosNarrativos,
   limite,
+  personagensCount,
+  inventarioCount,
 }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<NpcForm>(EMPTY_FORM);
@@ -186,29 +190,11 @@ export function CampanhaNpcsPageClient({
     setForm(formFromNpc(npc));
   }
 
-  async function callApi<T>(url: string, init: RequestInit) {
-    const response = await fetch(url, init);
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Não foi possível concluir a ação.");
-    }
-
-    return data as T;
-  }
-
   async function generateNpc() {
     setLoading(true);
 
     try {
-      const data = await callApi<{ ok: true; npc: Partial<CampanhaNpcItem> }>(
-        `/api/campanhas/${campanha.id}/npcs/gerar`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filtros: cleanPayload(filters) }),
-        }
-      );
+      const data = await gerarNpcCampanha(campanha.id, cleanPayload(filters));
       setEditingId(null);
       setForm(formFromNpc(data.npc));
       toast.success("NPC gerado para revisão.");
@@ -223,16 +209,10 @@ export function CampanhaNpcsPageClient({
     setLoading(true);
 
     try {
-      const data = await callApi<{ ok: true; descricao: string }>(
-        `/api/campanhas/${campanha.id}/npcs/refinar`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            npc: payloadFromForm(form),
-            estilo: selectedStyle,
-          }),
-        }
+      const data = await refinarNarrativaNpcCampanha(
+        campanha.id,
+        payloadFromForm(form),
+        selectedStyle
       );
       setFormField("descricao", data.descricao);
       toast.success("Narrativa refinada.");
@@ -250,16 +230,7 @@ export function CampanhaNpcsPageClient({
     setLoading(true);
 
     try {
-      await callApi(
-        editingId
-          ? `/api/campanhas/${campanha.id}/npcs/${editingId}`
-          : `/api/campanhas/${campanha.id}/npcs`,
-        {
-          method: editingId ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payloadFromForm(form)),
-        }
-      );
+      await salvarNpcCampanha(campanha.id, payloadFromForm(form), editingId);
       toast.success(editingId ? "NPC atualizado." : "NPC salvo na campanha.");
       router.refresh();
     } catch (error) {
@@ -277,9 +248,7 @@ export function CampanhaNpcsPageClient({
     setLoading(true);
 
     try {
-      await callApi(`/api/campanhas/${campanha.id}/npcs/${editingId}`, {
-        method: "DELETE",
-      });
+      await excluirNpcCampanha(campanha.id, editingId);
       setEditingId(null);
       setForm(EMPTY_FORM);
       toast.success("NPC excluído.");
@@ -292,44 +261,53 @@ export function CampanhaNpcsPageClient({
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <section className="relative isolate overflow-hidden border-b">
-        {campanha.capa ? (
-          <Image
-            src={campanha.capa}
-            alt={`Capa da campanha ${campanha.nome}`}
-            fill
-            sizes="100vw"
-            className="object-cover"
-            priority
+    <EscudoLayoutShell
+      campanha={campanha}
+      activeSection="npcs"
+      currentLabel="NPCs"
+      personagensCount={personagensCount}
+      inventarioCount={inventarioCount}
+      npcsCount={npcs.length}
+    >
+      <div className="mx-auto flex w-full max-w-[96rem] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+        <section className="overflow-hidden rounded-lg border bg-card/70">
+          <CampanhaSectionHeader
+            icon={UserRoundPlus}
+            eyebrow="Elenco da campanha"
+            title="NPCs"
+            description="Crie rostos recorrentes para a mesa, gere variações sem salvar automaticamente e refine a narração usando apenas templates internos."
+            tone="emerald"
+            meta={`${npcs.length}/${limite} salvos · ${remainingSlots} ${
+              remainingSlots === 1 ? "vaga restante" : "vagas restantes"
+            }`}
+            actions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2 bg-white text-zinc-950 hover:bg-white/90"
+                  onClick={startManual}
+                  disabled={loading}
+                >
+                  <Edit3 className="h-4 w-4" />
+                  Novo manual
+                </Button>
+                <Button
+                  type="button"
+                  className="gap-2 bg-emerald-500 text-emerald-950 hover:bg-emerald-400"
+                  onClick={generateNpc}
+                  disabled={loading}
+                >
+                  <Dice5 className="h-4 w-4" />
+                  Gerar NPC
+                </Button>
+              </>
+            }
           />
-        ) : (
-          <div className="absolute inset-0 bg-linear-to-br from-zinc-950 via-indigo-950 to-emerald-950" />
-        )}
-        <div className="absolute inset-0 bg-linear-to-t from-background via-background/80 to-black/45" />
-        <div className="relative mx-auto flex min-h-90 max-w-7xl flex-col justify-end px-4 py-8 sm:px-6 lg:px-8">
-          <Button asChild variant="outline" size="sm" className="mb-8 w-fit gap-2">
-            <a href={`/campanhas/escudo/${campanha.id}`}>
-              <ArrowLeft className="h-4 w-4" />
-              Voltar ao escudo
-            </a>
-          </Button>
-          <div className="max-w-4xl">
-            <p className="text-xs uppercase tracking-[0.3em] text-primary">
-              Elenco da campanha
-            </p>
-            <h1 className="mt-3 text-4xl font-black uppercase tracking-[0.08em] sm:text-6xl">
-              NPCs
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Crie rostos recorrentes para a mesa, gere variações sem salvar automaticamente e refine a narração usando apenas templates internos.
-            </p>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[18rem_minmax(0,1fr)] lg:px-8">
-        <aside className="space-y-4">
+        <section className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(0,1fr)_22rem]">
+          <aside className="hidden space-y-4 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100svh-7rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
           <div className="rounded-lg border bg-card/80 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -383,49 +361,132 @@ export function CampanhaNpcsPageClient({
           </div>
         </aside>
 
-        <form onSubmit={saveNpc} className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="space-y-5">
-            <section className="rounded-lg border bg-card/80 p-4 sm:p-5">
-              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                Novo NPC
+        <details className="group overflow-hidden rounded-lg border bg-card/80 lg:hidden">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-medium marker:hidden">
+            NPCs salvos
+            <span className="text-xs text-muted-foreground group-open:hidden">
+              {npcs.length}/{limite}
+            </span>
+            <span className="hidden text-xs text-muted-foreground group-open:inline">
+              Recolher
+            </span>
+          </summary>
+          <div className="grid max-h-80 gap-2 overflow-y-auto border-t p-3">
+            {npcs.map((npc) => (
+              <button
+                key={npc.id}
+                type="button"
+                onClick={() => editNpc(npc)}
+                className={`group overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/40 ${
+                  editingId === npc.id
+                    ? "border-primary/60 bg-primary/10"
+                    : "bg-background/70"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-card">
+                    <UserRoundPlus className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{npc.nome}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {npc.racaNome}
+                      {npc.profissao ? ` · ${npc.profissao}` : ""}
+                    </p>
+                  </div>
+                </div>
+              </button>
+            ))}
+            {npcs.length === 0 ? (
+              <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                Nenhum NPC salvo.
               </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            ) : null}
+          </div>
+        </details>
+
+        <form
+          onSubmit={saveNpc}
+          className="grid gap-4 lg:col-start-2 lg:row-start-1 xl:col-span-2 xl:grid-cols-[minmax(0,1fr)_22rem]"
+        >
+          <div className="space-y-5">
+            <details className="group overflow-hidden rounded-lg border bg-card/80 lg:hidden">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-medium marker:hidden">
+                Geração procedural
+                <span className="text-xs text-muted-foreground group-open:hidden">
+                  Filtros opcionais
+                </span>
+                <span className="hidden text-xs text-muted-foreground group-open:inline">
+                  Recolher
+                </span>
+              </summary>
+              <div className="grid gap-4 border-t p-4">
                 <Button
                   type="button"
-                  variant="outline"
-                  className="h-auto justify-start gap-3 px-4 py-4 text-left"
-                  onClick={startManual}
-                  disabled={loading}
-                >
-                  <Edit3 className="h-5 w-5 text-primary" />
-                  <span>
-                    <span className="block font-semibold">Criar manualmente</span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      Formulário vazio para preencher e salvar.
-                    </span>
-                  </span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-auto justify-start gap-3 px-4 py-4 text-left"
+                  className="gap-2"
                   onClick={generateNpc}
                   disabled={loading}
                 >
-                  <Dice5 className="h-5 w-5 text-primary" />
-                  <span>
-                    <span className="block font-semibold">
-                      Gerar proceduralmente
-                    </span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      Usa filtros, banco e templates internos.
-                    </span>
-                  </span>
+                  {hasDraft ? (
+                    <RefreshCw className="h-4 w-4" />
+                  ) : (
+                    <Dice5 className="h-4 w-4" />
+                  )}
+                  {hasDraft ? "Gerar novamente" : "Gerar NPC"}
                 </Button>
+                <BadgePicker
+                  label="Raça"
+                  value={filters.racaId}
+                  onChange={(value) => setFilterField("racaId", value)}
+                  options={racas.map((raca) => ({
+                    value: String(raca.id),
+                    label: raca.nome,
+                  }))}
+                  emptyLabel="Sortear raça"
+                />
+                <BadgePicker
+                  label="Gênero"
+                  value={filters.genero}
+                  onChange={(value) => setFilterField("genero", value)}
+                  options={GENEROS}
+                  emptyLabel="Sortear gênero"
+                />
+                <BadgePicker
+                  label="Classe"
+                  value={filters.classeId}
+                  onChange={(value) => setFilterField("classeId", value)}
+                  options={classes.map((classe) => ({
+                    value: String(classe.id),
+                    label: classe.nome,
+                  }))}
+                  emptyLabel="Sem classe ou sortear"
+                />
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <InputField
+                    id="npc-filtro-profissao-mobile"
+                    label="Profissão"
+                    value={filters.profissao}
+                    onChange={(value) => setFilterField("profissao", value)}
+                  />
+                  <BadgePicker
+                    label="Importância"
+                    value={filters.importancia}
+                    onChange={(value) => setFilterField("importancia", value)}
+                    options={IMPORTANCIAS}
+                    emptyLabel="Sortear"
+                  />
+                  <BadgePicker
+                    label="Tom"
+                    value={filters.tom}
+                    onChange={(value) => setFilterField("tom", value)}
+                    options={TONS}
+                    emptyLabel="Sortear"
+                  />
+                </div>
               </div>
-            </section>
+            </details>
 
-            <section className="overflow-hidden rounded-lg border bg-card/80">
+            <section className="hidden overflow-hidden rounded-lg border bg-card/80 lg:block">
               <div className="border-b p-4 sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -640,10 +701,10 @@ export function CampanhaNpcsPageClient({
             </section>
           </div>
 
-          <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">
+          <aside className="space-y-5 xl:sticky xl:top-20 xl:self-start">
             <section className="overflow-hidden rounded-lg border bg-card/90">
-              <div className="relative flex min-h-72 items-center justify-center overflow-hidden border-b bg-linear-to-br from-indigo-950 via-zinc-950 to-emerald-950 p-8 text-white">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(255,255,255,0.22),transparent_22%),radial-gradient(circle_at_20%_80%,rgba(16,185,129,0.22),transparent_28%)]" />
+              <div className="relative flex min-h-64 items-center justify-center overflow-hidden border-b bg-linear-to-br from-zinc-950 via-emerald-950 to-indigo-950 p-8 text-white">
+                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.05)_1px,transparent_1px)] opacity-35 [background-size:26px_26px]" />
                 <div className="relative text-center">
                   <div className="mx-auto flex h-32 w-32 items-center justify-center rounded-full border border-white/20 bg-white/10 shadow-2xl shadow-black/40 backdrop-blur">
                     <UserRoundPlus className="h-16 w-16 text-emerald-100" />
@@ -736,8 +797,9 @@ export function CampanhaNpcsPageClient({
             </section>
           </aside>
         </form>
-      </section>
-    </main>
+        </section>
+      </div>
+    </EscudoLayoutShell>
   );
 }
 
@@ -865,7 +927,7 @@ function formFromNpc(npc: Partial<CampanhaNpcItem>): NpcForm {
   };
 }
 
-function payloadFromForm(form: NpcForm) {
+function payloadFromForm(form: NpcForm): CampaignNpcPayload {
   return {
     nome: form.nome,
     racaId: form.racaId ? Number(form.racaId) : null,

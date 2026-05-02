@@ -1,15 +1,20 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type ComponentType, type FormEvent } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ArrowUpRight,
   BookOpen,
+  BookOpenText,
   Boxes,
   ClipboardList,
   LogOut,
   Save,
+  Search,
   Shield,
+  ShieldAlert,
   Skull,
   Swords,
   Users,
@@ -21,14 +26,15 @@ import {
   normalizeCampanhaTags,
   type CampanhaInfoValues,
 } from "@/components/campanhas/campanha-info-dialog";
-import {
-  CampanhaNpcsSection,
-  type CampanhaNpcItem,
-  type NpcEstiloNarrativoOption,
-} from "@/components/campanhas/campanha-npcs-section";
+import { CampanhaSectionHeader } from "@/components/campanhas/campanha-section-header";
+import { CampanhaNpcsSection } from "@/components/campanhas/campanha-npcs-section";
 import { Button } from "@/components/ui/button";
 import { AppBreadcrumb } from "@/components/app-breadcrumb";
 import { AppSidebar } from "@/components/app-sidebar";
+import {
+  atualizarCampanha,
+  vincularItemCampanha,
+} from "@/services/campanhaApiService";
 import {
   Dialog,
   DialogContent,
@@ -45,7 +51,14 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import type { ItemTipo } from "@/types";
+import type {
+  CampaignCatalogItem,
+  CampaignEditItem,
+  CampaignInventoryCharacter,
+  CampaignNpcItem,
+  NpcEstiloNarrativoOption,
+  ItemTipo,
+} from "@/types";
 
 const ITEM_TIPO_LABEL: Record<ItemTipo, string> = {
   ARMA: "Arma",
@@ -55,49 +68,11 @@ const ITEM_TIPO_LABEL: Record<ItemTipo, string> = {
   EQUIPAMENTO: "Equipamento",
 };
 
-type CampaignEditItem = {
-  id: number;
-  nome: string;
-  sinopse: string;
-  mestre: string;
-  capa: string;
-  tags: string[];
-};
-
-type CatalogItem = {
-  id: number;
-  nome: string;
-  tipo: ItemTipo;
-  descricao: string | null;
-  durabilidadeBase: number | null;
-  durabilidadeMax: number | null;
-};
-
-type CampaignInventoryItem = {
-  id: number;
-  itemId: number;
-  nome: string;
-  tipo: ItemTipo;
-  descricao: string | null;
-  durabilidadeAtual: number | null;
-  durabilidadeMax: number | null;
-  quantidade: number;
-  esgotado: boolean;
-  observacoes: string;
-};
-
-type CampaignCharacter = {
-  id: number;
-  nome: string;
-  jogador: string;
-  inventario: CampaignInventoryItem[];
-};
-
 type Props = {
   campanha: CampaignEditItem;
-  personagens: CampaignCharacter[];
-  catalogoItens: CatalogItem[];
-  npcs?: CampanhaNpcItem[];
+  personagens: CampaignInventoryCharacter[];
+  catalogoItens: CampaignCatalogItem[];
+  npcs?: CampaignNpcItem[];
   racas?: Array<{ id: number; nome: string }>;
   classes?: Array<{ id: number; nome: string }>;
   estilosNarrativos?: NpcEstiloNarrativoOption[];
@@ -157,32 +132,18 @@ export function CampanhaEditClient({
   const totalItens = inventario.reduce((total, item) => total + item.quantidade, 0);
   const itensExpirados = inventario.filter((item) => item.esgotado).length;
 
-  async function mutate(url: string, init: RequestInit) {
-    const response = await fetch(url, init);
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new Error(data?.error ?? "Não foi possível salvar a alteração.");
-    }
-
-    router.refresh();
-  }
-
   async function handleSaveCampaign(values: CampanhaInfoValues) {
     setLoading(true);
 
     try {
-      await mutate(`/api/campanhas/${campanha.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome: values.nome,
-          mestre: values.mestre,
-          capa: values.capa,
-          sinopse: values.sinopse,
-          tags: normalizeCampanhaTags(values.tags),
-        }),
+      await atualizarCampanha(campanha.id, {
+        nome: values.nome,
+        mestre: values.mestre,
+        capa: values.capa,
+        sinopse: values.sinopse,
+        tags: normalizeCampanhaTags(values.tags),
       });
+      router.refresh();
       toast.success("Informações iniciais atualizadas.");
       setInfoOpen(false);
     } catch (error) {
@@ -197,22 +158,19 @@ export function CampanhaEditClient({
     setLoading(true);
 
     try {
-      await mutate(`/api/campanhas/${campanha.id}/inventario`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          personagemId: selectedPersonagemId,
-          itemId: selectedItemId,
-          quantidade,
-          observacoes,
-          ...(allowItemOverride
-            ? {
-                durabilidadeAtual,
-                durabilidadeMax,
-              }
-            : {}),
-        }),
+      await vincularItemCampanha(campanha.id, {
+        personagemId: selectedPersonagemId,
+        itemId: selectedItemId,
+        quantidade,
+        observacoes,
+        ...(allowItemOverride
+          ? {
+              durabilidadeAtual,
+              durabilidadeMax,
+            }
+          : {}),
       });
+      router.refresh();
       setObservacoes("");
       setAllowItemOverride(false);
       setDurabilidadeAtual("");
@@ -243,11 +201,6 @@ export function CampanhaEditClient({
       icon: ClipboardList,
     },
     {
-      title: "Bestiário",
-      text: "Criaturas preparadas para aparecer na mesa.",
-      icon: Skull,
-    },
-    {
       title: "Crônicas",
       text: "Resumo de sessões e marcos da campanha.",
       icon: BookOpen,
@@ -262,6 +215,7 @@ export function CampanhaEditClient({
           nome: campanha.nome,
           mestre: campanha.mestre,
         }}
+        activeSection="escudo"
         personagensCount={personagens.length}
         inventarioCount={totalItens}
         npcsCount={npcs.length}
@@ -373,20 +327,31 @@ export function CampanhaEditClient({
       </section>
 
       <section className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
-        <section id="jogadores" className="scroll-mt-24 rounded-lg border bg-card/70 p-4 sm:p-5">
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Jogadores da campanha</h2>
-          </div>
-          <div className="mt-5 grid gap-3">
+        <section
+          id="jogadores"
+          className="scroll-mt-24 overflow-hidden rounded-lg border bg-card/70"
+        >
+          <CampanhaSectionHeader
+            icon={Users}
+            eyebrow="Mesa"
+            title="Jogadores da campanha"
+            description="Participantes vinculados e suas fichas ativas nesta campanha."
+            tone="sky"
+            meta={`${personagens.length} ${
+              personagens.length === 1 ? "jogador" : "jogadores"
+            }`}
+          />
+          <div className="grid gap-3 p-4 sm:p-5">
             {personagens.map((personagem) => (
               <div
                 key={personagem.id}
-                className="flex items-center justify-between gap-3 rounded-md border bg-background/70 px-3 py-3"
+                className="flex items-center justify-between gap-3 rounded-lg border bg-background/70 px-3 py-3"
               >
-                <div>
-                  <p className="font-medium">{personagem.nome}</p>
-                  <p className="text-xs text-muted-foreground">{personagem.jogador}</p>
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{personagem.jogador}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    Personagem: {personagem.nome}
+                  </p>
                 </div>
                 <span className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
                   {personagem.inventario.length} item
@@ -406,27 +371,30 @@ export function CampanhaEditClient({
           id="inventario"
           className="scroll-mt-24 overflow-hidden rounded-lg border bg-card/70"
         >
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 p-4 sm:p-5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-md border bg-background">
-                <Boxes className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">Inventário da campanha</h2>
-                <p className="text-sm text-muted-foreground">
-                  Resumo por jogador. A organização completa fica na tela de inventário.
-                </p>
-              </div>
-            </div>
-            <Button asChild size="sm" className="mx-4 mb-4 gap-2 sm:mx-5 sm:mb-0">
-              <a href={`/campanhas/escudo/${campanha.id}/inventario`}>
-                <Boxes className="h-4 w-4" />
-                Abrir inventário
-              </a>
-            </Button>
-          </div>
+          <CampanhaSectionHeader
+            icon={Boxes}
+            eyebrow="Arsenal"
+            title="Inventário da campanha"
+            description="Resumo por jogador. A organização completa fica na tela de inventário."
+            tone="amber"
+            meta={`${totalItens} item${totalItens !== 1 ? "s" : ""} · ${itensExpirados} expirado${
+              itensExpirados !== 1 ? "s" : ""
+            }`}
+            actions={
+              <Button
+                asChild
+                size="sm"
+                className="gap-2 bg-white text-zinc-950 hover:bg-white/90"
+              >
+                <a href={`/campanhas/escudo/${campanha.id}/inventario`}>
+                  <Boxes className="h-4 w-4" />
+                  Abrir inventário
+                </a>
+              </Button>
+            }
+          />
 
-          <div className="grid gap-3 border-t p-4 sm:grid-cols-2 sm:p-5">
+          <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5">
             {personagens.map((personagem) => (
               <a
                 key={personagem.id}
@@ -436,9 +404,9 @@ export function CampanhaEditClient({
                 <div className="absolute inset-0 bg-linear-to-br from-amber-500/10 via-transparent to-sky-500/10 opacity-70 transition group-hover:opacity-100" />
                 <div className="relative flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate font-semibold">{personagem.nome}</h3>
+                    <h3 className="truncate font-semibold">{personagem.jogador}</h3>
                     <p className="truncate text-xs text-muted-foreground">
-                      {personagem.jogador}
+                      Personagem: {personagem.nome}
                     </p>
                   </div>
                   <span className="rounded-full border bg-card px-2.5 py-1 text-xs text-muted-foreground">
@@ -480,6 +448,74 @@ export function CampanhaEditClient({
         estilosNarrativos={estilosNarrativos}
         limite={npcLimit}
       />
+
+      <section
+        id="bestiario"
+        className="scroll-mt-24 overflow-hidden rounded-lg border bg-card/70"
+      >
+        <CampanhaSectionHeader
+          icon={Skull}
+          eyebrow="Bestiário"
+          title="Ameaças para a mesa"
+          description="Consulte fichas prontas, variações por função e detalhes de combate sem sair do fluxo de preparação."
+          tone="violet"
+          meta="Catálogo público de ameaças"
+          actions={
+            <Button
+              asChild
+              size="sm"
+              className="gap-2 bg-white text-zinc-950 hover:bg-white/90"
+            >
+              <Link href="/ameacas">
+                <ArrowUpRight className="h-4 w-4" />
+                Abrir ameaças
+              </Link>
+            </Button>
+          }
+        />
+        <div className="grid gap-3 p-4 sm:p-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+          <Link
+            href="/ameacas"
+            className="group relative overflow-hidden rounded-lg border bg-background/75 p-5 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+          >
+            <div className="absolute inset-0 bg-linear-to-br from-violet-500/10 via-transparent to-emerald-500/10 opacity-80 transition group-hover:opacity-100" />
+            <div className="relative flex min-h-40 flex-col justify-between gap-6">
+              <div className="max-w-2xl">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg border bg-card shadow-sm">
+                  <BookOpenText className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="mt-4 text-xl font-semibold">Arquivo de ameaças</h3>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  Abra a biblioteca pública para buscar por nome, tipo, elemento e
+                  VA, com páginas de detalhe prontas para consulta em sessão.
+                </p>
+              </div>
+              <span className="inline-flex w-fit items-center gap-2 rounded-full border bg-card/80 px-3 py-1 text-xs font-medium text-muted-foreground">
+                Ver catálogo completo
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
+          </Link>
+
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <BestiaryFeatureCard
+              icon={Search}
+              title="Busca rápida"
+              text="Filtre por nome, tipo e elemento quando a mesa precisar de uma ameaça em poucos segundos."
+            />
+            <BestiaryFeatureCard
+              icon={ShieldAlert}
+              title="Leitura de risco"
+              text="Use VA, defesa, PV e reações para comparar encontros antes de puxar a ficha completa."
+            />
+            <BestiaryFeatureCard
+              icon={Swords}
+              title="Detalhe de combate"
+              text="Golpes, dano, custos e narrativa ficam organizados na tela de detalhe da ameaça."
+            />
+          </div>
+        </div>
+      </section>
 
       <section id="ferramentas" className="grid scroll-mt-24 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
         {quickSections.map((section) => {
@@ -694,5 +730,25 @@ export function CampanhaEditClient({
         </main>
       </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+function BestiaryFeatureCard({
+  icon: Icon,
+  title,
+  text,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="rounded-lg border bg-background/70 p-4">
+      <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-card">
+        <Icon className="h-4 w-4 text-primary" />
+      </div>
+      <h3 className="mt-3 font-semibold">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
+    </div>
   );
 }

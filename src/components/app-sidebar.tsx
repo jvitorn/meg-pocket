@@ -12,6 +12,7 @@ import {
   ScrollText,
   Settings,
   Shield,
+  Skull,
   UserRoundPlus,
   Users,
 } from "lucide-react"
@@ -37,6 +38,7 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
     nome: string
     mestre: string
   }
+  activeSection?: EscudoSidebarSection
   personagensCount?: number
   inventarioCount?: number
   npcsCount?: number
@@ -44,8 +46,17 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   onEditInfo?: () => void
 }
 
+export type EscudoSidebarSection =
+  | "escudo"
+  | "jogadores"
+  | "inventario"
+  | "npcs"
+  | "bestiario"
+  | "ferramentas"
+
 export function AppSidebar({
   campanha,
+  activeSection = "escudo",
   personagensCount = 0,
   inventarioCount = 0,
   npcsCount = 0,
@@ -54,6 +65,12 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps) {
   const campanhaId = campanha?.id
+  const escudoHref = campanhaId ? `/campanhas/escudo/${campanhaId}` : "/dashboard"
+  const jogadoresHref = campanhaId ? `${escudoHref}#jogadores` : "#jogadores"
+  const inventarioHref = campanhaId ? `${escudoHref}/inventario` : "#inventario"
+  const npcsHref = campanhaId ? `${escudoHref}/npcs` : "#npcs"
+  const bestiarioHref = campanhaId ? `${escudoHref}#bestiario` : "#bestiario"
+  const ferramentasHref = campanhaId ? `${escudoHref}#ferramentas` : "#ferramentas"
 
   return (
     <Sidebar variant="inset" {...props}>
@@ -61,7 +78,7 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href={campanhaId ? `/campanhas/escudo/${campanhaId}` : "/dashboard"}>
+              <Link href={escudoHref}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
                   <BookOpenText className="size-4" />
                 </div>
@@ -100,8 +117,8 @@ export function AppSidebar({
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive>
-                  <Link href={campanhaId ? `/campanhas/escudo/${campanhaId}` : "/dashboard"}>
+                <SidebarMenuButton asChild isActive={activeSection === "escudo"}>
+                  <Link href={escudoHref}>
                     <Shield />
                     <span>Escudo do mestre</span>
                   </Link>
@@ -118,38 +135,46 @@ export function AppSidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#jogadores">
+                <SidebarMenuButton asChild isActive={activeSection === "jogadores"}>
+                  <Link href={jogadoresHref}>
                     <Users />
                     <span>Jogadores</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
                 <SidebarMenuBadge>{personagensCount}</SidebarMenuBadge>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href={campanhaId ? `/campanhas/escudo/${campanhaId}/inventario` : "#inventario"}>
+                <SidebarMenuButton asChild isActive={activeSection === "inventario"}>
+                  <Link href={inventarioHref}>
                     <Boxes />
                     <span>Inventário</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
                 <SidebarMenuBadge>{inventarioCount}</SidebarMenuBadge>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href={campanhaId ? `/campanhas/escudo/${campanhaId}/npcs` : "#npcs"}>
+                <SidebarMenuButton asChild isActive={activeSection === "npcs"}>
+                  <Link href={npcsHref}>
                     <UserRoundPlus />
                     <span>NPCs</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
                 <SidebarMenuBadge>{npcsCount}</SidebarMenuBadge>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#ferramentas">
+                <SidebarMenuButton asChild isActive={activeSection === "bestiario"}>
+                  <Link href={bestiarioHref}>
+                    <Skull />
+                    <span>Bestiário</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={activeSection === "ferramentas"}>
+                  <Link href={ferramentasHref}>
                     <ClipboardList />
                     <span>Ferramentas</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -162,18 +187,22 @@ export function AppSidebar({
           <SidebarGroupLabel>Ações</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={onAddItem}>
-                  <Plus />
-                  <span>Vincular item</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={onEditInfo}>
-                  <Settings />
-                  <span>Editar informações</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {onAddItem ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={onAddItem}>
+                    <Plus />
+                    <span>Vincular item</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : null}
+              {onEditInfo ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={onEditInfo}>
+                    <Settings />
+                    <span>Editar informações</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : null}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <Link href="/dashboard">

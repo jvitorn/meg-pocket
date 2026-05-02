@@ -13,6 +13,10 @@ import {
   normalizeCampanhaTags,
   type CampanhaInfoValues,
 } from "@/components/campanhas/campanha-info-dialog";
+import {
+  atualizarCampanha,
+  criarCampanha,
+} from "@/services/campanhaApiService";
 
 export type DashboardCampanhaItem = {
   id: number;
@@ -57,26 +61,13 @@ export function DashboardCampaignsSection({
     setLoading(true);
 
     try {
-      const response = await fetch("/api/campanhas", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nome: values.nome,
-          sinopse: values.sinopse,
-          capa: values.capa,
-          mestre: values.mestre,
-          tags: normalizeCampanhaTags(values.tags),
-        }),
+      const data = await criarCampanha({
+        nome: values.nome,
+        sinopse: values.sinopse,
+        capa: values.capa,
+        mestre: values.mestre,
+        tags: normalizeCampanhaTags(values.tags),
       });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        setError(data?.error ?? "Não foi possível criar a campanha.");
-        return;
-      }
 
       const createdCampaign = data?.campanha;
 
@@ -123,24 +114,13 @@ export function DashboardCampaignsSection({
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/campanhas/${editingCampanha.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome: values.nome,
-          sinopse: values.sinopse,
-          capa: values.capa,
-          mestre: values.mestre,
-          tags: normalizeCampanhaTags(values.tags),
-        }),
+      const data = await atualizarCampanha(editingCampanha.id, {
+        nome: values.nome,
+        sinopse: values.sinopse,
+        capa: values.capa,
+        mestre: values.mestre,
+        tags: normalizeCampanhaTags(values.tags),
       });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        setError(data?.error ?? "Não foi possível editar a campanha.");
-        return;
-      }
 
       const updated = data?.campanha;
       setCampanhas((current) =>
