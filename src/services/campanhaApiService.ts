@@ -8,6 +8,11 @@ import type {
   CampaignNpcPayload,
   CampanhaUpdatePayload,
 } from "@/types/campanha";
+import type {
+  CombateActionPayload,
+  CombateCreatePayload,
+  CombateListItem,
+} from "@/types/combate";
 
 const CAMPANHAS_ROUTE = `${BASEURL}/campanhas`;
 
@@ -132,6 +137,32 @@ export function salvarNpcCampanha(
 
 export function excluirNpcCampanha(campanhaId: number, npcId: number) {
   return requestJson(`${CAMPANHAS_ROUTE}/${campanhaId}/npcs/${npcId}`, {
+    method: "DELETE",
+  });
+}
+
+export function criarCombateCampanha(
+  campanhaId: number,
+  payload: CombateCreatePayload
+) {
+  return requestJson<{ ok: true; combate: CombateListItem }>(
+    `${CAMPANHAS_ROUTE}/${campanhaId}/combates`,
+    jsonInit("POST", payload)
+  );
+}
+
+export function executarAcaoCombateCampanha(
+  campanhaId: number,
+  combateId: number,
+  payload: CombateActionPayload
+) {
+  return requestJson(`${CAMPANHAS_ROUTE}/${campanhaId}/combates/${combateId}`, {
+    ...jsonInit("PATCH", payload),
+  });
+}
+
+export function excluirCombateCampanha(campanhaId: number, combateId: number) {
+  return requestJson(`${CAMPANHAS_ROUTE}/${campanhaId}/combates/${combateId}`, {
     method: "DELETE",
   });
 }

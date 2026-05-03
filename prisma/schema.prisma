@@ -72,6 +72,7 @@ model Campanha {
   updatedAt       DateTime      @updatedAt
   personagens     Personagem[]
   npcs            CampanhaNpc[]
+  combates        Combate[]
   user            User?         @relation(fields: [userId], references: [id])
 
   @@index([userId])
@@ -179,6 +180,7 @@ model Personagem {
   itensInventario       ItemInventario[]
   magiaPersonagem       MagiaPersonagem[]
   periciaPersonagem     PericiaPersonagem[]
+  combateParticipantes  CombateParticipante[]
   especial              Especial?           @relation(fields: [especialId], references: [id])
   campanha              Campanha            @relation(fields: [campanhaId], references: [id])
   classe                Classe              @relation(fields: [classeId], references: [id])
@@ -350,10 +352,69 @@ model Ameaca {
   golpes         Json
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  combateParticipantes CombateParticipante[]
 
   @@index([tipo])
   @@index([elemento])
   @@index([va])
+}
+
+enum CombateStatus {
+  RASCUNHO
+  EM_ANDAMENTO
+  ENCERRADO
+}
+
+enum CombateParticipanteTipo {
+  PERSONAGEM
+  AMEACA
+}
+
+model Combate {
+  id          Int             @id @default(autoincrement())
+  campanhaId  Int
+  nome        String
+  status      CombateStatus   @default(RASCUNHO)
+  rodadaAtual Int             @default(1)
+  turnoAtual  Int             @default(0)
+  vaTotal     Float           @default(0)
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  campanha      Campanha               @relation(fields: [campanhaId], references: [id], onDelete: Cascade)
+  participantes CombateParticipante[]
+
+  @@index([campanhaId])
+  @@index([status])
+}
+
+model CombateParticipante {
+  id           Int                      @id @default(autoincrement())
+  combateId    Int
+  tipo         CombateParticipanteTipo
+  personagemId Int?
+  ameacaId     Int?
+  nome         String
+  iniciativa   Int
+  ordem        Int                      @default(0)
+  hpAtual      Int?
+  manaAtual    Int?
+  bloqueioUsado Int                    @default(0)
+  esquivaUsada Int                     @default(0)
+  contraAtaqueUsado Int                @default(0)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+
+  combate    Combate     @relation(fields: [combateId], references: [id], onDelete: Cascade)
+  personagem Personagem? @relation(fields: [personagemId], references: [id], onDelete: SetNull)
+  ameaca     Ameaca?     @relation(fields: [ameacaId], references: [id], onDelete: SetNull)
+
+  @@index([combateId])
+  @@index([personagemId])
+  @@index([ameacaId])
+  @@index([tipo])
 }
 
 model Especial {

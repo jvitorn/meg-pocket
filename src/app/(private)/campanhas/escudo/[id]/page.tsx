@@ -76,6 +76,9 @@ export default async function EscudoCampanhaPage({
           npcs: {
             orderBy: [{ updatedAt: "desc" }, { nome: "asc" }],
           },
+          combates: {
+            select: { id: true },
+          },
         },
       }),
       prisma.item.findMany({
@@ -154,6 +157,7 @@ export default async function EscudoCampanhaPage({
       classes={classes.filter((classe) => isClasseNpcSelecionavel(classe.nome))}
       estilosNarrativos={estilosNarrativos}
       npcLimit={getNpcCampanhaLimit()}
+      combatesCount={campanha.combates.length}
       npcs={campanha.npcs.map((npc) => ({
         id: npc.id,
         nome: npc.nome,

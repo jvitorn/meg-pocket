@@ -10,6 +10,8 @@ import {
   BookOpenText,
   Boxes,
   ClipboardList,
+  Dices,
+  HeartPulse,
   LogOut,
   Save,
   Search,
@@ -77,6 +79,7 @@ type Props = {
   classes?: Array<{ id: number; nome: string }>;
   estilosNarrativos?: NpcEstiloNarrativoOption[];
   npcLimit?: number;
+  combatesCount?: number;
 };
 
 function clampDurability(value: string, max: number | null | undefined) {
@@ -95,6 +98,7 @@ export function CampanhaEditClient({
   classes = [],
   estilosNarrativos = [],
   npcLimit = 50,
+  combatesCount = 0,
 }: Props) {
   const router = useRouter();
   const [infoOpen, setInfoOpen] = useState(false);
@@ -191,11 +195,6 @@ export function CampanhaEditClient({
       icon: Shield,
     },
     {
-      title: "Criar combate",
-      text: "Fila de iniciativa, turnos e estado dos inimigos.",
-      icon: Swords,
-    },
-    {
       title: "Anotações",
       text: "Ganchos, consequências e decisões importantes.",
       icon: ClipboardList,
@@ -219,6 +218,7 @@ export function CampanhaEditClient({
         personagensCount={personagens.length}
         inventarioCount={totalItens}
         npcsCount={npcs.length}
+        combatesCount={combatesCount}
         onAddItem={() => setItemDialogOpen(true)}
         onEditInfo={() => setInfoOpen(true)}
       />
@@ -281,6 +281,12 @@ export function CampanhaEditClient({
                   </a>
                 </Button>
                 <Button asChild variant="outline" className="gap-2">
+                  <a href={`/campanhas/escudo/${campanha.id}/combates`}>
+                    <Swords className="h-4 w-4" />
+                    Abrir combates
+                  </a>
+                </Button>
+                <Button asChild variant="outline" className="gap-2">
                   <a href={`/campanhas/escudo/${campanha.id}/npcs`}>
                     <Users className="h-4 w-4" />
                     Abrir NPCs
@@ -320,9 +326,9 @@ export function CampanhaEditClient({
         </div>
         <div className="rounded-lg border bg-card/70 p-4 sm:p-5">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            NPCs
+            Combates
           </p>
-          <p className="mt-2 text-xl font-semibold">{npcs.length}</p>
+          <p className="mt-2 text-xl font-semibold">{combatesCount}</p>
         </div>
       </section>
 
@@ -450,6 +456,51 @@ export function CampanhaEditClient({
       />
 
       <section
+        id="combates"
+        className="scroll-mt-24 overflow-hidden rounded-lg border bg-card/70"
+      >
+        <CampanhaSectionHeader
+          icon={Swords}
+          eyebrow="Rodadas"
+          title="Combates da campanha"
+          description="Crie encontros, organize iniciativa, acompanhe turnos e consulte ameaças durante a sessão."
+          tone="sky"
+          meta={`${combatesCount} combate${combatesCount !== 1 ? "s" : ""} criado${
+            combatesCount !== 1 ? "s" : ""
+          }`}
+          actions={
+            <Button
+              asChild
+              size="sm"
+              className="gap-2 bg-white text-zinc-950 hover:bg-white/90"
+            >
+              <Link href={`/campanhas/escudo/${campanha.id}/combates`}>
+                <Swords className="h-4 w-4" />
+                Abrir combates
+              </Link>
+            </Button>
+          }
+        />
+        <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-3">
+          <BestiaryFeatureCard
+            icon={Dices}
+            title="Iniciativa"
+            text="Monte a ordem da rodada com personagens e múltiplas instâncias da mesma ameaça."
+          />
+          <BestiaryFeatureCard
+            icon={HeartPulse}
+            title="PV e mana"
+            text="Acompanhe personagens pela ficha e atualize PV/mana das ameaças durante o combate."
+          />
+          <BestiaryFeatureCard
+            icon={Shield}
+            title="Ficha rápida"
+            text="Abra golpes, defesa, reações, magias e slots defensivos no painel lateral."
+          />
+        </div>
+      </section>
+
+      <section
         id="bestiario"
         className="scroll-mt-24 overflow-hidden rounded-lg border bg-card/70"
       >
@@ -473,13 +524,13 @@ export function CampanhaEditClient({
             </Button>
           }
         />
-        <div className="grid gap-3 p-4 sm:p-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        <div className="grid items-start gap-3 p-4 sm:p-5 lg:grid-cols-1">
           <Link
             href="/ameacas"
             className="group relative overflow-hidden rounded-lg border bg-background/75 p-5 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
           >
             <div className="absolute inset-0 bg-linear-to-br from-violet-500/10 via-transparent to-emerald-500/10 opacity-80 transition group-hover:opacity-100" />
-            <div className="relative flex min-h-40 flex-col justify-between gap-6">
+            <div className="relative flex flex-col justify-between gap-2">
               <div className="max-w-2xl">
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg border bg-card shadow-sm">
                   <BookOpenText className="h-5 w-5 text-primary" />
@@ -497,21 +548,18 @@ export function CampanhaEditClient({
             </div>
           </Link>
 
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <BestiaryFeatureCard
               icon={Search}
               title="Busca rápida"
               text="Filtre por nome, tipo e elemento quando a mesa precisar de uma ameaça em poucos segundos."
+              href="/ameacas"
             />
             <BestiaryFeatureCard
               icon={ShieldAlert}
               title="Leitura de risco"
               text="Use VA, defesa, PV e reações para comparar encontros antes de puxar a ficha completa."
-            />
-            <BestiaryFeatureCard
-              icon={Swords}
-              title="Detalhe de combate"
-              text="Golpes, dano, custos e narrativa ficam organizados na tela de detalhe da ameaça."
+              href="/ameacas"
             />
           </div>
         </div>
@@ -737,18 +785,37 @@ function BestiaryFeatureCard({
   icon: Icon,
   title,
   text,
+  href,
 }: {
   icon: ComponentType<{ className?: string }>;
   title: string;
   text: string;
+  href?: string;
 }) {
-  return (
-    <div className="rounded-lg border bg-background/70 p-4">
+  const content = (
+    <>
       <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-card">
         <Icon className="h-4 w-4 text-primary" />
       </div>
       <h3 className="mt-3 font-semibold">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="rounded-lg border bg-background/70 p-4 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border bg-background/70 p-4">
+      {content}
     </div>
   );
 }

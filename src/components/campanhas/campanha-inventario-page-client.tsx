@@ -50,6 +50,7 @@ type Props = {
   personagens: CampaignInventoryCharacter[];
   catalogoItens: CampaignCatalogItem[];
   npcsCount: number;
+  combatesCount?: number;
 };
 
 function clampDurability(value: string, max: number | null | undefined) {
@@ -64,6 +65,7 @@ export function CampanhaInventarioPageClient({
   personagens,
   catalogoItens,
   npcsCount,
+  combatesCount = 0,
 }: Props) {
   const router = useRouter();
   const [selectedPersonagemId, setSelectedPersonagemId] = useState(
@@ -162,8 +164,9 @@ export function CampanhaInventarioPageClient({
       personagensCount={personagens.length}
       inventarioCount={totalItens}
       npcsCount={npcsCount}
+      combatesCount={combatesCount}
     >
-      <div className="mx-auto flex w-full max-w-[96rem] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-384 flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
         <section className="overflow-hidden rounded-lg border bg-card/70">
           <CampanhaSectionHeader
             icon={Package}

@@ -35,7 +35,7 @@ export default async function CampanhaInventarioPage({
       where: { id: campanhaId },
       include: {
         _count: {
-          select: { npcs: true },
+          select: { npcs: true, combates: true },
         },
         personagens: {
           orderBy: { nome: "asc" },
@@ -97,6 +97,7 @@ export default async function CampanhaInventarioPage({
       }))}
       catalogoItens={catalogoItens}
       npcsCount={campanha._count.npcs}
+      combatesCount={campanha._count.combates}
     />
   );
 }

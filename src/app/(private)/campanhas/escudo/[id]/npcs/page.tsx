@@ -38,6 +38,9 @@ export default async function CampanhaNpcsPage({
     prisma.campanha.findUnique({
       where: { id: campanhaId },
       include: {
+        _count: {
+          select: { combates: true },
+        },
         personagens: {
           select: {
             id: true,
@@ -121,6 +124,7 @@ export default async function CampanhaNpcsPage({
       limite={getNpcCampanhaLimit()}
       personagensCount={campanha.personagens.length}
       inventarioCount={inventarioCount}
+      combatesCount={campanha._count.combates}
     />
   );
 }

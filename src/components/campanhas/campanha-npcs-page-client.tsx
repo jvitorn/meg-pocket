@@ -85,6 +85,7 @@ type Props = {
   limite: number;
   personagensCount: number;
   inventarioCount: number;
+  combatesCount?: number;
 };
 
 const EMPTY_FORM: NpcForm = {
@@ -148,6 +149,7 @@ export function CampanhaNpcsPageClient({
   limite,
   personagensCount,
   inventarioCount,
+  combatesCount = 0,
 }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<NpcForm>(EMPTY_FORM);
@@ -288,6 +290,7 @@ export function CampanhaNpcsPageClient({
       personagensCount={personagensCount}
       inventarioCount={inventarioCount}
       npcsCount={npcs.length}
+      combatesCount={combatesCount}
     >
       <div className="mx-auto flex w-full max-w-384 flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
         <section className="overflow-hidden rounded-lg border bg-card/70">

@@ -13,6 +13,7 @@ import {
   Settings,
   Shield,
   Skull,
+  Swords,
   UserRoundPlus,
   Users,
 } from "lucide-react"
@@ -42,6 +43,7 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   personagensCount?: number
   inventarioCount?: number
   npcsCount?: number
+  combatesCount?: number
   onAddItem?: () => void
   onEditInfo?: () => void
 }
@@ -51,6 +53,7 @@ export type EscudoSidebarSection =
   | "jogadores"
   | "inventario"
   | "npcs"
+  | "combates"
   | "bestiario"
   | "ferramentas"
 
@@ -60,6 +63,7 @@ export function AppSidebar({
   personagensCount = 0,
   inventarioCount = 0,
   npcsCount = 0,
+  combatesCount = 0,
   onAddItem,
   onEditInfo,
   ...props
@@ -69,6 +73,7 @@ export function AppSidebar({
   const jogadoresHref = campanhaId ? `${escudoHref}#jogadores` : "#jogadores"
   const inventarioHref = campanhaId ? `${escudoHref}/inventario` : "#inventario"
   const npcsHref = campanhaId ? `${escudoHref}/npcs` : "#npcs"
+  const combatesHref = campanhaId ? `${escudoHref}/combates` : "#combates"
   const bestiarioHref = campanhaId ? `${escudoHref}#bestiario` : "#bestiario"
   const ferramentasHref = campanhaId ? `${escudoHref}#ferramentas` : "#ferramentas"
 
@@ -160,6 +165,15 @@ export function AppSidebar({
                   </Link>
                 </SidebarMenuButton>
                 <SidebarMenuBadge>{npcsCount}</SidebarMenuBadge>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={activeSection === "combates"}>
+                  <Link href={combatesHref}>
+                    <Swords />
+                    <span>Combates</span>
+                  </Link>
+                </SidebarMenuButton>
+                <SidebarMenuBadge>{combatesCount}</SidebarMenuBadge>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={activeSection === "bestiario"}>
