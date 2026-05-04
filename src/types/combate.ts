@@ -16,6 +16,18 @@ export type CombateCreatePayload = {
   }>;
 };
 
+export type CombatePersonagemSelectionState = Record<
+  number,
+  { selected: boolean; iniciativa: string }
+>;
+
+export type CombateThreatDraft = {
+  tempId: string;
+  ameacaId: number;
+  nome: string;
+  iniciativa: string;
+};
+
 export type CombateActionPayload =
   | { action: "iniciar" }
   | { action: "proximo" }

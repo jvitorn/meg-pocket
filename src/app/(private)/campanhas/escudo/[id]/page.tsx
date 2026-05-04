@@ -58,7 +58,7 @@ export default async function EscudoCampanhaPage({
     );
   }
 
-  const [campanha, catalogoItens, racas, classes, estilosNarrativos] =
+  const [campanha, catalogoItens, racas, classes, estilosNarrativos, bestiarioCount] =
     await prisma.$transaction([
       prisma.campanha.findUnique({
         where: { id: campanhaId },
@@ -109,6 +109,7 @@ export default async function EscudoCampanhaPage({
           descricao: true,
         },
       }),
+      prisma.ameaca.count(),
     ]);
 
   if (!campanha) {
@@ -158,6 +159,7 @@ export default async function EscudoCampanhaPage({
       estilosNarrativos={estilosNarrativos}
       npcLimit={getNpcCampanhaLimit()}
       combatesCount={campanha.combates.length}
+      bestiarioCount={bestiarioCount}
       npcs={campanha.npcs.map((npc) => ({
         id: npc.id,
         nome: npc.nome,

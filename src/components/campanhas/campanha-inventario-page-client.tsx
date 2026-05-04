@@ -51,6 +51,7 @@ type Props = {
   catalogoItens: CampaignCatalogItem[];
   npcsCount: number;
   combatesCount?: number;
+  bestiarioCount?: number;
 };
 
 function clampDurability(value: string, max: number | null | undefined) {
@@ -66,6 +67,7 @@ export function CampanhaInventarioPageClient({
   catalogoItens,
   npcsCount,
   combatesCount = 0,
+  bestiarioCount = 0,
 }: Props) {
   const router = useRouter();
   const [selectedPersonagemId, setSelectedPersonagemId] = useState(
@@ -165,9 +167,10 @@ export function CampanhaInventarioPageClient({
       inventarioCount={totalItens}
       npcsCount={npcsCount}
       combatesCount={combatesCount}
+      bestiarioCount={bestiarioCount}
     >
-      <div className="mx-auto flex w-full max-w-384 flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-        <section className="overflow-hidden rounded-lg border bg-card/70">
+      <div className="mx-auto flex w-full max-w-384 flex-col gap-5 px-3 py-5 sm:px-6 lg:px-8">
+        <section className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
           <CampanhaSectionHeader
             icon={Package}
             eyebrow="Arsenal da mesa"
@@ -187,7 +190,7 @@ export function CampanhaInventarioPageClient({
             <MetricCard label="Expirados" value={itensExpirados} />
           </div>
 
-          <form onSubmit={handleAddItem} className="rounded-lg border bg-card/85 p-4">
+          <form onSubmit={handleAddItem} className="rounded-lg border border-border/70 bg-card p-4 shadow-xs">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-md border bg-background">
                 <Plus className="h-5 w-5 text-primary" />
@@ -246,7 +249,7 @@ export function CampanhaInventarioPageClient({
                 </label>
               </div>
 
-              <div className="rounded-lg border bg-background/70 p-3">
+              <div className="rounded-lg border border-border/70 bg-background p-3 shadow-xs">
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
@@ -324,7 +327,7 @@ export function CampanhaInventarioPageClient({
             <section
               id={`personagem-${personagem.id}`}
               key={personagem.id}
-              className="overflow-hidden rounded-lg border bg-card/80"
+              className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
             >
               <div className="relative border-b bg-linear-to-br from-zinc-950 via-amber-950 to-sky-950 p-5 text-white">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,158,11,0.2),transparent_26%),radial-gradient(circle_at_90%_0%,rgba(14,165,233,0.16),transparent_24%)]" />
@@ -350,7 +353,7 @@ export function CampanhaInventarioPageClient({
                   {personagem.inventario.map((item) => (
                     <article
                       key={item.id}
-                      className="group overflow-hidden rounded-lg border bg-background/80 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+                      className="group overflow-hidden rounded-lg border border-border/70 bg-background shadow-xs transition hover:-translate-y-0.5 hover:border-primary/40 hover:bg-accent/25 hover:shadow-md"
                     >
                       <div className="flex items-start gap-3 border-b p-4">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border bg-card">
@@ -516,7 +519,7 @@ export function CampanhaInventarioPageClient({
 
 function MetricCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border bg-card/85 p-4">
+    <div className="rounded-lg border border-border/70 bg-card p-4 shadow-xs">
       <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
         {label}
       </p>

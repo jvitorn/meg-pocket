@@ -2,17 +2,9 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
-import {
-  Shield,
-  Wind,
-  ShieldCheck,
-  Swords,
-} from "lucide-react";
+import { Shield } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+import { ReactiveSlotsPanel } from "@/components/personagens/ficha/ReactiveSlotsPanel";
 
 import {
   usarSlotDefensivo,
@@ -41,51 +33,6 @@ interface Props {
     React.SetStateAction<PersonagemInterface | null>
   >;
   canEdit: boolean;
-}
-
-/* -------------------------------------------------------
-   Cores sutis por tipo
----------------------------------------------------------*/
-const slotStyle = {
-  esquiva: {
-    icon: "text-slate-500 dark:text-slate-400",
-    text: "text-slate-700 dark:text-slate-300",
-  },
-  bloqueio: {
-    icon: "text-zinc-500 dark:text-zinc-400",
-    text: "text-zinc-700 dark:text-zinc-300",
-  },
-  contra: {
-    icon: "text-stone-500 dark:text-stone-400",
-    text: "text-stone-700 dark:text-stone-300",
-  },
-};
-
-/* -------------------------------------------------------
-   Visual dos slots
----------------------------------------------------------*/
-function SlotsVisual({
-  usados,
-  limite,
-}: {
-  usados: number;
-  limite: number;
-}) {
-  return (
-    <div className="flex gap-1">
-      {Array.from({ length: limite }).map((_, i) => (
-        <div
-          key={i}
-          className={cn(
-            "w-3 h-3 rounded-sm border transition",
-            i < usados
-              ? "border-slate-400 bg-slate-400 dark:border-slate-300 dark:bg-slate-300"
-              : "border-slate-300 dark:border-slate-400/35"
-          )}
-        />
-      ))}
-    </div>
-  );
 }
 
 /* -------------------------------------------------------
@@ -205,129 +152,37 @@ export function PersonagemSlotsDefensivos({
   };
 
   return (
-    <section
+    <ReactiveSlotsPanel
       id="defesa"
-      className="mb-3 space-y-4 rounded-2xl border border-slate-200 bg-linear-to-br from-slate-100 via-card to-card p-4 shadow-sm backdrop-blur-sm dark:border-slate-500/20 dark:from-slate-500/10 dark:via-card/92 dark:to-card/82"
-    >
-      {/* Cabeçalho */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-slate-500 dark:text-slate-200" />
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-700 dark:text-slate-100">
-              Slots Reativos
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-100/70">
-              {canEdit
-                ? "Usados durante o combate"
-                : "Somente leitura para esta ficha"}
-            </p>
-          </div>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={resetar}
-          disabled={!canEdit}
-          className="border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-500/30 dark:bg-slate-500/10 dark:text-slate-100 dark:hover:bg-slate-500/15"
-        >
-          Resetar
-        </Button>
-      </div>
-
-      <Separator />
-
-      {/* Esquiva */}
-      <motion.div
-        className="flex items-center justify-between gap-3"
-        animate={{ opacity: loadingSlot === "esquiva" ? 0.6 : 1 }}
-      >
-        <div className="flex items-center gap-2 min-w-27.5">
-          <Wind className={cn("w-4 h-4", slotStyle.esquiva.icon)} />
-          <span className={cn("text-sm font-medium", slotStyle.esquiva.text)}>
-            Esquiva
-          </span>
-        </div>
-
-        <SlotsVisual
-          usados={usados.esquiva}
-          limite={limites.esquiva}
-        />
-
-        <Button
-          size="sm"
-          disabled={
-            !canEdit ||
-            loadingSlot === "esquiva" ||
-            usados.esquiva >= limites.esquiva
-          }
-          onClick={() => usar("esquiva")}
-        >
-          Usar
-        </Button>
-      </motion.div>
-
-      {/* Bloqueio */}
-      <motion.div
-        className="flex items-center justify-between gap-3"
-        animate={{ opacity: loadingSlot === "bloqueio" ? 0.6 : 1 }}
-      >
-        <div className="flex items-center gap-2 min-w-27.5">
-          <ShieldCheck className={cn("w-4 h-4", slotStyle.bloqueio.icon)} />
-          <span className={cn("text-sm font-medium", slotStyle.bloqueio.text)}>
-            Bloqueio
-          </span>
-        </div>
-
-        <SlotsVisual
-          usados={usados.bloqueio}
-          limite={limites.bloqueio}
-        />
-
-        <Button
-          size="sm"
-          disabled={
-            !canEdit ||
-            loadingSlot === "bloqueio" ||
-            usados.bloqueio >= limites.bloqueio
-          }
-          onClick={() => usar("bloqueio")}
-        >
-          Usar
-        </Button>
-      </motion.div>
-
-      {/* Contra-ataque */}
-      <motion.div
-        className="flex items-center justify-between gap-3"
-        animate={{ opacity: loadingSlot === "contra" ? 0.6 : 1 }}
-      >
-        <div className="flex items-center gap-2 min-w-27.5">
-          <Swords className={cn("w-4 h-4", slotStyle.contra.icon)} />
-          <span className={cn("text-sm font-medium", slotStyle.contra.text)}>
-            Contra
-          </span>
-        </div>
-
-        <SlotsVisual
-          usados={usados.contra}
-          limite={limites.contra}
-        />
-
-        <Button
-          size="sm"
-          disabled={
-            !canEdit ||
-            loadingSlot === "contra" ||
-            usados.contra >= limites.contra
-          }
-          onClick={() => usar("contra")}
-        >
-          Usar
-        </Button>
-      </motion.div>
-      <Separator />
-    </section>
+      className="mb-3"
+      description={
+        canEdit
+          ? "Usados durante o combate"
+          : "Somente leitura para esta ficha"
+      }
+      rows={[
+        {
+          tipo: "esquiva",
+          usados: usados.esquiva,
+          limite: limites.esquiva,
+          onUse: () => usar("esquiva"),
+        },
+        {
+          tipo: "bloqueio",
+          usados: usados.bloqueio,
+          limite: limites.bloqueio,
+          onUse: () => usar("bloqueio"),
+        },
+        {
+          tipo: "contra",
+          usados: usados.contra,
+          limite: limites.contra,
+          onUse: () => usar("contra"),
+        },
+      ]}
+      canEdit={canEdit}
+      loadingSlot={loadingSlot}
+      onReset={resetar}
+    />
   );
 }

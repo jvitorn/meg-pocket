@@ -24,7 +24,7 @@ export default async function AmeacasPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-background text-foreground">
+      <main className="relative isolate min-h-screen overflow-hidden bg-[radial-gradient(circle_at_12%_12%,rgba(239,68,68,0.12),transparent_28%),radial-gradient(circle_at_86%_18%,rgba(20,184,166,0.1),transparent_24%),linear-gradient(180deg,#fff7ed_0%,var(--background)_34%,#fff_100%)] text-foreground dark:bg-background dark:bg-none">
         <section className="relative isolate overflow-hidden">
           <Image
             src="/imgs/backgrounds/ameacas.jpg"
@@ -33,7 +33,7 @@ export default async function AmeacasPage() {
             priority
             className="object-cover object-top"
           />
-          <div className="absolute inset-0 bg-linear-to-t from-background via-background/82 to-background/45 dark:from-black dark:via-black/72 dark:to-black/40" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/78 via-black/58 to-black/36 dark:from-black dark:via-black/72 dark:to-black/40" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(220,38,38,0.28),transparent_26%),radial-gradient(circle_at_84%_16%,rgba(20,184,166,0.2),transparent_24%),radial-gradient(circle_at_50%_88%,rgba(245,158,11,0.16),transparent_28%)]" />
 
           <div className="relative z-10 mx-auto flex min-h-107.5 max-w-7xl flex-col justify-end px-4 pb-10 pt-8 sm:px-6 lg:px-8">

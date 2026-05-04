@@ -80,6 +80,7 @@ type Props = {
   estilosNarrativos?: NpcEstiloNarrativoOption[];
   npcLimit?: number;
   combatesCount?: number;
+  bestiarioCount?: number;
 };
 
 function clampDurability(value: string, max: number | null | undefined) {
@@ -99,6 +100,7 @@ export function CampanhaEditClient({
   estilosNarrativos = [],
   npcLimit = 50,
   combatesCount = 0,
+  bestiarioCount = 0,
 }: Props) {
   const router = useRouter();
   const [infoOpen, setInfoOpen] = useState(false);
@@ -219,11 +221,12 @@ export function CampanhaEditClient({
         inventarioCount={totalItens}
         npcsCount={npcs.length}
         combatesCount={combatesCount}
+        bestiarioCount={bestiarioCount}
         onAddItem={() => setItemDialogOpen(true)}
         onEditInfo={() => setInfoOpen(true)}
       />
       <SidebarInset className="bg-background text-foreground">
-        <header className="sticky top-0 z-30 flex min-h-16 shrink-0 items-center justify-between gap-3 border-b bg-background/95 px-4 backdrop-blur supports-backdrop-filter:bg-background/80">
+        <header className="sticky top-0 z-30 flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-background/92 px-3 shadow-sm shadow-black/5 backdrop-blur supports-backdrop-filter:bg-background/78 sm:px-4 dark:shadow-black/25">
           <div className="flex min-w-0 items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
@@ -244,8 +247,8 @@ export function CampanhaEditClient({
           </Button>
         </header>
 
-        <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-2 py-6 sm:gap-8 sm:px-4 sm:py-8 lg:px-4">
-      <section className="overflow-hidden rounded-xl border border-border/60 bg-card/70 shadow-sm sm:rounded-2xl">
+        <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-3 py-5 sm:gap-8 sm:px-4 sm:py-8 lg:px-4">
+      <section className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm sm:rounded-2xl">
         <div className="relative min-h-70">
           {campanha.capa ? (
             <Image
@@ -259,40 +262,41 @@ export function CampanhaEditClient({
           ) : (
             <div className="absolute inset-0 bg-linear-to-br from-stone-900 via-zinc-800 to-emerald-950" />
           )}
-          <div className="absolute inset-0 bg-linear-to-t from-background via-background/60 to-black/20" />
-          <div className="absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent" />
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/82 via-black/48 to-black/24" />
+          <div className="absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-amber-200/55 to-transparent" />
           <div className="relative flex min-h-70 flex-col justify-between gap-8 p-4 sm:p-8">
             <div className="max-w-3xl">
-              <p className="text-xs uppercase tracking-[0.28em] text-primary/85">
+              <p className="text-xs uppercase tracking-[0.28em] text-amber-100">
                 Escudo do mestre
               </p>
-              <h1 className="mt-2 text-3xl font-semibold sm:text-5xl">
+              <h1 className="mt-2 text-3xl font-semibold text-white drop-shadow-[0_10px_24px_rgba(0,0,0,0.55)] sm:text-5xl">
                 {campanha.nome}
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/90 drop-shadow sm:text-base">
                 {campanha.sinopse ||
                   "A campanha ainda não tem sinopse. Defina o tom inicial e deixe a mesa pronta para aventura."}
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
-                <Button asChild className="gap-2">
+                <Button asChild className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
                   <a href={`/campanhas/escudo/${campanha.id}/inventario`}>
                     <Boxes className="h-4 w-4" />
                     Abrir inventário
                   </a>
                 </Button>
-                <Button asChild variant="outline" className="gap-2">
+                <Button asChild variant="outline" className="gap-2 border-white/35 bg-black/45 text-white hover:border-white/60 hover:bg-white/15 hover:text-white">
                   <a href={`/campanhas/escudo/${campanha.id}/combates`}>
                     <Swords className="h-4 w-4" />
                     Abrir combates
                   </a>
                 </Button>
-                <Button asChild variant="outline" className="gap-2">
+                <Button asChild variant="outline" className="gap-2 border-white/35 bg-black/45 text-white hover:border-white/60 hover:bg-white/15 hover:text-white">
                   <a href={`/campanhas/escudo/${campanha.id}/npcs`}>
                     <Users className="h-4 w-4" />
                     Abrir NPCs
                   </a>
                 </Button>
-                <Button type="button" variant="outline" className="gap-2" onClick={() => setInfoOpen(true)}>
+                <Button type="button" variant="outline" className="gap-2 border-white/35 bg-black/45 text-white hover:border-white/60 hover:bg-white/15 hover:text-white" onClick={() => setInfoOpen(true)}>
                   <Save className="h-4 w-4" />
                   Editar informações iniciais
                 </Button>
@@ -303,19 +307,19 @@ export function CampanhaEditClient({
       </section>
 
       <section className="grid gap-3 sm:gap-4 md:grid-cols-4">
-        <div className="rounded-lg border bg-card/70 p-4 sm:p-5">
+        <div className="rounded-lg border border-border/70 bg-card p-4 shadow-xs sm:p-5">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Mestre
           </p>
           <p className="mt-2 text-xl font-semibold">{campanha.mestre || "Não informado"}</p>
         </div>
-        <div className="rounded-lg border bg-card/70 p-4 sm:p-5">
+        <div className="rounded-lg border border-border/70 bg-card p-4 shadow-xs sm:p-5">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Jogadores
           </p>
           <p className="mt-2 text-xl font-semibold">{personagens.length}</p>
         </div>
-        <div className="rounded-lg border bg-card/70 p-4 sm:p-5">
+        <div className="rounded-lg border border-border/70 bg-card p-4 shadow-xs sm:p-5">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Inventário
           </p>
@@ -324,7 +328,7 @@ export function CampanhaEditClient({
             {itensExpirados !== 1 ? "s" : ""}
           </p>
         </div>
-        <div className="rounded-lg border bg-card/70 p-4 sm:p-5">
+        <div className="rounded-lg border border-border/70 bg-card p-4 shadow-xs sm:p-5">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Combates
           </p>
@@ -335,7 +339,7 @@ export function CampanhaEditClient({
       <section className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
         <section
           id="jogadores"
-          className="scroll-mt-24 overflow-hidden rounded-lg border bg-card/70"
+          className="scroll-mt-24 overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
         >
           <CampanhaSectionHeader
             icon={Users}
@@ -351,12 +355,12 @@ export function CampanhaEditClient({
             {personagens.map((personagem) => (
               <div
                 key={personagem.id}
-                className="flex items-center justify-between gap-3 rounded-lg border bg-background/70 px-3 py-3"
+                className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background px-3 py-3 shadow-xs"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{personagem.jogador}</p>
+                  <p className="truncate font-medium">{personagem.nome}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    Personagem: {personagem.nome}
+                    Jogador: {personagem.jogador}
                   </p>
                 </div>
                 <span className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
@@ -375,7 +379,7 @@ export function CampanhaEditClient({
 
         <section
           id="inventario"
-          className="scroll-mt-24 overflow-hidden rounded-lg border bg-card/70"
+          className="scroll-mt-24 overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
         >
           <CampanhaSectionHeader
             icon={Boxes}
@@ -400,20 +404,17 @@ export function CampanhaEditClient({
             }
           />
 
-          <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5">
+          <div className="grid gap-6 sm:grid-cols-2 sm:p-5">
             {personagens.map((personagem) => (
               <a
                 key={personagem.id}
                 href={`/campanhas/escudo/${campanha.id}/inventario#personagem-${personagem.id}`}
-                className="group relative overflow-hidden rounded-lg border bg-background/70 p-4 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+                className="group relative overflow-hidden rounded-lg border border-border/70 bg-background p-4 shadow-xs transition hover:-translate-y-0.5 hover:border-primary/40 hover:bg-accent/25 hover:shadow-md"
               >
                 <div className="absolute inset-0 bg-linear-to-br from-amber-500/10 via-transparent to-sky-500/10 opacity-70 transition group-hover:opacity-100" />
                 <div className="relative flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate font-semibold">{personagem.jogador}</h3>
-                    <p className="truncate text-xs text-muted-foreground">
-                      Personagem: {personagem.nome}
-                    </p>
+                    <h3 className="truncate font-semibold">{personagem.nome}</h3>
                   </div>
                   <span className="rounded-full border bg-card px-2.5 py-1 text-xs text-muted-foreground">
                     {personagem.inventario.length} item
@@ -457,7 +458,7 @@ export function CampanhaEditClient({
 
       <section
         id="combates"
-        className="scroll-mt-24 overflow-hidden rounded-lg border bg-card/70"
+        className="scroll-mt-24 overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
       >
         <CampanhaSectionHeader
           icon={Swords}
@@ -502,7 +503,7 @@ export function CampanhaEditClient({
 
       <section
         id="bestiario"
-        className="scroll-mt-24 overflow-hidden rounded-lg border bg-card/70"
+        className="scroll-mt-24 overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm"
       >
         <CampanhaSectionHeader
           icon={Skull}
@@ -510,7 +511,7 @@ export function CampanhaEditClient({
           title="Ameaças para a mesa"
           description="Consulte fichas prontas, variações por função e detalhes de combate sem sair do fluxo de preparação."
           tone="violet"
-          meta="Catálogo público de ameaças"
+          meta={`${bestiarioCount} ameaça${bestiarioCount !== 1 ? "s" : ""} no catálogo`}
           actions={
             <Button
               asChild
@@ -527,7 +528,7 @@ export function CampanhaEditClient({
         <div className="grid items-start gap-3 p-4 sm:p-5 lg:grid-cols-1">
           <Link
             href="/ameacas"
-            className="group relative overflow-hidden rounded-lg border bg-background/75 p-5 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+            className="group relative overflow-hidden rounded-lg border border-border/70 bg-background p-5 shadow-xs transition hover:-translate-y-0.5 hover:border-primary/40 hover:bg-accent/25 hover:shadow-md"
           >
             <div className="absolute inset-0 bg-linear-to-br from-violet-500/10 via-transparent to-emerald-500/10 opacity-80 transition group-hover:opacity-100" />
             <div className="relative flex flex-col justify-between gap-2">
@@ -537,7 +538,7 @@ export function CampanhaEditClient({
                 </div>
                 <h3 className="mt-4 text-xl font-semibold">Arquivo de ameaças</h3>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Abra a biblioteca pública para buscar por nome, tipo, elemento e
+                  Abra a biblioteca pública para buscar por nome, elemento e
                   VA, com páginas de detalhe prontas para consulta em sessão.
                 </p>
               </div>
@@ -552,7 +553,7 @@ export function CampanhaEditClient({
             <BestiaryFeatureCard
               icon={Search}
               title="Busca rápida"
-              text="Filtre por nome, tipo e elemento quando a mesa precisar de uma ameaça em poucos segundos."
+              text="Filtre por nome, elemento e função quando a mesa precisar de uma ameaça em poucos segundos."
               href="/ameacas"
             />
             <BestiaryFeatureCard
@@ -571,7 +572,7 @@ export function CampanhaEditClient({
           return (
             <div
               key={section.title}
-              className="rounded-lg border border-dashed bg-card/45 p-4 sm:p-5"
+              className="rounded-lg border border-dashed bg-card p-4 shadow-xs sm:p-5"
             >
               <Icon className="h-5 w-5 text-primary" />
               <h2 className="mt-3 font-semibold">{section.title}</h2>
@@ -668,7 +669,7 @@ export function CampanhaEditClient({
               />
             </Field>
 
-            <div className="rounded-lg border bg-background/70 p-4 sm:col-span-2">
+            <div className="rounded-lg border border-border/70 bg-background p-4 shadow-xs sm:col-span-2">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="font-semibold">
@@ -806,7 +807,7 @@ function BestiaryFeatureCard({
     return (
       <Link
         href={href}
-        className="rounded-lg border bg-background/70 p-4 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+        className="rounded-lg border border-border/70 bg-background p-4 shadow-xs transition hover:-translate-y-0.5 hover:border-primary/40 hover:bg-accent/25 hover:shadow-md"
       >
         {content}
       </Link>
@@ -814,7 +815,7 @@ function BestiaryFeatureCard({
   }
 
   return (
-    <div className="rounded-lg border bg-background/70 p-4">
+    <div className="rounded-lg border border-border/70 bg-background p-4 shadow-xs">
       {content}
     </div>
   );

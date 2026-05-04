@@ -25,6 +25,7 @@ type EscudoLayoutShellProps = {
   inventarioCount?: number;
   npcsCount?: number;
   combatesCount?: number;
+  bestiarioCount?: number;
   children: ReactNode;
 };
 
@@ -36,6 +37,7 @@ export function EscudoLayoutShell({
   inventarioCount = 0,
   npcsCount = 0,
   combatesCount = 0,
+  bestiarioCount = 0,
   children,
 }: EscudoLayoutShellProps) {
   return (
@@ -47,9 +49,10 @@ export function EscudoLayoutShell({
         inventarioCount={inventarioCount}
         npcsCount={npcsCount}
         combatesCount={combatesCount}
+        bestiarioCount={bestiarioCount}
       />
       <SidebarInset className="bg-background text-foreground">
-        <header className="sticky top-0 z-30 flex min-h-16 shrink-0 items-center justify-between gap-3 border-b bg-background/95 px-4 backdrop-blur supports-backdrop-filter:bg-background/80">
+        <header className="sticky top-0 z-30 flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-border/70 bg-background/92 px-3 shadow-sm shadow-black/5 backdrop-blur supports-backdrop-filter:bg-background/78 sm:px-4 dark:shadow-black/25">
           <div className="flex min-w-0 items-center gap-2">
             <SidebarTrigger className="-ml-1" />
             <Separator

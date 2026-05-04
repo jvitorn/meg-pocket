@@ -151,6 +151,7 @@ export default async function CampanhaCombatesPage({
       personagensCount={campanha.personagens.length}
       inventarioCount={inventarioCount}
       npcsCount={campanha.npcs.length}
+      bestiarioCount={ameacas.length}
     />
   );
 }

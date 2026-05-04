@@ -33,6 +33,13 @@ import { toast } from "sonner";
 import { CampanhaSectionHeader } from "@/components/campanhas/campanha-section-header";
 import { EscudoLayoutShell } from "@/components/campanhas/escudo-layout-shell";
 import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -76,6 +83,10 @@ type NpcForm = {
   dadosJson?: unknown;
 };
 
+type NpcDrawerData = Partial<CampanhaNpcItem> & {
+  nome: string;
+};
+
 type Props = {
   campanha: CampanhaInfo;
   npcs: CampanhaNpcItem[];
@@ -86,6 +97,7 @@ type Props = {
   personagensCount: number;
   inventarioCount: number;
   combatesCount?: number;
+  bestiarioCount?: number;
 };
 
 const EMPTY_FORM: NpcForm = {
@@ -132,7 +144,7 @@ const IMPORTANCIAS = [
 ];
 
 const npcTabTriggerClass =
-  "min-h-10 justify-start gap-2 rounded-md border border-transparent bg-transparent px-3 text-muted-foreground hover:border-amber-400/25 hover:bg-amber-400/10 hover:text-foreground data-[state=active]:border-amber-400/45 data-[state=active]:bg-amber-400/12 data-[state=active]:text-foreground data-[state=active]:shadow-[inset_0_-2px_0_rgba(251,191,36,0.85)] xl:data-[state=active]:shadow-[inset_3px_0_0_rgba(251,191,36,0.85)]";
+  "min-h-10 justify-start gap-2 rounded-md border border-transparent bg-transparent px-3 text-muted-foreground hover:border-amber-500/35 hover:bg-amber-100/70 hover:text-foreground data-[state=active]:border-amber-500/55 data-[state=active]:bg-amber-100 data-[state=active]:text-amber-950 data-[state=active]:shadow-[inset_0_-2px_0_rgba(217,119,6,0.9)] dark:hover:border-amber-400/25 dark:hover:bg-amber-400/10 dark:data-[state=active]:border-amber-400/45 dark:data-[state=active]:bg-amber-400/12 dark:data-[state=active]:text-foreground xl:data-[state=active]:shadow-[inset_3px_0_0_rgba(217,119,6,0.9)]";
 
 const rpgFrameClipPath =
   "polygon(22px 0, calc(100% - 22px) 0, 100% 18px, calc(100% - 10px) 50%, 100% calc(100% - 18px), calc(100% - 22px) 100%, 22px 100%, 0 calc(100% - 18px), 10px 50%, 0 18px)";
@@ -150,6 +162,7 @@ export function CampanhaNpcsPageClient({
   personagensCount,
   inventarioCount,
   combatesCount = 0,
+  bestiarioCount = 0,
 }: Props) {
   const router = useRouter();
   const [form, setForm] = useState<NpcForm>(EMPTY_FORM);
@@ -159,6 +172,7 @@ export function CampanhaNpcsPageClient({
     estilosNarrativos[0]?.chave ?? "classico"
   );
   const [loading, setLoading] = useState(false);
+  const [npcDrawerOpen, setNpcDrawerOpen] = useState(false);
 
   const remainingSlots = Math.max(limite - npcs.length, 0);
   const hasDraft = Boolean(form.nome || form.objetivoCampanha || form.descricao);
@@ -174,6 +188,7 @@ export function CampanhaNpcsPageClient({
     () => npcs.find((npc) => npc.id === editingId) ?? null,
     [editingId, npcs]
   );
+  const drawerNpc = selectedNpc ?? (hasDraft ? drawerNpcFromForm(form) : null);
   const profileTags = [
     form.racaNome,
     form.profissao || form.classeNome,
@@ -207,6 +222,14 @@ export function CampanhaNpcsPageClient({
     setIsEditing(false);
   }
 
+  function selectSavedNpc(npc: CampanhaNpcItem) {
+    editNpc(npc);
+
+    if (isNpcMobileViewport()) {
+      setNpcDrawerOpen(true);
+    }
+  }
+
   async function generateNpc() {
     setLoading(true);
 
@@ -215,9 +238,13 @@ export function CampanhaNpcsPageClient({
         campanha.id,
         cleanPayload(generationFiltersFromForm(form))
       );
+      const generatedForm = formFromNpc(data.npc);
       setEditingId(null);
-      setForm(formFromNpc(data.npc));
+      setForm(generatedForm);
       setIsEditing(false);
+      if (isNpcMobileViewport()) {
+        setNpcDrawerOpen(true);
+      }
       toast.success("NPC gerado para revisão.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao gerar NPC.");
@@ -291,9 +318,10 @@ export function CampanhaNpcsPageClient({
       inventarioCount={inventarioCount}
       npcsCount={npcs.length}
       combatesCount={combatesCount}
+      bestiarioCount={bestiarioCount}
     >
-      <div className="mx-auto flex w-full max-w-384 flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-        <section className="overflow-hidden rounded-lg border bg-card/70">
+      <div className="mx-auto flex w-full max-w-384 flex-col gap-5 px-3 py-5 sm:px-6 lg:px-8">
+        <section className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
           <CampanhaSectionHeader
             icon={UserRoundPlus}
             eyebrow="Elenco da campanha"
@@ -320,7 +348,7 @@ export function CampanhaNpcsPageClient({
 
         <section className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
           <aside className="hidden space-y-4 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100svh-7rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
-            <div className="rounded-lg border bg-card/80 p-4">
+            <div className="rounded-lg border border-border/70 bg-card p-4 shadow-xs">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
@@ -346,7 +374,7 @@ export function CampanhaNpcsPageClient({
                   key={npc.id}
                   npc={npc}
                   selected={editingId === npc.id}
-                  onClick={() => editNpc(npc)}
+                  onClick={() => selectSavedNpc(npc)}
                 />
               ))}
               {npcs.length === 0 ? (
@@ -357,7 +385,7 @@ export function CampanhaNpcsPageClient({
             </div>
           </aside>
 
-          <details className="group overflow-hidden rounded-lg border bg-card/80 lg:hidden">
+          <details className="group overflow-hidden rounded-lg border border-border/70 bg-card shadow-xs lg:hidden">
             <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-medium marker:hidden">
               NPCs salvos
               <span className="text-xs text-muted-foreground group-open:hidden">
@@ -373,7 +401,7 @@ export function CampanhaNpcsPageClient({
                   key={npc.id}
                   npc={npc}
                   selected={editingId === npc.id}
-                  onClick={() => editNpc(npc)}
+                  onClick={() => selectSavedNpc(npc)}
                 />
               ))}
               {npcs.length === 0 ? (
@@ -385,7 +413,7 @@ export function CampanhaNpcsPageClient({
           </details>
 
           <form onSubmit={saveNpc} className="lg:col-start-2 lg:row-start-1">
-            <section className="overflow-hidden rounded-lg border bg-card/90">
+            <section className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
               <div className="relative overflow-hidden border-b bg-linear-to-br from-zinc-950 via-emerald-950 to-indigo-950 p-5 text-white sm:p-6">
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.05)_1px,transparent_1px)] opacity-35 bg-size-[28px_28px]" />
                 <div className="absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-amber-200/50 to-transparent" />
@@ -434,14 +462,14 @@ export function CampanhaNpcsPageClient({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 border-b bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+              <div className="flex flex-col gap-3 border-b bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
                 <div>
                   <h2 className="text-lg font-semibold">Ficha do NPC</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {isEditing ? "Modo edição" : "Modo leitura"}
                   </p>
                 </div>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center">
                   <Button
                     type="submit"
                     className="gap-2"
@@ -467,7 +495,7 @@ export function CampanhaNpcsPageClient({
                   <Button
                     type="button"
                     variant="outline"
-                    className="gap-2"
+                    className="col-span-2 gap-2 sm:col-span-1"
                     onClick={generateNpc}
                     disabled={loading}
                   >
@@ -491,6 +519,14 @@ export function CampanhaNpcsPageClient({
                     </Button>
                   ) : null}
                 </div>
+              </div>
+
+              <div className="border-b bg-background/70 p-4 sm:p-5">
+                <NpcHighlights
+                  objetivo={form.objetivoCampanha}
+                  gancho={form.gancho}
+                  segredo={form.segredo}
+                />
               </div>
 
               <Tabs
@@ -769,7 +805,265 @@ export function CampanhaNpcsPageClient({
           </form>
         </section>
       </div>
+
+      <NpcMobileDrawer
+        npc={drawerNpc}
+        open={npcDrawerOpen}
+        loading={loading}
+        canDelete={Boolean(editingId && selectedNpc)}
+        onOpenChange={setNpcDrawerOpen}
+        onEdit={() => {
+          setIsEditing(true);
+          setNpcDrawerOpen(false);
+        }}
+        onGenerate={async () => {
+          await generateNpc();
+          setNpcDrawerOpen(true);
+        }}
+        onDelete={async () => {
+          await deleteNpc();
+          setNpcDrawerOpen(false);
+        }}
+      />
     </EscudoLayoutShell>
+  );
+}
+
+function NpcMobileDrawer({
+  npc,
+  open,
+  loading,
+  canDelete,
+  onOpenChange,
+  onEdit,
+  onGenerate,
+  onDelete,
+}: {
+  npc: NpcDrawerData | null;
+  open: boolean;
+  loading: boolean;
+  canDelete: boolean;
+  onOpenChange: (open: boolean) => void;
+  onEdit: () => void;
+  onGenerate: () => void | Promise<void>;
+  onDelete: () => void | Promise<void>;
+}) {
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="h-[92svh] max-h-[92svh] overflow-hidden lg:hidden">
+        <DrawerHeader className="shrink-0 border-b text-left">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border bg-background shadow-xs">
+              <UserRoundPlus className="h-5 w-5 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <DrawerTitle className="truncate">{npc?.nome ?? "NPC"}</DrawerTitle>
+              <DrawerDescription>
+                {[npc?.racaNome, npc?.profissao || npc?.classeNome]
+                  .filter(Boolean)
+                  .join(" · ") || "Ficha rápida e ações do NPC."}
+              </DrawerDescription>
+            </div>
+          </div>
+        </DrawerHeader>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+          {npc ? (
+            <div className="grid gap-4">
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 rounded-lg border bg-card p-3 shadow-xs">
+                <Button
+                  type="button"
+                  className="flex-1 gap-2"
+                  onClick={onEdit}
+                  disabled={loading}
+                >
+                  <Edit3 className="h-4 w-4" />
+                  Editar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 gap-2"
+                  onClick={onGenerate}
+                  disabled={loading}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Gerar
+                </Button>
+                {canDelete ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    onClick={onDelete}
+                    disabled={loading}
+                    aria-label="Excluir NPC"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <span aria-hidden="true" />
+                )}
+              </div>
+
+              <Tabs defaultValue="narrativa" className="grid gap-4">
+                <TabsList variant="line" className="top-0 z-10 grid h-auto grid-cols-2 rounded-lg border bg-background/95 p- shadow-xs backdrop-blur">
+                  <TabsTrigger className={npcTabTriggerClass} value="narrativa">
+                    <ScrollText className="h-4 w-4" />
+                    Narrativa
+                  </TabsTrigger>
+                  <TabsTrigger className={npcTabTriggerClass} value="cena">
+                    <Eye className="h-4 w-4" />
+                    Cena
+                  </TabsTrigger>
+                  <TabsTrigger className={npcTabTriggerClass} value="motivacoes">
+                    <Target className="h-4 w-4" />
+                    Motivações
+                  </TabsTrigger>
+                  <TabsTrigger className={npcTabTriggerClass} value="perfil">
+                    <UserRoundPlus className="h-4 w-4" />
+                    Perfil
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="narrativa" className="mt-0">
+                  <LongTextReadout
+                    title="Descrição final"
+                    value={npc.descricao || npc.objetivoCampanha}
+                  />
+                </TabsContent>
+
+                <TabsContent value="cena" className="mt-0">
+                  <TextReadout
+                    items={[
+                      { icon: Eye, label: "Aparência", value: npc.aparencia },
+                      {
+                        icon: Briefcase,
+                        label: "Detalhe visual",
+                        value: npc.detalheVisual,
+                      },
+                      {
+                        icon: Users,
+                        label: "Relação com o grupo",
+                        value: npc.relacaoComGrupo,
+                      },
+                      {
+                        icon: MessageCircle,
+                        label: "Frase",
+                        value: npc.frase ? `“${npc.frase}”` : "",
+                      },
+                    ]}
+                  />
+                </TabsContent>
+
+                <TabsContent value="motivacoes" className="mt-0">
+                  <div className="grid gap-4">
+                    <NpcHighlights
+                      objetivo={npc.objetivoCampanha}
+                      gancho={npc.gancho}
+                      segredo={npc.segredo}
+                    />
+                    <TextReadout
+                      items={[
+                        {
+                          icon: Target,
+                          label: "Objetivo na campanha",
+                          value: npc.objetivoCampanha,
+                        },
+                        {
+                          icon: Sparkles,
+                          label: "Personalidade",
+                          value: npc.personalidade,
+                        },
+                        { icon: Shield, label: "Segredo", value: npc.segredo },
+                        { icon: BookOpen, label: "Gancho", value: npc.gancho },
+                      ]}
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="perfil" className="mt-0">
+                  <ProfileReadout
+                    rows={[
+                      { label: "Nome", value: npc.nome },
+                      { label: "Raça", value: npc.racaNome },
+                      {
+                        label: "Gênero",
+                        value: optionLabel(GENEROS, npc.genero ?? ""),
+                      },
+                      { label: "Classe", value: npc.classeNome || "Sem classe" },
+                      { label: "Profissão", value: npc.profissao },
+                      {
+                        label: "Importância",
+                        value: optionLabel(IMPORTANCIAS, npc.importancia ?? ""),
+                      },
+                      { label: "Tom", value: optionLabel(TONS, npc.tom ?? "") },
+                    ]}
+                  />
+                </TabsContent>
+              </Tabs>
+            </div>
+          ) : null}
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
+function NpcHighlights({
+  objetivo,
+  gancho,
+  segredo,
+}: {
+  objetivo?: ReactNode;
+  gancho?: ReactNode;
+  segredo?: ReactNode;
+}) {
+  return (
+    <div className="grid gap-3 md:grid-cols-3">
+      <HighlightCard
+        icon={Target}
+        label="Objetivo"
+        value={objetivo}
+        className="border-emerald-500/25 bg-emerald-50 text-emerald-950 dark:bg-emerald-500/8 dark:text-emerald-50"
+      />
+      <HighlightCard
+        icon={BookOpen}
+        label="Gancho"
+        value={gancho}
+        className="border-sky-500/25 bg-sky-50 text-sky-950 dark:bg-sky-500/8 dark:text-sky-50"
+      />
+      <HighlightCard
+        icon={Shield}
+        label="Segredo"
+        value={segredo}
+        className="border-amber-500/30 bg-amber-50 text-amber-950 dark:bg-amber-500/8 dark:text-amber-50"
+      />
+    </div>
+  );
+}
+
+function HighlightCard({
+  icon: Icon,
+  label,
+  value,
+  className,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("rounded-lg border p-3 shadow-xs", className)}>
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] opacity-80">
+        <Icon className="h-4 w-4" />
+        {label}
+      </div>
+      <p className="mt-2 line-clamp-3 text-sm leading-6">
+        {valueOrFallback(value)}
+      </p>
+    </div>
   );
 }
 
@@ -848,8 +1142,10 @@ function SavedNpcButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "group overflow-hidden rounded-lg border p-3 text-left transition hover:border-primary/40",
-        selected ? "border-primary/60 bg-primary/10" : "bg-card/70"
+        "group overflow-hidden rounded-lg border p-3 text-left shadow-xs transition hover:border-primary/40 hover:bg-accent/35",
+        selected
+          ? "border-primary/60 bg-primary/10 ring-1 ring-primary/15"
+          : "bg-card"
       )}
     >
       <div className="flex items-center gap-3">
@@ -1130,6 +1426,30 @@ function formFromNpc(npc: Partial<CampanhaNpcItem>): NpcForm {
   };
 }
 
+function drawerNpcFromForm(form: NpcForm): NpcDrawerData {
+  return {
+    nome: form.nome || "NPC gerado",
+    racaId: form.racaId ? Number(form.racaId) : null,
+    racaNome: form.racaNome,
+    genero: form.genero,
+    classeId: form.classeId ? Number(form.classeId) : null,
+    classeNome: form.classeNome,
+    profissao: form.profissao,
+    importancia: form.importancia,
+    tom: form.tom,
+    personalidade: form.personalidade,
+    aparencia: form.aparencia,
+    segredo: form.segredo,
+    objetivoCampanha: form.objetivoCampanha,
+    gancho: form.gancho,
+    frase: form.frase,
+    relacaoComGrupo: form.relacaoComGrupo,
+    detalheVisual: form.detalheVisual,
+    descricao: form.descricao,
+    dadosJson: form.dadosJson,
+  };
+}
+
 function payloadFromForm(form: NpcForm): CampaignNpcPayload {
   return {
     nome: form.nome,
@@ -1179,4 +1499,12 @@ function valueOrFallback(value?: ReactNode) {
   }
 
   return value || <span className="font-normal text-muted-foreground/70">A definir</span>;
+}
+
+function isNpcMobileViewport() {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(max-width: 1023px)").matches
+  );
 }

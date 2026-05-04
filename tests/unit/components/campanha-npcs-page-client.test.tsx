@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
@@ -43,6 +43,17 @@ vi.mock("sonner", () => ({
 
 vi.mock("@/services/campanhaApiService", () => serviceMocks);
 
+vi.mock("@/components/ui/drawer", () => ({
+  Drawer: ({ open, children }: { open?: boolean; children: ReactNode }) =>
+    open ? <>{children}</> : null,
+  DrawerContent: ({ children }: { children: ReactNode }) => (
+    <div role="dialog">{children}</div>
+  ),
+  DrawerDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
+  DrawerHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DrawerTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
+}));
+
 import { CampanhaNpcsPageClient } from "@/components/campanhas/campanha-npcs-page-client";
 
 const campanha = {
@@ -75,6 +86,14 @@ describe("CampanhaNpcsPageClient", () => {
         objetivoCampanha: "Guiar o grupo.",
       },
     });
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })
+    );
   });
 
   it("usa o service para gerar NPC e preencher a ficha em revisao", async () => {
@@ -97,7 +116,31 @@ describe("CampanhaNpcsPageClient", () => {
       expect(serviceMocks.gerarNpcCampanha).toHaveBeenCalledWith(4, {});
     });
 
-    expect(screen.getByRole("heading", { name: "Mira" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: "Mira" }).length).toBeGreaterThan(0);
     expect(toastMocks.success).toHaveBeenCalledWith("NPC gerado para revisão.");
+  });
+
+  it("abre drawer mobile ao gerar NPC e remove a aba de itens", async () => {
+    render(
+      <CampanhaNpcsPageClient
+        campanha={campanha}
+        npcs={[]}
+        racas={racas}
+        classes={classes}
+        estilosNarrativos={estilosNarrativos}
+        limite={50}
+        personagensCount={1}
+        inventarioCount={0}
+      />
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Gerar NPC" })[0]);
+
+    const drawer = await screen.findByRole("dialog");
+    expect(within(drawer).getByRole("tab", { name: /Narrativa/i })).toBeInTheDocument();
+    expect(within(drawer).getByRole("tab", { name: /Cena/i })).toBeInTheDocument();
+    expect(within(drawer).getByRole("tab", { name: /Motivações/i })).toBeInTheDocument();
+    expect(within(drawer).getByRole("tab", { name: /Perfil/i })).toBeInTheDocument();
+    expect(within(drawer).queryByRole("tab", { name: /Itens/i })).not.toBeInTheDocument();
   });
 });

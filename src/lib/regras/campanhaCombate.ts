@@ -3,6 +3,8 @@ import type { Prisma } from "@prisma/client";
 import type {
   CombateActionPayload,
   CombateParticipanteTipoValue,
+  CombatePersonagemSelectionState,
+  CombateThreatDraft,
 } from "@/types/combate";
 
 export class CampanhaCombateError extends Error {
@@ -63,6 +65,54 @@ function toNonNegativeInt(value: unknown) {
 
 export function parseCombateId(value: string) {
   return toPositiveInt(value);
+}
+
+export function validarFormularioCombate({
+  nome,
+  selectedPersonagens,
+  threatDrafts,
+  exigirIniciativaAmeacas,
+}: {
+  nome: string;
+  selectedPersonagens: CombatePersonagemSelectionState;
+  threatDrafts: CombateThreatDraft[];
+  exigirIniciativaAmeacas: boolean;
+}) {
+  const errors: string[] = [];
+  const personagens = Object.values(selectedPersonagens).filter(
+    (item) => item.selected
+  );
+
+  if (nome.trim().length < 2) {
+    errors.push("Informe o nome do combate.");
+  }
+
+  if (personagens.length + threatDrafts.length === 0) {
+    errors.push("Adicione pelo menos um personagem ou ameaça.");
+  }
+
+  if (
+    personagens.some(
+      (personagem) =>
+        personagem.iniciativa.trim() === "" ||
+        !Number.isInteger(Number(personagem.iniciativa))
+    )
+  ) {
+    errors.push("Informe a iniciativa de todos os personagens selecionados.");
+  }
+
+  if (
+    exigirIniciativaAmeacas &&
+    threatDrafts.some(
+      (ameaca) =>
+        ameaca.iniciativa.trim() === "" ||
+        !Number.isInteger(Number(ameaca.iniciativa))
+    )
+  ) {
+    errors.push("Informe a iniciativa de todas as ameaças adicionadas.");
+  }
+
+  return errors;
 }
 
 export function prepararAcaoCombate(body: unknown): CombateActionPayload {

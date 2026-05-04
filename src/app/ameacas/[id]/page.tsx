@@ -65,7 +65,7 @@ export default async function AmeacaDetailPage({ params }: PageParams) {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-background text-foreground">
+      <main className="relative isolate min-h-screen overflow-hidden bg-[radial-gradient(circle_at_12%_10%,rgba(239,68,68,0.11),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(20,184,166,0.1),transparent_24%),linear-gradient(180deg,#fff7ed_0%,var(--background)_32%,#fff_100%)] text-foreground dark:bg-background dark:bg-none">
         <section className="relative isolate overflow-hidden">
           <Image
             src="/imgs/backgrounds/ameacas2.jpg"
@@ -75,7 +75,7 @@ export default async function AmeacaDetailPage({ params }: PageParams) {
             aria-hidden="true"
             className="object-cover object-center"
           />
-          <div className="absolute inset-0 bg-linear-to-t from-background via-background/84 to-black/52 dark:from-black dark:via-black/76 dark:to-black/50" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/60 to-black/42 dark:from-black dark:via-black/76 dark:to-black/50" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(220,38,38,0.25),transparent_26%),radial-gradient(circle_at_82%_18%,rgba(20,184,166,0.18),transparent_24%),radial-gradient(circle_at_50%_86%,rgba(250,204,21,0.13),transparent_30%)]" />
 
           <div className="relative z-10 mx-auto max-w-7xl px-4 pb-10 pt-8 sm:px-6 lg:px-8">
@@ -137,7 +137,7 @@ export default async function AmeacaDetailPage({ params }: PageParams) {
               body={ameaca.narrativa}
             />
 
-            <article className="rounded-lg border border-border/70 bg-card/88 p-5 shadow-sm">
+            <article className="rounded-lg border border-red-950/10 bg-white/94 p-5 shadow-sm shadow-red-950/5 dark:border-border/70 dark:bg-card/88 dark:shadow-none">
               <div className="mb-4 flex items-center gap-2">
                 <Swords className="h-5 w-5 text-red-600 dark:text-red-300" />
                 <h2 className="text-xl font-semibold text-foreground">
@@ -149,7 +149,7 @@ export default async function AmeacaDetailPage({ params }: PageParams) {
                 {ameaca.golpes.map((golpe) => (
                   <div
                     key={golpe.nome}
-                    className="rounded-lg border border-border/70 bg-background/70 p-4"
+                    className="rounded-lg border border-red-950/10 bg-orange-50/70 p-4 shadow-xs dark:border-border/70 dark:bg-background/70"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -178,7 +178,7 @@ export default async function AmeacaDetailPage({ params }: PageParams) {
           </div>
 
           <aside className="grid gap-6 self-start lg:sticky lg:top-24">
-            <article className="rounded-lg border border-border/70 bg-card/88 p-5 shadow-sm">
+            <article className="rounded-lg border border-red-950/10 bg-white/94 p-5 shadow-sm shadow-red-950/5 dark:border-border/70 dark:bg-card/88 dark:shadow-none">
               <div className="mb-4 flex items-center gap-2">
                 <ShieldAlert className="h-5 w-5 text-red-600 dark:text-red-300" />
                 <h2 className="text-xl font-semibold text-foreground">Resumo</h2>
@@ -244,7 +244,7 @@ function InfoPanel({
   body: string;
 }) {
   return (
-    <article className="rounded-lg border border-border/70 bg-card/88 p-5 shadow-sm">
+    <article className="rounded-lg border border-red-950/10 bg-white/94 p-5 shadow-sm shadow-red-950/5 dark:border-border/70 dark:bg-card/88 dark:shadow-none">
       <div className="mb-3 flex items-center gap-2 text-red-600 dark:text-red-300">
         {icon}
         <h2 className="text-xl font-semibold text-foreground">{title}</h2>

@@ -23,25 +23,45 @@ type AppBreadcrumbProps = {
 
 export function AppBreadcrumb({ items, className }: AppBreadcrumbProps) {
   if (!items.length) return null;
+  const compactFromIndex = Math.max(items.length - 2, 0);
 
   return (
-    <Breadcrumb className={cn("mb-5", className)}>
-      <BreadcrumbList>
+    <Breadcrumb className={cn("mb-5 min-w-0", className)}>
+      <BreadcrumbList className="min-w-0 flex-nowrap overflow-hidden">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
+          const compactHidden = items.length > 2 && index < compactFromIndex;
 
           return (
             <Fragment key={`${item.label}-${index}`}>
-              <BreadcrumbItem>
+              <BreadcrumbItem
+                className={cn(
+                  "min-w-0 shrink-0",
+                  compactHidden && "hidden sm:inline-flex",
+                  isLast && "shrink min-w-0"
+                )}
+              >
                 {item.href && !isLast ? (
                   <BreadcrumbLink asChild>
-                    <Link href={item.href}>{item.label}</Link>
+                    <Link className="truncate" href={item.href}>
+                      {item.label}
+                    </Link>
                   </BreadcrumbLink>
                 ) : (
-                  <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                  <BreadcrumbPage className="block truncate">
+                    {item.label}
+                  </BreadcrumbPage>
                 )}
               </BreadcrumbItem>
-              {!isLast ? <BreadcrumbSeparator /> : null}
+              {!isLast ? (
+                <BreadcrumbSeparator
+                  className={cn(
+                    "shrink-0",
+                    (compactHidden || index + 1 < compactFromIndex) &&
+                      "hidden sm:inline-flex"
+                  )}
+                />
+              ) : null}
             </Fragment>
           );
         })}

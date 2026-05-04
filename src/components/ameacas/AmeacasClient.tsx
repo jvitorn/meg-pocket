@@ -106,9 +106,9 @@ export function AmeacasClient({ ameacas }: { ameacas: Ameaca[] }) {
   }
 
   return (
-    <section className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+    <section className="relative z-10 mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="min-w-0 rounded-lg border border-border/70 bg-card/88 p-4 shadow-sm backdrop-blur">
+        <div className="min-w-0 rounded-lg border border-red-950/10 bg-white/94 p-4 shadow-sm shadow-red-950/5 backdrop-blur dark:border-border/70 dark:bg-card/88 dark:shadow-none">
           <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_12rem_12rem]">
             <label className="relative block min-w-0">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -311,7 +311,7 @@ export function AmeacasClient({ ameacas }: { ameacas: Ameaca[] }) {
           </div>
         </div>
 
-        <div className="min-w-0 rounded-lg border border-border/70 bg-card/88 p-4 shadow-sm backdrop-blur">
+        <div className="min-w-0 rounded-lg border border-red-950/10 bg-white/94 p-4 shadow-sm shadow-red-950/5 backdrop-blur dark:border-border/70 dark:bg-card/88 dark:shadow-none">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -363,7 +363,7 @@ export function AmeacasClient({ ameacas }: { ameacas: Ameaca[] }) {
 
       <div className="mt-6">
         {filtered.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border/80 bg-card/70 p-6 text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed border-red-950/15 bg-white/88 p-6 text-sm text-muted-foreground shadow-sm dark:border-border/80 dark:bg-card/70">
             Nenhuma ameaça encontrada.
           </div>
         ) : viewMode === "cards" ? (
@@ -373,7 +373,7 @@ export function AmeacasClient({ ameacas }: { ameacas: Ameaca[] }) {
             ))}
           </div>
         ) : (
-          <div className="grid gap-3 md:block md:overflow-hidden md:rounded-lg md:border md:border-border/70 md:bg-card/80">
+          <div className="grid gap-3 md:block md:overflow-hidden md:rounded-lg md:border md:border-red-950/10 md:bg-white/90 md:shadow-sm md:shadow-red-950/5 dark:md:border-border/70 dark:md:bg-card/80 dark:md:shadow-none">
             {visible.map((ameaca, index) => (
               <AmeacaRow
                 key={ameaca.id}
@@ -470,7 +470,7 @@ function AmeacaCard({ ameaca }: { ameaca: Ameaca }) {
     <Link
       href={`/ameacas/${ameaca.id}`}
       aria-label={`Ver detalhes de ${ameaca.nome}`}
-      className="group relative flex h-full min-h-[27rem] flex-col overflow-hidden rounded-lg border border-border/70 bg-card/88 p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-red-300 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/35 dark:hover:border-red-500/40"
+      className="group relative flex h-full min-h-[27rem] flex-col overflow-hidden rounded-lg border border-red-950/10 bg-white/94 p-4 shadow-sm shadow-red-950/5 transition duration-200 hover:-translate-y-0.5 hover:border-red-300 hover:shadow-lg hover:shadow-red-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/35 dark:border-border/70 dark:bg-card/88 dark:shadow-none dark:hover:border-red-500/40"
     >
       <div className={cn("absolute inset-x-0 top-0 h-1", tipoConfig.surfaceClass)} />
       <div className="flex min-h-[6.25rem] items-start gap-3">
@@ -500,7 +500,7 @@ function AmeacaCard({ ameaca }: { ameaca: Ameaca }) {
         </div>
       </div>
 
-      <p className="mt-4 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-foreground/78">
+      <p className="mt-4 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-foreground/82 dark:text-foreground/78">
         {ameaca.descricao}
       </p>
 
@@ -555,7 +555,7 @@ function AmeacaRow({ ameaca, className }: { ameaca: Ameaca; className?: string }
       href={`/ameacas/${ameaca.id}`}
       aria-label={`Ver detalhes de ${ameaca.nome}`}
       className={cn(
-        "group grid gap-4 rounded-lg border border-border/70 bg-card/88 p-4 shadow-sm transition hover:bg-red-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/35 dark:hover:bg-red-500/[0.06] md:grid-cols-[minmax(0,1fr)_18rem_8rem] md:items-center md:rounded-none md:border-0 md:bg-transparent md:shadow-none",
+        "group grid gap-4 rounded-lg border border-red-950/10 bg-white/94 p-4 shadow-sm shadow-red-950/5 transition hover:bg-red-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/35 dark:border-border/70 dark:bg-card/88 dark:shadow-none dark:hover:bg-red-500/[0.06] md:grid-cols-[minmax(0,1fr)_18rem_8rem] md:items-center md:rounded-none md:border-0 md:bg-transparent md:shadow-none",
         className
       )}
     >

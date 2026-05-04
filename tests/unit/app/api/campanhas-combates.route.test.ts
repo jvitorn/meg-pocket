@@ -163,6 +163,82 @@ describe("rotas de combates da campanha", () => {
     );
   });
 
+  it("avança, volta e encerra turnos de combate em andamento", async () => {
+    mocks.combateFindFirst
+      .mockResolvedValueOnce({
+        id: 30,
+        status: "EM_ANDAMENTO",
+        rodadaAtual: 1,
+        turnoAtual: 1,
+        participantes: [
+          { id: 1, nome: "Orion", iniciativa: 14 },
+          { id: 2, nome: "Goblin 1", iniciativa: 8 },
+        ],
+      })
+      .mockResolvedValueOnce({
+        id: 30,
+        status: "EM_ANDAMENTO",
+        rodadaAtual: 2,
+        turnoAtual: 0,
+        participantes: [
+          { id: 1, nome: "Orion", iniciativa: 14 },
+          { id: 2, nome: "Goblin 1", iniciativa: 8 },
+        ],
+      })
+      .mockResolvedValueOnce({
+        id: 30,
+        status: "EM_ANDAMENTO",
+        rodadaAtual: 2,
+        turnoAtual: 1,
+        participantes: [
+          { id: 1, nome: "Orion", iniciativa: 14 },
+          { id: 2, nome: "Goblin 1", iniciativa: 8 },
+        ],
+      });
+    mocks.combateUpdate.mockResolvedValue({});
+
+    await updateCombat(
+      jsonRequest(
+        "http://localhost:3000/api/campanhas/4/combates/30",
+        { action: "proximo" },
+        "PATCH"
+      ),
+      { params: Promise.resolve({ id: "4", combateId: "30" }) }
+    );
+    await updateCombat(
+      jsonRequest(
+        "http://localhost:3000/api/campanhas/4/combates/30",
+        { action: "voltar" },
+        "PATCH"
+      ),
+      { params: Promise.resolve({ id: "4", combateId: "30" }) }
+    );
+    await updateCombat(
+      jsonRequest(
+        "http://localhost:3000/api/campanhas/4/combates/30",
+        { action: "encerrar" },
+        "PATCH"
+      ),
+      { params: Promise.resolve({ id: "4", combateId: "30" }) }
+    );
+
+    expect(mocks.combateUpdate).toHaveBeenNthCalledWith(1, {
+      where: { id: 30 },
+      data: { turnoAtual: 0, rodadaAtual: 2 },
+    });
+    expect(mocks.combateUpdate).toHaveBeenNthCalledWith(2, {
+      where: { id: 30 },
+      data: { turnoAtual: 1, rodadaAtual: 1 },
+    });
+    expect(mocks.combateUpdate).toHaveBeenNthCalledWith(3, {
+      where: { id: 30 },
+      data: expect.objectContaining({
+        status: "ENCERRADO",
+        endedAt: expect.any(Date),
+      }),
+    });
+  });
+
   it("exclui combate da campanha do mestre", async () => {
     mocks.combateFindFirst.mockResolvedValue({ id: 30 });
     mocks.combateDelete.mockResolvedValue({});

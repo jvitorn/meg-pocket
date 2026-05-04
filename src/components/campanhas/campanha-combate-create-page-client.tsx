@@ -11,19 +11,15 @@ import { EscudoLayoutShell } from "@/components/campanhas/escudo-layout-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { validarFormularioCombate } from "@/lib/regras/campanhaCombate";
 import { criarCombateCampanha } from "@/services/campanhaApiService";
 import type {
   CampanhaInfo,
   CombateCatalogoAmeaca,
   CombateCatalogoPersonagem,
+  CombatePersonagemSelectionState,
+  CombateThreatDraft,
 } from "@/types";
-
-type ThreatDraft = {
-  tempId: string;
-  ameacaId: number;
-  nome: string;
-  iniciativa: string;
-};
 
 type Props = {
   campanha: CampanhaInfo;
@@ -33,6 +29,7 @@ type Props = {
   inventarioCount: number;
   npcsCount: number;
   combatesCount: number;
+  bestiarioCount?: number;
 };
 
 export function CampanhaCombateCreatePageClient({
@@ -43,6 +40,7 @@ export function CampanhaCombateCreatePageClient({
   inventarioCount,
   npcsCount,
   combatesCount,
+  bestiarioCount = 0,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -52,10 +50,9 @@ export function CampanhaCombateCreatePageClient({
   const [visible, setVisible] = useState(10);
   const [selectedThreatId, setSelectedThreatId] = useState(ameacas[0]?.id ?? 0);
   const [quantity, setQuantity] = useState("1");
-  const [threatDrafts, setThreatDrafts] = useState<ThreatDraft[]>([]);
-  const [selectedPersonagens, setSelectedPersonagens] = useState<
-    Record<number, { selected: boolean; iniciativa: string }>
-  >({});
+  const [threatDrafts, setThreatDrafts] = useState<CombateThreatDraft[]>([]);
+  const [selectedPersonagens, setSelectedPersonagens] =
+    useState<CombatePersonagemSelectionState>({});
   const [errors, setErrors] = useState<string[]>([]);
 
   const filteredThreats = useMemo(() => {
@@ -114,7 +111,12 @@ export function CampanhaCombateCreatePageClient({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const nextErrors = validateCombatForm(nome, selectedPersonagens, threatDrafts);
+    const nextErrors = validarFormularioCombate({
+      nome,
+      selectedPersonagens,
+      threatDrafts,
+      exigirIniciativaAmeacas: false,
+    });
     setErrors(nextErrors);
 
     if (nextErrors.length > 0) {
@@ -156,9 +158,10 @@ export function CampanhaCombateCreatePageClient({
       inventarioCount={inventarioCount}
       npcsCount={npcsCount}
       combatesCount={combatesCount}
+      bestiarioCount={bestiarioCount}
     >
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-2 py-6 sm:px-4 sm:py-8">
-        <section className="overflow-hidden rounded-lg border bg-card/70">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-3 py-5 sm:px-4 sm:py-8">
+        <section className="overflow-hidden rounded-lg border border-border/70 bg-card shadow-sm">
           <CampanhaSectionHeader
             icon={Swords}
             eyebrow="Preparação"
@@ -184,12 +187,12 @@ export function CampanhaCombateCreatePageClient({
                 </div>
               ) : null}
 
-              <label className="grid gap-2 rounded-lg border bg-background/75 p-4">
+              <label className="grid gap-2 rounded-lg border border-border/70 bg-background p-4 shadow-xs">
                 <span className="text-sm font-medium">Nome do combate</span>
                 <Input value={nome} onChange={(event) => setNome(event.target.value)} placeholder="Emboscada na estrada" />
               </label>
 
-              <section className="grid gap-3 rounded-lg border bg-background/75 p-4">
+              <section className="grid gap-3 rounded-lg border border-border/70 bg-background p-4 shadow-xs">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
                   <h2 className="font-semibold">Personagens</h2>
@@ -199,7 +202,7 @@ export function CampanhaCombateCreatePageClient({
                     const state = selectedPersonagens[personagem.id];
                     const selected = Boolean(state?.selected);
                     return (
-                      <div key={personagem.id} className={cn("grid gap-2 rounded-lg border p-3", selected ? "border-primary/45 bg-primary/5" : "bg-card/70")}>
+                      <div key={personagem.id} className={cn("grid gap-2 rounded-lg border p-3 shadow-xs", selected ? "border-primary/45 bg-primary/5 ring-1 ring-primary/15" : "bg-card")}>
                         <label className="flex items-center gap-3">
                           <input type="checkbox" checked={selected} onChange={() => togglePersonagem(personagem.id)} />
                           <span className="min-w-0">
@@ -226,11 +229,11 @@ export function CampanhaCombateCreatePageClient({
                 </div>
               </section>
 
-              <section className="grid gap-3 rounded-lg border bg-background/75 p-4">
+              <section className="grid gap-3 rounded-lg border border-border/70 bg-background p-4 shadow-xs">
                 <h2 className="font-semibold">Participantes adicionados</h2>
                 <div className="grid gap-2">
                   {threatDrafts.map((draft, index) => (
-                    <div key={draft.tempId} className="grid gap-2 rounded-lg border bg-card/70 p-3">
+                    <div key={draft.tempId} className="grid gap-2 rounded-lg border bg-card p-3 shadow-xs">
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="font-medium">{draft.nome} {index + 1}</p>
@@ -276,7 +279,7 @@ export function CampanhaCombateCreatePageClient({
                     setQuery(event.target.value);
                     setVisible(10);
                   }}
-                  placeholder="Buscar por nome, tipo, função ou golpe..."
+                  placeholder="Buscar por nome, função, elemento ou golpe..."
                   className="h-10 w-full rounded-md border border-red-300/20 bg-black/35 pl-10 pr-3 text-sm outline-none placeholder:text-red-100/50 focus:border-red-300/70 focus:ring-2 focus:ring-red-500/25"
                 />
               </label>
@@ -338,12 +341,11 @@ function ThreatCard({
             <h3 className="truncate font-semibold">{ameaca.nome}</h3>
             <span className="rounded-md border border-red-200/25 bg-black/25 px-2 py-0.5 text-xs text-red-50/85">VA {formatVa(ameaca.va)}</span>
           </div>
-          <p className="mt-1 text-sm text-red-50/80">{ameaca.tipo} · {ameaca.elemento} · {ameaca.funcao}</p>
-          <div className="mt-3 grid gap-2 text-xs text-red-50/75 sm:grid-cols-4">
+          <p className="mt-1 text-sm text-red-50/80">{ameaca.elemento} · {ameaca.funcao}</p>
+          <div className="mt-3 grid gap-2 text-xs text-red-50/75 sm:grid-cols-3">
             <span>PV {ameaca.pv}</span>
             <span>Mana {ameaca.mana}</span>
             <span>Defesa {ameaca.defesa}</span>
-            <span>Dano {ameaca.danoBase}</span>
           </div>
           <p className="mt-2 line-clamp-2 text-xs leading-5 text-red-50/60">{ameaca.descricao}</p>
         </button>
@@ -354,21 +356,6 @@ function ThreatCard({
       </div>
     </article>
   );
-}
-
-function validateCombatForm(
-  nome: string,
-  selectedPersonagens: Record<number, { selected: boolean; iniciativa: string }>,
-  threatDrafts: ThreatDraft[]
-) {
-  const errors: string[] = [];
-  const personagens = Object.values(selectedPersonagens).filter((item) => item.selected);
-  if (nome.trim().length < 2) errors.push("Informe o nome do combate.");
-  if (personagens.length + threatDrafts.length === 0) errors.push("Adicione pelo menos um personagem ou ameaça.");
-  if (personagens.some((item) => item.iniciativa.trim() === "" || !Number.isInteger(Number(item.iniciativa)))) {
-    errors.push("Informe a iniciativa de todos os personagens selecionados.");
-  }
-  return errors;
 }
 
 function normalizeSearch(value: string) {

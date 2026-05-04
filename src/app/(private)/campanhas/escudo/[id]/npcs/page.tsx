@@ -34,7 +34,7 @@ export default async function CampanhaNpcsPage({
     return <SimpleState title="Acesso restrito" description={permissao.error} />;
   }
 
-  const [campanha, racas, classes, estilosNarrativos] = await prisma.$transaction([
+  const [campanha, racas, classes, estilosNarrativos, bestiarioCount] = await prisma.$transaction([
     prisma.campanha.findUnique({
       where: { id: campanhaId },
       include: {
@@ -71,6 +71,7 @@ export default async function CampanhaNpcsPage({
         descricao: true,
       },
     }),
+    prisma.ameaca.count(),
   ]);
 
   if (!campanha) {
@@ -125,6 +126,7 @@ export default async function CampanhaNpcsPage({
       personagensCount={campanha.personagens.length}
       inventarioCount={inventarioCount}
       combatesCount={campanha._count.combates}
+      bestiarioCount={bestiarioCount}
     />
   );
 }

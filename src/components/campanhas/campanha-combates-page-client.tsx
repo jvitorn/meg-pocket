@@ -29,6 +29,7 @@ import { toast } from "sonner";
 
 import { CampanhaSectionHeader } from "@/components/campanhas/campanha-section-header";
 import { EscudoLayoutShell } from "@/components/campanhas/escudo-layout-shell";
+import { ReactiveSlotsPanel } from "@/components/personagens/ficha/ReactiveSlotsPanel";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -47,6 +48,7 @@ import {
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { validarFormularioCombate } from "@/lib/regras/campanhaCombate";
 import {
   criarCombateCampanha,
   executarAcaoCombateCampanha,
@@ -58,6 +60,8 @@ import type {
   CombateCatalogoPersonagem,
   CombateDetail,
   CombateParticipanteView,
+  CombatePersonagemSelectionState,
+  CombateThreatDraft,
 } from "@/types";
 
 type Props = {
@@ -68,13 +72,7 @@ type Props = {
   personagensCount: number;
   inventarioCount: number;
   npcsCount: number;
-};
-
-type ThreatDraft = {
-  tempId: string;
-  ameacaId: number;
-  nome: string;
-  iniciativa: string;
+  bestiarioCount?: number;
 };
 
 const STATUS_LABEL = {
@@ -82,6 +80,9 @@ const STATUS_LABEL = {
   EM_ANDAMENTO: "Em andamento",
   ENCERRADO: "Encerrado",
 } as const;
+
+type CombatTurnAction = "iniciar" | "proximo" | "voltar" | "encerrar";
+type CombatMobileTab = "turno" | "ordem" | "acoes";
 
 export function CampanhaCombatesPageClient({
   campanha,
@@ -91,6 +92,7 @@ export function CampanhaCombatesPageClient({
   personagensCount,
   inventarioCount,
   npcsCount,
+  bestiarioCount = 0,
 }: Props) {
   const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
@@ -106,14 +108,13 @@ export function CampanhaCombatesPageClient({
   );
   const [formName, setFormName] = useState("");
   const [formErrors, setFormErrors] = useState<string[]>([]);
-  const [selectedPersonagens, setSelectedPersonagens] = useState<
-    Record<number, { selected: boolean; iniciativa: string }>
-  >({});
+  const [selectedPersonagens, setSelectedPersonagens] =
+    useState<CombatePersonagemSelectionState>({});
   const [selectedThreatId, setSelectedThreatId] = useState(
     ameacas[0]?.id ? String(ameacas[0].id) : ""
   );
   const [threatQuantity, setThreatQuantity] = useState("1");
-  const [threatDrafts, setThreatDrafts] = useState<ThreatDraft[]>([]);
+  const [threatDrafts, setThreatDrafts] = useState<CombateThreatDraft[]>([]);
 
   const selectedCombat = useMemo(
     () => combates.find((combate) => combate.id === combatId) ?? null,
@@ -230,10 +231,11 @@ export function CampanhaCombatesPageClient({
 
   async function createCombat(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const errors = validateCombatForm({
+    const errors = validarFormularioCombate({
       nome: formName,
       selectedPersonagens,
       threatDrafts,
+      exigirIniciativaAmeacas: true,
     });
 
     if (errors.length > 0) {
@@ -274,7 +276,7 @@ export function CampanhaCombatesPageClient({
 
   async function runAction(
     combate: CombateDetail,
-    action: "iniciar" | "proximo" | "voltar" | "encerrar"
+    action: CombatTurnAction
   ) {
     setLoading(true);
 
@@ -399,9 +401,10 @@ export function CampanhaCombatesPageClient({
       inventarioCount={inventarioCount}
       npcsCount={npcsCount}
       combatesCount={combates.length}
+      bestiarioCount={bestiarioCount}
     >
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-2 py-6 sm:px-4 sm:py-8">
-        <section className="overflow-hidden rounded-lg border bg-card/70">
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-3 py-5 sm:gap-6 sm:px-4 sm:py-8">
+        <section className="overflow-hidden rounded-lg border border-border/70 bg-card/75 shadow-sm">
           <CampanhaSectionHeader
             icon={Swords}
             eyebrow="Encontros"
@@ -423,15 +426,26 @@ export function CampanhaCombatesPageClient({
             }
           />
 
-          <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)]">
+          <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[minmax(18rem,0.82fr)_minmax(0,1.38fr)]">
             <section className="grid content-start gap-3">
+              <div className="rounded-lg border border-border/70 bg-background p-3 shadow-xs">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Resumo
+                </p>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                  <DetailStat label="Total" value={combates.length} compact />
+                  <DetailStat label="Ativos" value={activeCombates} compact />
+                  <DetailStat label="VA" value={formatVa(totalVa)} compact />
+                </div>
+              </div>
+
               {combates.map((combate) => (
                 <article
                   key={combate.id}
                   className={cn(
-                    "cursor-pointer rounded-lg border bg-background/75 p-4 transition",
+                    "cursor-pointer rounded-lg border bg-background p-4 shadow-xs transition hover:border-primary/35 hover:bg-accent/35",
                     combate.id === selectedCombat?.id
-                      ? "border-primary/50 shadow-sm"
+                      ? "border-primary/60 bg-primary/5 shadow-sm ring-1 ring-primary/15"
                       : "hover:border-primary/30"
                   )}
                   onClick={() => setCombatId(combate.id)}
@@ -546,12 +560,12 @@ export function CampanhaCombatesPageClient({
       />
 
       <Drawer open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DrawerContent className="max-h-[92vh] overflow-y-auto">
-          <DrawerHeader>
+        <DrawerContent className="h-[92svh] max-h-[92svh] overflow-hidden">
+          <DrawerHeader className="shrink-0 border-b bg-card/80 text-left">
             <DrawerTitle>{selectedParticipant?.nome ?? "Participante"}</DrawerTitle>
             <DrawerDescription>Consulta rápida do combate.</DrawerDescription>
           </DrawerHeader>
-          <div className="px-4 pb-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           {selectedParticipant ? (
             <ParticipantDetails
               key={`${selectedParticipant.id}-${selectedParticipant.hp}-${selectedParticipant.mana}`}
@@ -582,7 +596,7 @@ function CombatMode({
   selectedParticipant: CombateParticipanteView | null;
   currentParticipant: CombateParticipanteView | null;
   loading: boolean;
-  onAction: (action: "iniciar" | "proximo" | "voltar" | "encerrar") => void;
+  onAction: (action: CombatTurnAction) => void;
   onSelectParticipant: (participant: CombateParticipanteView) => void;
   onUpdateThreat: (
     participant: CombateParticipanteView,
@@ -595,110 +609,126 @@ function CombatMode({
     tipo?: "bloqueio" | "esquiva" | "contra"
   ) => void;
 }) {
+  const [mobileTab, setMobileTab] = useState<CombatMobileTab>("turno");
+
   return (
-    <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
-      <article className="min-w-0 rounded-lg border bg-background/75">
-        <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+    <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
+      <article className="min-w-0 overflow-hidden rounded-lg border border-border/70 bg-background shadow-xs">
+        <div className="flex flex-col gap-3 border-b bg-card/55 p-3 sm:p-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
             <h3 className="text-lg font-semibold">{combate.nome}</h3>
             <p className="text-sm text-muted-foreground">
               {STATUS_LABEL[combate.status]} · Rodada {combate.rodadaAtual} · VA {formatVa(combate.vaTotal)}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {combate.status === "RASCUNHO" ? (
-              <Button
-                type="button"
-                size="sm"
-                className="gap-2"
-                disabled={loading}
-                onClick={() => onAction("iniciar")}
-              >
-                <Play className="h-4 w-4" />
-                Iniciar
-              </Button>
-            ) : null}
-            {combate.status === "EM_ANDAMENTO" ? (
-              <>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="gap-2"
-                  disabled={loading}
-                  onClick={() => onAction("voltar")}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Voltar
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="gap-2"
-                  disabled={loading}
-                  onClick={() => onAction("proximo")}
-                >
-                  Próximo
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={loading}
-                  onClick={() => onAction("encerrar")}
-                >
-                  Encerrar
-                </Button>
-              </>
-            ) : null}
-          </div>
+          <CombatTurnActions
+            className="hidden md:flex md:flex-wrap"
+            combate={combate}
+            loading={loading}
+            onAction={onAction}
+          />
         </div>
 
-        <div className="grid gap-2 p-3">
+        <div
+          className={cn(
+            "grid gap-3 border-b bg-muted/25 p-3",
+            mobileTab !== "turno" && "hidden md:grid"
+          )}
+        >
+          <CurrentTurnCard
+            combate={combate}
+            participant={currentParticipant}
+            onSelectParticipant={onSelectParticipant}
+          />
+        </div>
+
+        <div
+          className={cn(
+            "grid gap-2 p-2 sm:p-3",
+            mobileTab !== "ordem" && "hidden md:grid"
+          )}
+        >
           {combate.participantes.map((participant, index) => {
             const isActive =
               combate.status === "EM_ANDAMENTO" &&
               currentParticipant?.id === participant.id;
+            const isSelected = selectedParticipant?.id === participant.id;
+            const Icon = participant.tipo === "AMEACA" ? Skull : Users;
 
             return (
               <button
                 key={participant.id}
                 type="button"
                 className={cn(
-                  "grid min-h-16 grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-3 rounded-lg border p-3 text-left transition hover:border-primary/40",
+                  "grid min-h-18 grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-3 rounded-lg border bg-card/75 p-3 text-left transition hover:border-primary/40 hover:bg-accent/35 sm:grid-cols-[2.5rem_minmax(0,1fr)]",
                   isActive
-                    ? "border-primary bg-primary/10 shadow-sm"
+                    ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/20"
                     : participant.tipo === "AMEACA"
-                      ? "border-red-500/25 bg-red-950/10 hover:border-red-400/45"
-                      : "bg-card/60"
+                      ? "border-red-500/30 bg-red-50/70 hover:border-red-500/45 dark:bg-red-950/10"
+                      : "border-border/70",
+                  isSelected && !isActive
+                    ? "border-primary/45 ring-1 ring-primary/15"
+                    : ""
                 )}
                 onClick={() => onSelectParticipant(participant)}
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-md border bg-background text-sm font-semibold">
-                  {index + 1}
+                <span className="relative flex h-9 w-9 items-center justify-center rounded-md border bg-background text-sm font-semibold">
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border bg-card px-1 text-[10px] leading-none">
+                    {index + 1}
+                  </span>
                 </span>
                 <span className="min-w-0">
                   <span className="flex flex-wrap items-center justify-between gap-2">
                     <span className="truncate font-medium">{participant.nome}</span>
-                    <span className="rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground">
-                      Iniciativa {participant.iniciativa}
+                    <span className="flex flex-wrap gap-1.5">
+                      {isActive ? (
+                        <span className="rounded-md border border-primary/35 bg-primary/12 px-2 py-1 text-xs font-medium text-primary">
+                          Turno atual
+                        </span>
+                      ) : null}
+                      <span className="rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground">
+                        Iniciativa {participant.iniciativa}
+                      </span>
                     </span>
                   </span>
-                  <span className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-4">
+                  <span className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
                     <InlineStat icon={<HeartPulse className="h-3.5 w-3.5" />} label="PV" value={participant.hp ?? "-"} />
                     <InlineStat icon={<Zap className="h-3.5 w-3.5" />} label="Mana" value={participant.mana ?? "-"} />
                     <InlineStat icon={<Shield className="h-3.5 w-3.5" />} label="Defesa" value={participant.defesa ?? "-"} />
-                    <InlineStat icon={participant.tipo === "AMEACA" ? <Skull className="h-3.5 w-3.5" /> : <Users className="h-3.5 w-3.5" />} label="Tipo" value={participant.tipo === "AMEACA" ? "Ameaça" : "Personagem"} />
                   </span>
                 </span>
               </button>
             );
           })}
         </div>
+
+        <div
+          className={cn(
+            "grid gap-3 border-t bg-muted/20 p-3 md:hidden",
+            mobileTab !== "acoes" && "hidden"
+          )}
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Ações de turno
+          </p>
+          <CombatTurnActions
+            className="grid grid-cols-2 gap-2"
+            combate={combate}
+            loading={loading}
+            onAction={onAction}
+          />
+        </div>
+
+        <div className="h-20 md:hidden" aria-hidden="true" />
+        <CombatBottomNav
+          activeTab={mobileTab}
+          onTabChange={setMobileTab}
+          disabled={loading}
+        />
       </article>
 
-      <aside className="hidden self-start rounded-lg border bg-background/75 p-4 xl:block xl:sticky xl:top-24">
+      <aside className="hidden self-start rounded-lg border border-border/70 bg-background p-4 shadow-xs xl:sticky xl:top-24 xl:block xl:max-h-[calc(100svh-7rem)] xl:overflow-y-auto">
         {selectedParticipant ? (
           <ParticipantDetails
             key={`${selectedParticipant.id}-${selectedParticipant.hp}-${selectedParticipant.mana}`}
@@ -714,6 +744,185 @@ function CombatMode({
         )}
       </aside>
     </div>
+  );
+}
+
+function CombatTurnActions({
+  combate,
+  loading,
+  onAction,
+  className,
+}: {
+  combate: CombateDetail;
+  loading: boolean;
+  onAction: (action: CombatTurnAction) => void;
+  className?: string;
+}) {
+  if (combate.status === "RASCUNHO") {
+    return (
+      <div className={cn("gap-2", className)}>
+        <Button
+          type="button"
+          size="sm"
+          className="gap-2"
+          disabled={loading}
+          onClick={() => onAction("iniciar")}
+        >
+          <Play className="h-4 w-4" />
+          Iniciar
+        </Button>
+      </div>
+    );
+  }
+
+  if (combate.status !== "EM_ANDAMENTO") {
+    return null;
+  }
+
+  return (
+    <div className={cn("gap-2", className)}>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="gap-2"
+        disabled={loading}
+        onClick={() => onAction("voltar")}
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Voltar
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        className="gap-2"
+        disabled={loading}
+        onClick={() => onAction("proximo")}
+      >
+        Próximo
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="col-span-2"
+        disabled={loading}
+        onClick={() => onAction("encerrar")}
+      >
+        Encerrar
+      </Button>
+    </div>
+  );
+}
+
+function CombatBottomNav({
+  activeTab,
+  disabled,
+  onTabChange,
+}: {
+  activeTab: CombatMobileTab;
+  disabled: boolean;
+  onTabChange: (tab: CombatMobileTab) => void;
+}) {
+  const items: Array<{
+    value: CombatMobileTab;
+    label: string;
+    icon: typeof Swords;
+  }> = [
+    { value: "turno", label: "Turno", icon: Swords },
+    { value: "ordem", label: "Ordem", icon: Users },
+    { value: "acoes", label: "Ações", icon: Shield },
+  ];
+
+  return (
+    <nav
+      aria-label="Navegação do combate"
+      className="fixed inset-x-3 bottom-3 z-40 mx-auto grid max-w-md grid-cols-3 gap-1 rounded-2xl border border-border/70 bg-background/94 p-1.5 shadow-2xl shadow-black/20 backdrop-blur md:hidden"
+    >
+      {items.map((item) => {
+        const Icon = item.icon;
+        const active = activeTab === item.value;
+
+        return (
+          <button
+            key={item.value}
+            type="button"
+            aria-pressed={active}
+            disabled={disabled}
+            onClick={() => onTabChange(item.value)}
+            className={cn(
+              "flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl px-2 text-[11px] font-semibold transition disabled:opacity-60",
+              active
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Icon className="h-4 w-4" />
+            {item.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+function CurrentTurnCard({
+  combate,
+  participant,
+  onSelectParticipant,
+}: {
+  combate: CombateDetail;
+  participant: CombateParticipanteView | null;
+  onSelectParticipant: (participant: CombateParticipanteView) => void;
+}) {
+  if (combate.status !== "EM_ANDAMENTO" || !participant) {
+    return (
+      <div className="rounded-lg border border-dashed bg-background/80 p-4 text-sm text-muted-foreground">
+        {combate.status === "RASCUNHO"
+          ? "Inicie o combate para destacar o turno atual."
+          : "Combate encerrado. Consulte os participantes abaixo."}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="group grid gap-3 rounded-lg border border-primary/35 bg-primary/10 p-4 text-left shadow-xs transition hover:border-primary/55 hover:bg-primary/15 dark:bg-primary/12"
+      onClick={() => onSelectParticipant(participant)}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            Turno atual
+          </p>
+          <h4 className="mt-1 truncate text-lg font-semibold text-foreground">
+            {participant.nome}
+          </h4>
+        </div>
+        <span className="rounded-md border border-primary/35 bg-background px-2.5 py-1 text-xs font-medium text-primary">
+          Rodada {combate.rodadaAtual}
+        </span>
+      </div>
+      <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+        <InlineStat
+          icon={<HeartPulse className="h-3.5 w-3.5" />}
+          label="PV"
+          value={participant.hp ?? "-"}
+        />
+        <InlineStat
+          icon={<Zap className="h-3.5 w-3.5" />}
+          label="Mana"
+          value={participant.mana ?? "-"}
+        />
+        <InlineStat
+          icon={<Shield className="h-3.5 w-3.5" />}
+          label="Defesa"
+          value={participant.defesa ?? "-"}
+        />
+      </div>
+    </button>
   );
 }
 
@@ -738,6 +947,32 @@ function ParticipantDetails({
 }) {
   const [hpAtual, setHpAtual] = useState(String(participant.hp ?? 0));
   const [manaAtual, setManaAtual] = useState(String(participant.mana ?? 0));
+  const threatReactionRows =
+    participant.detalhe.tipo === "AMEACA"
+      ? [
+          {
+            tipo: "esquiva" as const,
+            usados: participant.detalhe.reacoesUsadas.esquiva,
+            limite: participant.detalhe.reacoes.esquiva,
+            onUse: () =>
+              onThreatReaction(participant, "usar_reacao_ameaca", "esquiva"),
+          },
+          {
+            tipo: "bloqueio" as const,
+            usados: participant.detalhe.reacoesUsadas.bloqueio,
+            limite: participant.detalhe.reacoes.bloqueio,
+            onUse: () =>
+              onThreatReaction(participant, "usar_reacao_ameaca", "bloqueio"),
+          },
+          {
+            tipo: "contra" as const,
+            usados: participant.detalhe.reacoesUsadas.contraAtaque,
+            limite: participant.detalhe.reacoes.contraAtaque,
+            onUse: () =>
+              onThreatReaction(participant, "usar_reacao_ameaca", "contra"),
+          },
+        ]
+      : [];
 
   function saveThreatValues(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -756,7 +991,7 @@ function ParticipantDetails({
     <div className="grid gap-4">
       <div>
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          {participant.tipo === "AMEACA" ? "Ameaça" : "Personagem"}
+          Participante
         </p>
         <h3 className="mt-1 text-lg font-semibold">{participant.nome}</h3>
       </div>
@@ -767,7 +1002,7 @@ function ParticipantDetails({
         <DetailStat label="Defesa" value={participant.defesa ?? "-"} />
       </div>
 
-      <div className="space-y-3 rounded-lg border bg-card/70 p-3">
+      <div className="space-y-3 rounded-lg border bg-card p-3 shadow-xs">
         <ResourceBar
           label="Vida"
           value={participant.hp ?? 0}
@@ -821,61 +1056,27 @@ function ParticipantDetails({
               Salvar PV e mana
             </Button>
           </form>
-          <div className="rounded-lg border bg-card/70 p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-sm font-medium">Reações</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Slots reativos desta ameaça no combate.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={loading}
-                onClick={() =>
-                  onThreatReaction(participant, "resetar_reacoes_ameaca")
-                }
-              >
-                Resetar
-              </Button>
-            </div>
-            <div className="mt-3 grid gap-3">
-              <ThreatReactionRow
-                label="Esquiva"
-                used={participant.detalhe.reacoesUsadas.esquiva}
-                limit={participant.detalhe.reacoes.esquiva}
-                disabled={loading}
-                onUse={() =>
-                  onThreatReaction(participant, "usar_reacao_ameaca", "esquiva")
-                }
-              />
-              <ThreatReactionRow
-                label="Bloqueio"
-                used={participant.detalhe.reacoesUsadas.bloqueio}
-                limit={participant.detalhe.reacoes.bloqueio}
-                disabled={loading}
-                onUse={() =>
-                  onThreatReaction(participant, "usar_reacao_ameaca", "bloqueio")
-                }
-              />
-              <ThreatReactionRow
-                label="Contra"
-                used={participant.detalhe.reacoesUsadas.contraAtaque}
-                limit={participant.detalhe.reacoes.contraAtaque}
-                disabled={loading}
-                onUse={() =>
-                  onThreatReaction(participant, "usar_reacao_ameaca", "contra")
-                }
-              />
-            </div>
-          </div>
+          <ReactiveSlotsPanel
+            title="Reações"
+            description="Slots reativos desta ameaça no combate."
+            rows={threatReactionRows}
+            canEdit
+            disabled={loading}
+            hideUnavailable
+            onReset={() =>
+              onThreatReaction(participant, "resetar_reacoes_ameaca")
+            }
+            emptyState={
+              <p className="rounded-lg border border-dashed bg-card p-4 text-sm text-muted-foreground shadow-xs">
+                Esta ameaça não possui slots de reação.
+              </p>
+            }
+          />
           <div>
             <p className="mb-2 text-sm font-medium">Golpes</p>
             <div className="grid gap-2">
               {participant.detalhe.golpes.map((golpe) => (
-                <div key={golpe.nome} className="rounded-lg border bg-card/70 p-3">
+                <div key={golpe.nome} className="rounded-lg border bg-card p-3 shadow-xs">
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium">{golpe.nome}</p>
                     {golpe.custoMana ? (
@@ -894,7 +1095,7 @@ function ParticipantDetails({
         </>
       ) : (
         <>
-          <div className="rounded-lg border bg-card/70 p-3">
+          <div className="rounded-lg border bg-card p-3 shadow-xs">
             <p className="text-sm font-medium">Slots defensivos</p>
             <p className="mt-2 text-sm text-muted-foreground">
               Esquiva {participant.detalhe.slotsDefensivos?.esquivaUsada ?? 0} ·
@@ -907,7 +1108,7 @@ function ParticipantDetails({
             <p className="mb-2 text-sm font-medium">Magias</p>
             <div className="grid gap-2">
               {participant.detalhe.magias.map((magia) => (
-                <div key={magia.nome} className="rounded-lg border bg-card/70 p-3">
+                <div key={magia.nome} className="rounded-lg border bg-card p-3 shadow-xs">
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium">{magia.nome}</p>
                     {magia.custo_nivel ? (
@@ -961,10 +1162,10 @@ function CreateCombatDialog({
   personagens: CombateCatalogoPersonagem[];
   ameacas: CombateCatalogoAmeaca[];
   formName: string;
-  selectedPersonagens: Record<number, { selected: boolean; iniciativa: string }>;
+  selectedPersonagens: CombatePersonagemSelectionState;
   selectedThreatId: string;
   threatQuantity: string;
-  threatDrafts: ThreatDraft[];
+  threatDrafts: CombateThreatDraft[];
   errors: string[];
   onOpenChange: (open: boolean) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -1048,7 +1249,7 @@ function CreateCombatDialog({
                   <div
                     key={personagem.id}
                     className={cn(
-                      "grid gap-3 rounded-lg border bg-card/70 p-3",
+                      "grid gap-3 rounded-lg border bg-card p-3 shadow-xs",
                       selected ? "border-primary/45" : ""
                     )}
                   >
@@ -1107,7 +1308,7 @@ function CreateCombatDialog({
                     setThreatQuery(event.target.value);
                     setVisibleThreats(8);
                   }}
-                  placeholder="Buscar por nome, função, tipo ou golpe..."
+                  placeholder="Buscar por nome, função, elemento ou golpe..."
                   className="h-10 w-full rounded-md border border-red-300/20 bg-black/35 pl-10 pr-3 text-sm outline-none placeholder:text-red-100/50 focus:border-red-300/70 focus:ring-2 focus:ring-red-500/25"
                 />
               </label>
@@ -1156,10 +1357,7 @@ function CreateCombatDialog({
                       <span>
                         PV {selectedThreat.pv} · Mana {selectedThreat.mana}
                       </span>
-                      <span>
-                        Defesa {selectedThreat.defesa} · Dano{" "}
-                        {selectedThreat.danoBase}
-                      </span>
+                      <span>Defesa {selectedThreat.defesa}</span>
                       <span className="sm:col-span-2">
                         Reações: B {selectedThreat.reacoes.bloqueio} · E{" "}
                         {selectedThreat.reacoes.esquiva} · C{" "}
@@ -1195,7 +1393,7 @@ function CreateCombatDialog({
               {threatDrafts.map((draft, index) => (
                 <div
                   key={draft.tempId}
-                  className="grid gap-3 rounded-lg border bg-card/70 p-3"
+                  className="grid gap-3 rounded-lg border bg-card p-3 shadow-xs"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
@@ -1288,13 +1486,12 @@ function ThreatOptionCard({
             </span>
           </div>
           <p className="mt-1 text-sm text-red-50/80">
-            {ameaca.tipo} · {ameaca.elemento} · {ameaca.funcao}
+            {ameaca.elemento} · {ameaca.funcao}
           </p>
-          <div className="mt-3 grid gap-2 text-xs text-red-50/75 sm:grid-cols-4">
+          <div className="mt-3 grid gap-2 text-xs text-red-50/75 sm:grid-cols-3">
             <span>PV {ameaca.pv}</span>
             <span>Mana {ameaca.mana}</span>
             <span>Defesa {ameaca.defesa}</span>
-            <span>Dano {ameaca.danoBase}</span>
           </div>
           <p className="mt-2 line-clamp-2 text-xs leading-5 text-red-50/60">
             {ameaca.descricao}
@@ -1339,13 +1536,23 @@ function InlineStat({
   );
 }
 
-function DetailStat({ label, value }: { label: string; value: string | number }) {
+function DetailStat({
+  label,
+  value,
+  compact = false,
+}: {
+  label: string;
+  value: string | number;
+  compact?: boolean;
+}) {
   return (
-    <div className="rounded-lg border bg-card/70 p-3">
-      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+    <div className={cn("rounded-lg border bg-card p-3 shadow-xs", compact && "p-2")}>
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 text-lg font-semibold">{value}</p>
+      <p className={cn("mt-1 font-semibold", compact ? "text-base" : "text-lg")}>
+        {value}
+      </p>
     </div>
   );
 }
@@ -1381,102 +1588,11 @@ function ResourceBar({
   );
 }
 
-function ThreatReactionRow({
-  label,
-  used,
-  limit,
-  disabled,
-  onUse,
-}: {
-  label: string;
-  used: number;
-  limit: number;
-  disabled: boolean;
-  onUse: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="min-w-24">
-        <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">
-          {used}/{limit} usado{used === 1 ? "" : "s"}
-        </p>
-      </div>
-      <div className="flex flex-1 justify-center gap-1">
-        {Array.from({ length: Math.max(limit, 1) }, (_, index) => (
-          <span
-            key={`${label}-${index}`}
-            className={cn(
-              "h-3 w-3 rounded-full border",
-              index < used
-                ? "border-red-500 bg-red-500"
-                : "border-slate-300 bg-background"
-            )}
-          />
-        ))}
-      </div>
-      <Button
-        type="button"
-        size="sm"
-        disabled={disabled || limit <= 0 || used >= limit}
-        onClick={onUse}
-      >
-        Usar
-      </Button>
-    </div>
-  );
-}
-
-function actionMessage(action: "iniciar" | "proximo" | "voltar" | "encerrar") {
+function actionMessage(action: CombatTurnAction) {
   if (action === "iniciar") return "Combate iniciado.";
   if (action === "proximo") return "Turno avançado.";
   if (action === "voltar") return "Turno anterior.";
   return "Combate encerrado.";
-}
-
-function validateCombatForm({
-  nome,
-  selectedPersonagens,
-  threatDrafts,
-}: {
-  nome: string;
-  selectedPersonagens: Record<number, { selected: boolean; iniciativa: string }>;
-  threatDrafts: ThreatDraft[];
-}) {
-  const errors: string[] = [];
-  const personagens = Object.values(selectedPersonagens).filter(
-    (item) => item.selected
-  );
-
-  if (nome.trim().length < 2) {
-    errors.push("Informe o nome do combate.");
-  }
-
-  if (personagens.length + threatDrafts.length === 0) {
-    errors.push("Adicione pelo menos um personagem ou ameaça.");
-  }
-
-  if (
-    personagens.some(
-      (personagem) =>
-        personagem.iniciativa.trim() === "" ||
-        !Number.isInteger(Number(personagem.iniciativa))
-    )
-  ) {
-    errors.push("Informe a iniciativa de todos os personagens selecionados.");
-  }
-
-  if (
-    threatDrafts.some(
-      (ameaca) =>
-        ameaca.iniciativa.trim() === "" ||
-        !Number.isInteger(Number(ameaca.iniciativa))
-    )
-  ) {
-    errors.push("Informe a iniciativa de todas as ameaças adicionadas.");
-  }
-
-  return errors;
 }
 
 function normalizeSearch(value: string) {

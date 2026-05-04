@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useTheme } from "next-themes"
 import {
   BookOpenText,
   Boxes,
@@ -8,11 +9,13 @@ import {
   Home,
   LayoutDashboard,
   LogOut,
+  Moon,
   Plus,
   ScrollText,
   Settings,
   Shield,
   Skull,
+  Sun,
   Swords,
   UserRoundPlus,
   Users,
@@ -44,6 +47,7 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   inventarioCount?: number
   npcsCount?: number
   combatesCount?: number
+  bestiarioCount?: number
   onAddItem?: () => void
   onEditInfo?: () => void
 }
@@ -64,10 +68,13 @@ export function AppSidebar({
   inventarioCount = 0,
   npcsCount = 0,
   combatesCount = 0,
+  bestiarioCount = 0,
   onAddItem,
   onEditInfo,
   ...props
 }: AppSidebarProps) {
+  const { resolvedTheme, setTheme } = useTheme()
+  const isDark = resolvedTheme === "dark"
   const campanhaId = campanha?.id
   const escudoHref = campanhaId ? `/campanhas/escudo/${campanhaId}` : "/dashboard"
   const jogadoresHref = campanhaId ? `${escudoHref}#jogadores` : "#jogadores"
@@ -182,6 +189,7 @@ export function AppSidebar({
                     <span>Bestiário</span>
                   </Link>
                 </SidebarMenuButton>
+                <SidebarMenuBadge>{bestiarioCount}</SidebarMenuBadge>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={activeSection === "ferramentas"}>
@@ -217,6 +225,16 @@ export function AppSidebar({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ) : null}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  type="button"
+                  onClick={() => setTheme(isDark ? "light" : "dark")}
+                  aria-label={`Alternar para tema ${isDark ? "claro" : "escuro"}`}
+                >
+                  {isDark ? <Sun /> : <Moon />}
+                  <span>{isDark ? "Tema claro" : "Tema escuro"}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <Link href="/dashboard">

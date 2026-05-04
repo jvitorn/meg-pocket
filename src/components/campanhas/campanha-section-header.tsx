@@ -36,13 +36,13 @@ export function CampanhaSectionHeader({
   return (
     <div
       className={cn(
-        "relative overflow-hidden border-b bg-linear-to-br p-5 text-white sm:p-6",
+        "relative overflow-hidden border-b border-white/10 bg-linear-to-br p-5 text-white shadow-[inset_0_-1px_0_rgba(255,255,255,0.08)] sm:p-6",
         toneClass[tone],
         className
       )}
     >
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,0.045)_1px,transparent_1px)] opacity-35 bg-size-[28px_28px]" />
-      <div className="absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-white/30 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-amber-200/45 to-transparent" />
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-4">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 shadow-lg shadow-black/30 backdrop-blur">
@@ -52,7 +52,9 @@ export function CampanhaSectionHeader({
             <p className="text-xs uppercase tracking-[0.26em] text-white/60">
               {eyebrow}
             </p>
-            <h2 className="mt-1 truncate text-xl font-semibold">{title}</h2>
+            <h2 className="mt-1 wrap-break-word text-xl font-semibold leading-tight">
+              {title}
+            </h2>
             {description ? (
               <p className="mt-1 max-w-2xl text-sm leading-6 text-white/70">
                 {description}
