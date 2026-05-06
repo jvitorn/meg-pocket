@@ -25,6 +25,10 @@ function parseCampaignId(value: string) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function isCampanhaStatus(value: unknown): value is "ATIVA" | "ENCERRADA" {
+  return value === "ATIVA" || value === "ENCERRADA";
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -49,6 +53,35 @@ export async function PATCH(
     }
 
     const body = await request.json();
+    if (body && typeof body === "object" && "status" in body) {
+      if (!isCampanhaStatus(body?.status)) {
+        return NextResponse.json(
+          { ok: false, error: "Status da campanha inválido." },
+          { status: 400 }
+        );
+      }
+
+      const campanha = await prisma.campanha.update({
+        where: { id: campanhaId },
+        data: {
+          status: body.status,
+        },
+        select: {
+          id: true,
+          nome: true,
+          sinopse: true,
+          mestre: true,
+          capa: true,
+          status: true,
+          tags: true,
+        },
+      });
+
+      revalidateCampanhasData();
+
+      return NextResponse.json({ ok: true, campanha });
+    }
+
     const nome = String(body?.nome ?? "").trim();
     const sinopse = String(body?.sinopse ?? "").trim();
     const mestre = String(body?.mestre ?? "").trim();
@@ -91,6 +124,7 @@ export async function PATCH(
         sinopse: true,
         mestre: true,
         capa: true,
+        status: true,
         tags: true,
       },
     });

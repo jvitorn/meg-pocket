@@ -96,6 +96,7 @@ export default async function CampanhaNpcsPage({
         mestre: campanha.mestre ?? "",
         capa: campanha.capa ?? "",
         sinopse: campanha.sinopse ?? "",
+        status: campanha.status,
       }}
       npcs={campanha.npcs.map((npc) => ({
         id: npc.id,

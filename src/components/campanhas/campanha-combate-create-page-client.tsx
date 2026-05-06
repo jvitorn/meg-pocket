@@ -1,14 +1,27 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState, type FormEvent } from "react";
+import {
+  useDeferredValue,
+  useMemo,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Search, Skull, Swords, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Search, Skull, Swords, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { CampanhaSectionHeader } from "@/components/campanhas/campanha-section-header";
 import { EscudoLayoutShell } from "@/components/campanhas/escudo-layout-shell";
 import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { validarFormularioCombate } from "@/lib/regras/campanhaCombate";
@@ -48,8 +61,9 @@ export function CampanhaCombateCreatePageClient({
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [visible, setVisible] = useState(10);
-  const [selectedThreatId, setSelectedThreatId] = useState(ameacas[0]?.id ?? 0);
   const [quantity, setQuantity] = useState("1");
+  const [consultedThreat, setConsultedThreat] =
+    useState<CombateCatalogoAmeaca | null>(null);
   const [threatDrafts, setThreatDrafts] = useState<CombateThreatDraft[]>([]);
   const [selectedPersonagens, setSelectedPersonagens] =
     useState<CombatePersonagemSelectionState>({});
@@ -71,8 +85,6 @@ export function CampanhaCombateCreatePageClient({
       ).includes(normalized);
     });
   }, [ameacas, deferredQuery]);
-  const selectedThreat =
-    ameacas.find((ameaca) => ameaca.id === selectedThreatId) ?? ameacas[0] ?? null;
   const vaTotal = threatDrafts.reduce((total, draft) => {
     const threat = ameacas.find((ameaca) => ameaca.id === draft.ameacaId);
     return total + (threat?.va ?? 0);
@@ -88,7 +100,7 @@ export function CampanhaCombateCreatePageClient({
     }));
   }
 
-  function addThreat(ameacaId = selectedThreatId) {
+  function addThreat(ameacaId: number) {
     const threat = ameacas.find((ameaca) => ameaca.id === ameacaId);
     const amount = Number(quantity);
 
@@ -103,7 +115,7 @@ export function CampanhaCombateCreatePageClient({
         tempId: `${Date.now()}-${ameacaId}-${index}`,
         ameacaId,
         nome: threat.nome,
-        iniciativa: "",
+        iniciativa: defaultThreatInitiative(threat),
       })),
     ]);
     setQuantity("1");
@@ -151,7 +163,12 @@ export function CampanhaCombateCreatePageClient({
 
   return (
     <EscudoLayoutShell
-      campanha={{ id: campanha.id, nome: campanha.nome, mestre: campanha.mestre }}
+      campanha={{
+        id: campanha.id,
+        nome: campanha.nome,
+        mestre: campanha.mestre,
+        status: campanha.status,
+      }}
       activeSection="combates"
       currentLabel="Criar combate"
       personagensCount={personagensCount}
@@ -270,6 +287,29 @@ export function CampanhaCombateCreatePageClient({
                 <Skull className="h-5 w-5 text-red-200" />
                 <h2 className="font-semibold">Ameaças</h2>
               </div>
+              <div className="grid gap-2 rounded-lg border border-red-300/20 bg-black/30 p-3 sm:grid-cols-[minmax(0,1fr)_7rem] sm:items-end">
+                <div>
+                  <p className="text-sm font-medium text-red-50">
+                    Adicionar pelo card
+                  </p>
+                  <p className="mt-1 text-xs text-red-100/65">
+                    A ficha abre em consulta. A iniciativa inicial usa a defesa
+                    da ameaça.
+                  </p>
+                </div>
+                <label className="grid gap-1">
+                  <span className="text-xs text-red-100/70">Qtd.</span>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={quantity}
+                    onChange={(event) => setQuantity(event.target.value)}
+                    aria-label="Quantidade de ameaças"
+                    className="bg-black/35 text-white"
+                  />
+                </label>
+              </div>
               <label className="relative block">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-red-100/65" />
                 <input
@@ -288,8 +328,7 @@ export function CampanhaCombateCreatePageClient({
                   <ThreatCard
                     key={ameaca.id}
                     ameaca={ameaca}
-                    selected={selectedThreat?.id === ameaca.id}
-                    onSelect={() => setSelectedThreatId(ameaca.id)}
+                    onView={() => setConsultedThreat(ameaca)}
                     onAdd={() => addThreat(ameaca.id)}
                   />
                 ))}
@@ -299,44 +338,63 @@ export function CampanhaCombateCreatePageClient({
                   Carregar mais ameaças
                 </Button>
               ) : null}
-              <div className="grid gap-2 rounded-lg border border-red-300/20 bg-black/30 p-3 sm:grid-cols-[minmax(0,1fr)_7rem_auto] sm:items-end">
-                <div className="min-w-0">
-                  <p className="text-xs uppercase tracking-[0.18em] text-red-100/60">Selecionada</p>
-                  <p className="truncate font-semibold">{selectedThreat?.nome ?? "Nenhuma ameaça"}</p>
-                </div>
-                <label className="grid gap-1">
-                  <span className="text-xs text-red-100/70">Qtd.</span>
-                  <Input type="number" min="1" max="20" value={quantity} onChange={(event) => setQuantity(event.target.value)} className="bg-black/35 text-white" />
-                </label>
-                <Button type="button" className="gap-2 bg-red-600 hover:bg-red-500" onClick={() => addThreat()}>
-                  <Plus className="h-4 w-4" />
-                  Adicionar
-                </Button>
-              </div>
             </section>
           </form>
         </section>
       </main>
+
+      <Drawer
+        open={Boolean(consultedThreat)}
+        onOpenChange={(open) => {
+          if (!open) setConsultedThreat(null);
+        }}
+      >
+        <DrawerContent className="h-[92svh] max-h-[92svh] overflow-hidden">
+          <DrawerHeader className="shrink-0 border-b bg-card/80 text-left">
+            <DrawerTitle>{consultedThreat?.nome ?? "Ameaça"}</DrawerTitle>
+            <DrawerDescription>
+              Ficha de consulta. Nenhuma ação de combate é alterada por aqui.
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+            {consultedThreat ? (
+              <ThreatDetails threat={consultedThreat} />
+            ) : null}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </EscudoLayoutShell>
   );
 }
 
 function ThreatCard({
   ameaca,
-  selected,
-  onSelect,
+  onView,
   onAdd,
 }: {
   ameaca: CombateCatalogoAmeaca;
-  selected: boolean;
-  onSelect: () => void;
+  onView: () => void;
   onAdd: () => void;
 }) {
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onView();
+    }
+  }
+
   return (
-    <article className={cn("relative overflow-hidden rounded-md border border-red-300/15 bg-black/35 text-white transition hover:border-red-200/55", selected && "border-red-200/70 shadow-[0_0_0_1px_rgba(248,113,113,0.5)]")}>
+    <article
+      role="button"
+      tabIndex={0}
+      aria-label={`Consultar ficha de ${ameaca.nome}`}
+      onClick={onView}
+      onKeyDown={handleKeyDown}
+      className="relative cursor-pointer overflow-hidden rounded-md border border-red-300/15 bg-black/35 text-white transition hover:border-red-200/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200/80"
+    >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_88%_35%,rgba(239,68,68,0.22),transparent_30%),linear-gradient(90deg,rgba(127,29,29,0.72),rgba(69,10,10,0.28))]" />
       <div className="relative grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-        <button type="button" className="min-w-0 text-left" onClick={onSelect}>
+        <div className="min-w-0 text-left">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate font-semibold">{ameaca.nome}</h3>
             <span className="rounded-md border border-red-200/25 bg-black/25 px-2 py-0.5 text-xs text-red-50/85">VA {formatVa(ameaca.va)}</span>
@@ -348,14 +406,148 @@ function ThreatCard({
             <span>Defesa {ameaca.defesa}</span>
           </div>
           <p className="mt-2 line-clamp-2 text-xs leading-5 text-red-50/60">{ameaca.descricao}</p>
-        </button>
+        </div>
         <div className="flex gap-2 sm:flex-col">
-          <Button type="button" variant="outline" className="border-white/55 bg-black/15 text-white hover:bg-white/10 hover:text-white" onClick={onSelect}>Ficha</Button>
-          <Button type="button" className="bg-red-600 text-white hover:bg-red-500" onClick={onAdd}>Adicionar</Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="border-white/55 bg-black/15 text-white hover:bg-white/10 hover:text-white"
+            onClick={(event) => {
+              event.stopPropagation();
+              onView();
+            }}
+          >
+            Ficha
+          </Button>
+          <Button
+            type="button"
+            className="bg-red-600 text-white hover:bg-red-500"
+            onClick={(event) => {
+              event.stopPropagation();
+              onAdd();
+            }}
+          >
+            Adicionar
+          </Button>
         </div>
       </div>
     </article>
   );
+}
+
+function ThreatDetails({ threat }: { threat: CombateCatalogoAmeaca }) {
+  return (
+    <div className="grid gap-4">
+      <div>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          {threat.tipo}
+          {threat.tipoSecundario ? ` / ${threat.tipoSecundario}` : ""}
+        </p>
+        <h3 className="mt-1 text-lg font-semibold">{threat.nome}</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {threat.elemento} · {threat.funcao} · VA {formatVa(threat.va)}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+        <DetailStat label="PV" value={threat.pv} />
+        <DetailStat label="Mana" value={threat.mana} />
+        <DetailStat label="Defesa" value={threat.defesa} />
+        <DetailStat label="Dano" value={threat.danoBase} />
+      </div>
+
+      <div className="rounded-lg border bg-card p-3 shadow-xs">
+        <p className="text-sm font-medium">Descrição</p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          {threat.descricao}
+        </p>
+        {threat.narrativa ? (
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            {threat.narrativa}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        <TagList title="Fraquezas" items={threat.fraquezas} />
+        <TagList title="Resistências" items={threat.resistencias} />
+        <TagList title="Imunidades" items={threat.imunidades} />
+      </div>
+
+      <div className="rounded-lg border bg-card p-3 shadow-xs">
+        <p className="text-sm font-medium">Reações</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Bloqueio {threat.reacoes.bloqueio} · Esquiva{" "}
+          {threat.reacoes.esquiva} · Contra-ataque{" "}
+          {threat.reacoes.contraAtaque}
+        </p>
+      </div>
+
+      <div>
+        <p className="mb-2 text-sm font-medium">Golpes</p>
+        <div className="grid gap-2">
+          {threat.golpes.map((golpe) => (
+            <div key={golpe.nome} className="rounded-lg border bg-card p-3 shadow-xs">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium">{golpe.nome}</p>
+                {golpe.custoMana ? (
+                  <span className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
+                    {golpe.custoMana} mana
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                {golpe.descricao}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-3 shadow-xs">
+      <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function TagList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-lg border bg-card p-3 shadow-xs">
+      <p className="text-sm font-medium">{title}</p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {items.length > 0 ? (
+          items.map((item) => (
+            <span
+              key={item}
+              className="rounded-md border bg-background px-2 py-1 text-xs text-muted-foreground"
+            >
+              {item}
+            </span>
+          ))
+        ) : (
+          <span className="text-xs text-muted-foreground">Nenhum registro.</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function defaultThreatInitiative(threat: CombateCatalogoAmeaca) {
+  return Number.isInteger(threat.defesa) ? String(threat.defesa) : "";
 }
 
 function normalizeSearch(value: string) {

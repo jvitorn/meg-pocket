@@ -6,6 +6,7 @@ import type { CampanhaInterface } from "@/types";
 export async function GET() {
   try {
     const rows = await prisma.campanha.findMany({
+      where: { status: "ATIVA" },
       orderBy: { id: "asc" },
       select: {
         id: true,
@@ -14,6 +15,7 @@ export async function GET() {
         capa: true,
         count_jogadores: true,
         mestre: true,
+        status: true,
         tags: true,
         createdAt: true,
         updatedAt: true,
@@ -32,6 +34,7 @@ export async function GET() {
         capa: r.capa ?? undefined,
         count_jogadores: r.count_jogadores ?? 0,
         mestre: r.mestre ?? "",
+        status: r.status,
         tags: tags as string[] | undefined,
       };
     });

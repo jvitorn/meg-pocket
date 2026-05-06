@@ -5,6 +5,10 @@ import { LogOut } from "lucide-react";
 
 import { AppBreadcrumb } from "@/components/app-breadcrumb";
 import { AppSidebar, type EscudoSidebarSection } from "@/components/app-sidebar";
+import {
+  CampanhaEncerradaBanner,
+  CampanhaStatusAction,
+} from "@/components/campanhas/campanha-status-action";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -18,6 +22,7 @@ type EscudoLayoutShellProps = {
     id: number;
     nome: string;
     mestre: string;
+    status?: "ATIVA" | "ENCERRADA";
   };
   activeSection: EscudoSidebarSection;
   currentLabel: string;
@@ -40,8 +45,13 @@ export function EscudoLayoutShell({
   bestiarioCount = 0,
   children,
 }: EscudoLayoutShellProps) {
+  const campanhaEncerrada = campanha.status === "ENCERRADA";
+
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      storageKey="mg-escudo-sidebar-open"
+      persistDesktopOpen
+    >
       <AppSidebar
         campanha={campanha}
         activeSection={activeSection}
@@ -72,14 +82,22 @@ export function EscudoLayoutShell({
               ]}
             />
           </div>
-          <Button asChild variant="outline" size="sm" className="shrink-0 gap-2">
-            <a href="/dashboard">
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Sair do painel</span>
-            </a>
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <CampanhaStatusAction
+              campanhaId={campanha.id}
+              status={campanha.status}
+              className="gap-2"
+            />
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <a href="/dashboard">
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Sair do painel</span>
+              </a>
+            </Button>
+          </div>
         </header>
 
+        {campanhaEncerrada ? <CampanhaEncerradaBanner /> : null}
         <div className="min-h-screen bg-background text-foreground">{children}</div>
       </SidebarInset>
     </SidebarProvider>

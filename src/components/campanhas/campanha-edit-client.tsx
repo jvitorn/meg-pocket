@@ -28,6 +28,10 @@ import {
   normalizeCampanhaTags,
   type CampanhaInfoValues,
 } from "@/components/campanhas/campanha-info-dialog";
+import {
+  CampanhaEncerradaBanner,
+  CampanhaStatusAction,
+} from "@/components/campanhas/campanha-status-action";
 import { CampanhaSectionHeader } from "@/components/campanhas/campanha-section-header";
 import { CampanhaNpcsSection } from "@/components/campanhas/campanha-npcs-section";
 import { Button } from "@/components/ui/button";
@@ -137,6 +141,7 @@ export function CampanhaEditClient({
 
   const totalItens = inventario.reduce((total, item) => total + item.quantidade, 0);
   const itensExpirados = inventario.filter((item) => item.esgotado).length;
+  const campanhaEncerrada = campanha.status === "ENCERRADA";
 
   async function handleSaveCampaign(values: CampanhaInfoValues) {
     setLoading(true);
@@ -209,7 +214,10 @@ export function CampanhaEditClient({
   ];
 
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      storageKey="mg-escudo-sidebar-open"
+      persistDesktopOpen
+    >
       <AppSidebar
         campanha={{
           id: campanha.id,
@@ -247,6 +255,7 @@ export function CampanhaEditClient({
           </Button>
         </header>
 
+        {campanhaEncerrada ? <CampanhaEncerradaBanner /> : null}
         <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-3 py-5 sm:gap-8 sm:px-4 sm:py-8 lg:px-4">
       <section className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm sm:rounded-2xl">
         <div className="relative min-h-70">
@@ -300,6 +309,11 @@ export function CampanhaEditClient({
                   <Save className="h-4 w-4" />
                   Editar informações iniciais
                 </Button>
+                <CampanhaStatusAction
+                  campanhaId={campanha.id}
+                  status={campanha.status}
+                  className="gap-2 border-white/35 bg-black/45 text-white hover:border-white/60 hover:bg-white/15 hover:text-white"
+                />
               </div>
             </div>
           </div>

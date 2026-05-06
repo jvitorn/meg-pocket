@@ -92,8 +92,7 @@ describe("PersonagemSlotsDefensivos", () => {
 
     render(<Wrapper />);
 
-    const useButtons = screen.getAllByRole("button", { name: "Usar" });
-    await user.click(useButtons[0]);
+    await user.click(screen.getByRole("button", { name: "Usar Esquiva" }));
 
     await waitFor(() => {
       expect(serviceMocks.usarSlotDefensivo).toHaveBeenCalledWith(7, "esquiva");
@@ -146,7 +145,7 @@ describe("PersonagemSlotsDefensivos", () => {
     expect(contraRow).not.toBeNull();
 
     const useButton = within(contraRow as HTMLElement).getByRole("button", {
-      name: "Usar",
+      name: "Usar Contra",
     });
 
     expect(useButton).toBeDisabled();

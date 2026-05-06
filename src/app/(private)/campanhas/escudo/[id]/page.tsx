@@ -131,6 +131,7 @@ export default async function EscudoCampanhaPage({
         sinopse: campanha.sinopse ?? "",
         mestre: campanha.mestre ?? "",
         capa: campanha.capa ?? "",
+        status: campanha.status,
         tags: tagsToStringArray(campanha.tags),
       }}
       personagens={campanha.personagens.map((personagem) => ({

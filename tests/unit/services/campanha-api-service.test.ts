@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  alterarStatusCampanha,
   atualizarItemInventarioCampanha,
   excluirNpcCampanha,
   gerarNpcCampanha,
@@ -15,6 +16,23 @@ vi.stubGlobal("fetch", fetchMock);
 describe("campanhaApiService", () => {
   afterEach(() => {
     fetchMock.mockReset();
+  });
+
+  it("altera o status da campanha", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, campanha: { id: 4 } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    );
+
+    await alterarStatusCampanha(4, "ENCERRADA");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/campanhas/4", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "ENCERRADA" }),
+    });
   });
 
   it("vincula item ao inventario da campanha", async () => {

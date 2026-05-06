@@ -89,6 +89,7 @@ describe("rotas do mestre de campanha", () => {
       sinopse: "Mesa sombria",
       capa: null,
       mestre: "Mestre",
+      status: "ATIVA",
       tags: ["ruinas", "misterio"],
     });
 
@@ -111,6 +112,7 @@ describe("rotas do mestre de campanha", () => {
         data: expect.objectContaining({
           nome: "As Ruinas",
           tags: ["ruinas", "misterio"],
+          status: "ATIVA",
           userId: "user-1",
         }),
       })
@@ -125,6 +127,7 @@ describe("rotas do mestre de campanha", () => {
       sinopse: "Nova sinopse",
       mestre: "Narradora",
       capa: null,
+      status: "ATIVA",
       tags: ["politica"],
     });
 
@@ -155,6 +158,39 @@ describe("rotas do mestre de campanha", () => {
           nome: "Novo Nome",
           tags: ["politica"],
         }),
+      })
+    );
+  });
+
+  it("altera apenas o status da campanha do mestre", async () => {
+    mocks.campanhaUpdate.mockResolvedValue({
+      id: 4,
+      nome: "Mesa encerrada",
+      sinopse: null,
+      mestre: "Narradora",
+      capa: null,
+      status: "ENCERRADA",
+      tags: [],
+    });
+
+    const response = await updateCampaign(
+      jsonRequest(
+        "http://localhost:3000/api/campanhas/4",
+        { status: "ENCERRADA" },
+        "PATCH"
+      ),
+      { params: Promise.resolve({ id: "4" }) }
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      campanha: { status: "ENCERRADA" },
+    });
+    expect(mocks.campanhaUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 4 },
+        data: { status: "ENCERRADA" },
       })
     );
   });

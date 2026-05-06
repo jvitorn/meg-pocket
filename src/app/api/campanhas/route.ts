@@ -68,6 +68,7 @@ export async function POST(request: Request) {
         sinopse: sinopse || null,
         mestre: mestre || null,
         capa: capa || null,
+        status: "ATIVA",
         tags,
         count_jogadores: 0,
         userId: session.user.id,
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
         sinopse: true,
         capa: true,
         mestre: true,
+        status: true,
         tags: true,
       },
     });

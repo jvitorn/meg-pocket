@@ -57,6 +57,8 @@ function SidebarProvider({
   defaultOpen = true,
   open: openProp,
   onOpenChange: setOpenProp,
+  storageKey,
+  persistDesktopOpen = false,
   className,
   style,
   children,
@@ -65,6 +67,8 @@ function SidebarProvider({
   defaultOpen?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  storageKey?: string
+  persistDesktopOpen?: boolean
 }) {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
@@ -73,6 +77,32 @@ function SidebarProvider({
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
   const open = openProp ?? _open
+
+  React.useEffect(() => {
+    if (!persistDesktopOpen || !storageKey) {
+      return
+    }
+
+    try {
+      const mobile = window.matchMedia("(max-width: 767px)").matches
+      if (mobile) {
+        return
+      }
+
+      const stored = window.localStorage.getItem(storageKey)
+      if (stored === "true" || stored === "false") {
+        const nextOpen = stored === "true"
+        if (setOpenProp) {
+          setOpenProp(nextOpen)
+        } else {
+          _setOpen(nextOpen)
+        }
+      }
+    } catch {
+      // localStorage pode estar indisponivel em alguns contextos privados.
+    }
+  }, [persistDesktopOpen, setOpenProp, storageKey])
+
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value
@@ -84,8 +114,19 @@ function SidebarProvider({
 
       // This sets the cookie to keep the sidebar state.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+
+      if (persistDesktopOpen && storageKey) {
+        try {
+          const mobile = window.matchMedia("(max-width: 767px)").matches
+          if (!mobile) {
+            window.localStorage.setItem(storageKey, String(openState))
+          }
+        } catch {
+          // Persistencia local e opcional; a UI continua funcional sem ela.
+        }
+      }
     },
-    [setOpenProp, open]
+    [persistDesktopOpen, setOpenProp, storageKey, open]
   )
 
   // Helper to toggle the sidebar.

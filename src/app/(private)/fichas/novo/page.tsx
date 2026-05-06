@@ -29,6 +29,7 @@ export default async function NovaFichaPage({
 
   const [campanhas, classes, racas, pericias] = await prisma.$transaction([
     prisma.campanha.findMany({
+      where: { status: "ATIVA" },
       select: {
         id: true,
         nome: true,

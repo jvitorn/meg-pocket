@@ -117,6 +117,7 @@ export type CombateCatalogoAmeaca = {
   nome: string;
   slug: string;
   tipo: string;
+  tipoSecundario: string | null;
   elemento: string;
   funcao: string;
   va: number;
@@ -126,6 +127,10 @@ export type CombateCatalogoAmeaca = {
   danoBase: string;
   danoMedio: number;
   descricao: string;
+  narrativa: string;
+  fraquezas: string[];
+  resistencias: string[];
+  imunidades: string[];
   golpes: AmeacaGolpe[];
   reacoes: {
     bloqueio: number;

@@ -170,6 +170,7 @@ function ReactiveSlotItem({
         type="button"
         size="sm"
         className="max-w-full shrink-0"
+        aria-label={`Usar ${meta.label}`}
         disabled={!canEdit || disabled || isLoading || row.limite <= 0 || usedAll}
         onClick={row.onUse}
       >

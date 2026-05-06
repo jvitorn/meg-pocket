@@ -1,5 +1,7 @@
 import type { ItemTipo } from "@/types/personagem";
 
+export type CampanhaStatusValue = "ATIVA" | "ENCERRADA";
+
 export interface CampanhaInterface {
   nome: string;
   count_jogadores: number;
@@ -8,6 +10,7 @@ export interface CampanhaInterface {
   capa?: string;
   tags?: Array<string>;
   mestre: string;
+  status?: CampanhaStatusValue;
 }
 
 export type CampanhaInfo = {
@@ -16,6 +19,7 @@ export type CampanhaInfo = {
   mestre: string;
   capa: string;
   sinopse: string;
+  status?: CampanhaStatusValue;
 };
 
 export type CampaignEditItem = CampanhaInfo & {

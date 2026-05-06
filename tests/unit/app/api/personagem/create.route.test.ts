@@ -140,7 +140,7 @@ describe("POST /api/personagem/create", () => {
   it("cria o personagem com hp, mana e relacionamentos derivados", async () => {
     mocks.getServerSession.mockResolvedValue({ user: { id: "user-1" } });
     mocks.transaction.mockResolvedValue([
-      { id: 1, nome: "Campanha" },
+      { id: 1, nome: "Campanha", status: "ATIVA" },
       {
         id: 2,
         hp: 3,

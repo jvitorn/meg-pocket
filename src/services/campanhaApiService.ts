@@ -6,6 +6,7 @@ import type {
   CampaignNpcFilters,
   CampaignNpcItem,
   CampaignNpcPayload,
+  CampanhaStatusValue,
   CampanhaUpdatePayload,
 } from "@/types/campanha";
 import type {
@@ -24,6 +25,7 @@ export type CampanhaMutationResponse = {
     sinopse?: string | null;
     capa?: string | null;
     mestre?: string | null;
+    status?: CampanhaStatusValue;
     tags?: unknown;
   };
 };
@@ -69,6 +71,16 @@ export function criarCampanha(values: CampanhaUpdatePayload) {
   return requestJson<CampanhaMutationResponse>(
     CAMPANHAS_ROUTE,
     jsonInit("POST", values)
+  );
+}
+
+export function alterarStatusCampanha(
+  campanhaId: number,
+  status: CampanhaStatusValue
+) {
+  return requestJson<CampanhaMutationResponse>(
+    `${CAMPANHAS_ROUTE}/${campanhaId}`,
+    jsonInit("PATCH", { status })
   );
 }
 

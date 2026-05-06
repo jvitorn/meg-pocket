@@ -104,7 +104,7 @@ describe("PUT /api/personagem/[id]", () => {
         mana_atual: 9,
         statusEspecial: "vivo",
       },
-      { id: 1, nome: "Campanha" },
+      { id: 1, nome: "Campanha", status: "ATIVA" },
       {
         id: 2,
         hp: 4,

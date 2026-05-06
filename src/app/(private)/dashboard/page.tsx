@@ -63,7 +63,7 @@ export default async function DashboardPage() {
 
   const personagens: PersonagemListItem[] = userId
     ? await prisma.personagem.findMany({
-        where: { userId },
+        where: { userId, campanha: { status: "ATIVA" } },
         orderBy: { updatedAt: "desc" },
         take: 6,
         include: {
@@ -74,34 +74,48 @@ export default async function DashboardPage() {
       })
     : [];
 
-  const campanhas = campaignFilters.length
-    ? await prisma.campanha.findMany({
-        where: {
-          OR: campaignFilters,
-        },
-        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-        select: {
-          id: true,
-          nome: true,
-          sinopse: true,
-          capa: true,
-          mestre: true,
-          tags: true,
-          user: {
-            select: {
-              id: true,
-            },
+  const campanhaSelect = {
+    id: true,
+    nome: true,
+    sinopse: true,
+    capa: true,
+    mestre: true,
+    status: true,
+    tags: true,
+    user: {
+      select: {
+        id: true,
+      },
+    },
+    createdAt: true,
+    updatedAt: true,
+    _count: {
+      select: {
+        personagens: true,
+      },
+    },
+  } satisfies Prisma.CampanhaSelect;
+
+  const [campanhas, campanhasEncerradas] = campaignFilters.length
+    ? await prisma.$transaction([
+        prisma.campanha.findMany({
+          where: {
+            status: "ATIVA",
+            OR: campaignFilters,
           },
-          createdAt: true,
-          updatedAt: true,
-          _count: {
-            select: {
-              personagens: true,
-            },
+          orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+          select: campanhaSelect,
+        }),
+        prisma.campanha.findMany({
+          where: {
+            status: "ENCERRADA",
+            OR: campaignFilters,
           },
-        },
-      })
-    : [];
+          orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+          select: campanhaSelect,
+        }),
+      ])
+    : [[], []];
 
   const formatter = new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
@@ -119,12 +133,29 @@ export default async function DashboardPage() {
       tags: Array.isArray(campanha.tags)
         ? campanha.tags.map((tag) => String(tag)).filter(Boolean)
         : [],
+      status: campanha.status,
       countPersonagens: campanha._count.personagens,
       createdAtLabel: formatter.format(new Date(campanha.createdAt)),
       updatedAtLabel: formatter.format(new Date(campanha.updatedAt)),
       isOwner: campanha.user?.id === userId,
     })
   );
+  const campanhasEncerradasNormalizadas: DashboardCampanhaItem[] =
+    campanhasEncerradas.map((campanha) => ({
+      id: campanha.id,
+      nome: campanha.nome,
+      sinopse: campanha.sinopse ?? null,
+      capa: campanha.capa ?? null,
+      mestre: campanha.mestre ?? null,
+      tags: Array.isArray(campanha.tags)
+        ? campanha.tags.map((tag) => String(tag)).filter(Boolean)
+        : [],
+      status: campanha.status,
+      countPersonagens: campanha._count.personagens,
+      createdAtLabel: formatter.format(new Date(campanha.createdAt)),
+      updatedAtLabel: formatter.format(new Date(campanha.updatedAt)),
+      isOwner: campanha.user?.id === userId,
+    }));
 
   const totalCampanhas = campanhasNormalizadas.length;
   const totalPersonagens = personagens.length;
@@ -228,6 +259,7 @@ export default async function DashboardPage() {
 
           <DashboardCampaignsSection
             initialCampanhas={campanhasNormalizadas}
+            initialCampanhasEncerradas={campanhasEncerradasNormalizadas}
             defaultMestre={userName || userEmail || ""}
           />
 

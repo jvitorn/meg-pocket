@@ -82,7 +82,7 @@ const STATUS_LABEL = {
 } as const;
 
 type CombatTurnAction = "iniciar" | "proximo" | "voltar" | "encerrar";
-type CombatMobileTab = "turno" | "ordem" | "acoes";
+type CombatMobileTab = "turno" | "ordem" | "acoes" | "lista";
 
 export function CampanhaCombatesPageClient({
   campanha,
@@ -115,6 +115,7 @@ export function CampanhaCombatesPageClient({
   );
   const [threatQuantity, setThreatQuantity] = useState("1");
   const [threatDrafts, setThreatDrafts] = useState<CombateThreatDraft[]>([]);
+  const [mobileTab, setMobileTab] = useState<CombatMobileTab>("turno");
 
   const selectedCombat = useMemo(
     () => combates.find((combate) => combate.id === combatId) ?? null,
@@ -208,7 +209,7 @@ export function CampanhaCombatesPageClient({
       tempId: `${Date.now()}-${ameacaId}-${index}`,
       ameacaId,
       nome: threat.nome,
-      iniciativa: "",
+      iniciativa: defaultThreatInitiative(threat),
     }));
 
     setThreatDrafts((current) => [...current, ...nextDrafts]);
@@ -277,7 +278,7 @@ export function CampanhaCombatesPageClient({
   async function runAction(
     combate: CombateDetail,
     action: CombatTurnAction
-  ) {
+  ): Promise<boolean> {
     setLoading(true);
 
     try {
@@ -288,10 +289,12 @@ export function CampanhaCombatesPageClient({
       }
       toast.success(actionMessage(action));
       router.refresh();
+      return true;
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Erro ao atualizar combate."
       );
+      return false;
     } finally {
       setLoading(false);
     }
@@ -394,6 +397,7 @@ export function CampanhaCombatesPageClient({
         id: campanha.id,
         nome: campanha.nome,
         mestre: campanha.mestre,
+        status: campanha.status,
       }}
       activeSection="combates"
       currentLabel="Combates"
@@ -426,8 +430,13 @@ export function CampanhaCombatesPageClient({
             }
           />
 
-          <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[minmax(18rem,0.82fr)_minmax(0,1.38fr)]">
-            <section className="grid content-start gap-3">
+          <div className="grid gap-4 p-3 pb-24 sm:p-4 md:pb-4 lg:grid-cols-[minmax(18rem,0.82fr)_minmax(0,1.38fr)]">
+            <section
+              className={cn(
+                "content-start gap-3",
+                mobileTab === "lista" ? "grid" : "hidden md:grid"
+              )}
+            >
               <div className="rounded-lg border border-border/70 bg-background p-3 shadow-xs">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Resumo
@@ -448,7 +457,12 @@ export function CampanhaCombatesPageClient({
                       ? "border-primary/60 bg-primary/5 shadow-sm ring-1 ring-primary/15"
                       : "hover:border-primary/30"
                   )}
-                  onClick={() => setCombatId(combate.id)}
+                  onClick={() => {
+                    setCombatId(combate.id);
+                    if (mobileTab === "lista") {
+                      setMobileTab("turno");
+                    }
+                  }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -470,6 +484,7 @@ export function CampanhaCombatesPageClient({
                       onClick={(event) => {
                         event.stopPropagation();
                         setCombatId(combate.id);
+                        setMobileTab("turno");
                       }}
                     >
                       {combate.status === "ENCERRADO" ? "Ver encerrado" : "Abrir"}
@@ -514,14 +529,21 @@ export function CampanhaCombatesPageClient({
               ) : null}
             </section>
 
-            <section className="min-w-0">
+            <section
+              className={cn(
+                "min-w-0",
+                mobileTab === "lista" && "hidden md:block"
+              )}
+            >
               {selectedCombat ? (
                 <CombatMode
                   combate={selectedCombat}
+                  mobileTab={mobileTab}
                   selectedParticipant={selectedParticipant}
                   currentParticipant={currentParticipant}
                   loading={loading}
                   onAction={(action) => runAction(selectedCombat, action)}
+                  onMobileTabChange={setMobileTab}
                   onSelectParticipant={selectParticipant}
                   onUpdateThreat={updateThreatParticipant}
                   onThreatReaction={updateThreatReaction}
@@ -535,6 +557,12 @@ export function CampanhaCombatesPageClient({
           </div>
         </section>
       </main>
+
+      <CombatBottomNav
+        activeTab={mobileTab}
+        onTabChange={setMobileTab}
+        disabled={loading}
+      />
 
       <CreateCombatDialog
         open={createOpen}
@@ -584,19 +612,23 @@ export function CampanhaCombatesPageClient({
 
 function CombatMode({
   combate,
+  mobileTab,
   selectedParticipant,
   currentParticipant,
   loading,
   onAction,
+  onMobileTabChange,
   onSelectParticipant,
   onUpdateThreat,
   onThreatReaction,
 }: {
   combate: CombateDetail;
+  mobileTab: CombatMobileTab;
   selectedParticipant: CombateParticipanteView | null;
   currentParticipant: CombateParticipanteView | null;
   loading: boolean;
-  onAction: (action: CombatTurnAction) => void;
+  onAction: (action: CombatTurnAction) => Promise<boolean>;
+  onMobileTabChange: (tab: CombatMobileTab) => void;
   onSelectParticipant: (participant: CombateParticipanteView) => void;
   onUpdateThreat: (
     participant: CombateParticipanteView,
@@ -609,7 +641,15 @@ function CombatMode({
     tipo?: "bloqueio" | "esquiva" | "contra"
   ) => void;
 }) {
-  const [mobileTab, setMobileTab] = useState<CombatMobileTab>("turno");
+  async function handleTurnAction(action: CombatTurnAction) {
+    const changed = await onAction(action);
+    if (
+      changed &&
+      (action === "proximo" || action === "voltar" || action === "iniciar")
+    ) {
+      onMobileTabChange("turno");
+    }
+  }
 
   return (
     <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_21rem]">
@@ -625,7 +665,7 @@ function CombatMode({
             className="hidden md:flex md:flex-wrap"
             combate={combate}
             loading={loading}
-            onAction={onAction}
+            onAction={handleTurnAction}
           />
         </div>
 
@@ -716,16 +756,11 @@ function CombatMode({
             className="grid grid-cols-2 gap-2"
             combate={combate}
             loading={loading}
-            onAction={onAction}
+            onAction={handleTurnAction}
           />
         </div>
 
         <div className="h-20 md:hidden" aria-hidden="true" />
-        <CombatBottomNav
-          activeTab={mobileTab}
-          onTabChange={setMobileTab}
-          disabled={loading}
-        />
       </article>
 
       <aside className="hidden self-start rounded-lg border border-border/70 bg-background p-4 shadow-xs xl:sticky xl:top-24 xl:block xl:max-h-[calc(100svh-7rem)] xl:overflow-y-auto">
@@ -755,7 +790,7 @@ function CombatTurnActions({
 }: {
   combate: CombateDetail;
   loading: boolean;
-  onAction: (action: CombatTurnAction) => void;
+  onAction: (action: CombatTurnAction) => void | Promise<void | boolean>;
   className?: string;
 }) {
   if (combate.status === "RASCUNHO") {
@@ -833,12 +868,13 @@ function CombatBottomNav({
     { value: "turno", label: "Turno", icon: Swords },
     { value: "ordem", label: "Ordem", icon: Users },
     { value: "acoes", label: "Ações", icon: Shield },
+    { value: "lista", label: "Lista", icon: Search },
   ];
 
   return (
     <nav
       aria-label="Navegação do combate"
-      className="fixed inset-x-3 bottom-3 z-40 mx-auto grid max-w-md grid-cols-3 gap-1 rounded-2xl border border-border/70 bg-background/94 p-1.5 shadow-2xl shadow-black/20 backdrop-blur md:hidden"
+      className="fixed inset-x-3 bottom-3 z-40 mx-auto grid max-w-md grid-cols-4 gap-1 rounded-2xl border border-border/70 bg-background/94 p-1.5 shadow-2xl shadow-black/20 backdrop-blur md:hidden"
     >
       {items.map((item) => {
         const Icon = item.icon;
@@ -1605,4 +1641,8 @@ function normalizeSearch(value: string) {
 
 function formatVa(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(".", ",");
+}
+
+function defaultThreatInitiative(threat: CombateCatalogoAmeaca) {
+  return Number.isInteger(threat.defesa) ? String(threat.defesa) : "";
 }

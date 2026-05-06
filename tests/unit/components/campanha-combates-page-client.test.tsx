@@ -206,6 +206,30 @@ describe("CampanhaCombatesPageClient", () => {
     expect(screen.getByRole("button", { name: "Turno" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ordem" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ações" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lista" })).toBeInTheDocument();
+  });
+
+  it("volta para a aba Turno depois de avançar pela aba Ações no mobile", async () => {
+    const user = userEvent.setup();
+    renderCombates();
+
+    await user.click(screen.getByRole("button", { name: "Ações" }));
+    expect(screen.getByRole("button", { name: "Ações" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+
+    await user.click(screen.getAllByRole("button", { name: /próximo/i })[0]);
+
+    await waitFor(() => {
+      expect(serviceMocks.executarAcaoCombateCampanha).toHaveBeenCalledWith(4, 30, {
+        action: "proximo",
+      });
+    });
+    expect(screen.getByRole("button", { name: "Turno" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
   });
 
   it("executa reação de ameaça pelo painel de detalhes", async () => {
@@ -215,7 +239,7 @@ describe("CampanhaCombatesPageClient", () => {
     await user.click(screen.getByRole("button", { name: /Goblin 1/i }));
     const esquivaRow = screen.getByText("Esquiva").closest("div");
     expect(esquivaRow).not.toBeNull();
-    await user.click(screen.getAllByRole("button", { name: "Usar" })[0]);
+    await user.click(screen.getByRole("button", { name: "Usar Esquiva" }));
 
     await waitFor(() => {
       expect(serviceMocks.executarAcaoCombateCampanha).toHaveBeenCalledWith(4, 30, {

@@ -75,6 +75,7 @@ export default async function CampanhaInventarioPage({
         mestre: campanha.mestre ?? "",
         capa: campanha.capa ?? "",
         sinopse: campanha.sinopse ?? "",
+        status: campanha.status,
       }}
       personagens={campanha.personagens.map((personagem) => ({
         id: personagem.id,

@@ -41,14 +41,12 @@ test("ficha básica cobre recursos críticos do personagem", async ({ page }) =>
       page.locator("#sobre").getByText("Celi testada em fluxo e2e.")
     ).toBeVisible();
 
-    const esquivaRow = page
+    const usarEsquiva = page
       .locator("#defesa")
-      .locator("div")
-      .filter({ hasText: "Esquiva" })
-      .first();
-    await esquivaRow.getByRole("button", { name: "Usar" }).click();
+      .getByRole("button", { name: "Usar Esquiva" });
+    await usarEsquiva.click();
     await expect(
-      esquivaRow.getByRole("button", { name: "Usar" })
+      page.locator("#defesa").getByRole("button", { name: "Usar Esquiva" })
     ).toBeDisabled();
   });
 

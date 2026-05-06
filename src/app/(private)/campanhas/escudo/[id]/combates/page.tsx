@@ -77,6 +77,7 @@ export default async function CampanhaCombatesPage({
         nome: true,
         slug: true,
         tipo: true,
+        tipoSecundario: true,
         elemento: true,
         funcao: true,
         va: true,
@@ -86,6 +87,10 @@ export default async function CampanhaCombatesPage({
         danoBase: true,
         danoMedio: true,
         descricao: true,
+        narrativa: true,
+        fraquezas: true,
+        resistencias: true,
+        imunidades: true,
         golpes: true,
         reacoes: true,
       },
@@ -114,6 +119,7 @@ export default async function CampanhaCombatesPage({
         mestre: campanha.mestre ?? "",
         capa: campanha.capa ?? "",
         sinopse: campanha.sinopse ?? "",
+        status: campanha.status,
       }}
       combates={campanha.combates.map((combate) => ({
         id: combate.id,
@@ -146,6 +152,9 @@ export default async function CampanhaCombatesPage({
       ameacas={ameacas.map((ameaca) => ({
         ...ameaca,
         reacoes: parseReacoes(ameaca.reacoes),
+        fraquezas: parseTextArray(ameaca.fraquezas),
+        resistencias: parseTextArray(ameaca.resistencias),
+        imunidades: parseTextArray(ameaca.imunidades),
         golpes: parseGolpes(ameaca.golpes),
       }))}
       personagensCount={campanha.personagens.length}
@@ -281,6 +290,13 @@ function parseGolpes(value: Prisma.JsonValue | null | undefined) {
         ? Number(item.custoMana)
         : undefined,
     };
+  });
+}
+
+function parseTextArray(value: Prisma.JsonValue | null | undefined) {
+  return (value ? toJsonArray(value) : []).flatMap((item) => {
+    const text = toText(item);
+    return text ? [text] : [];
   });
 }
 

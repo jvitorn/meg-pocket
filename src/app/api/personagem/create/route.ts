@@ -157,6 +157,16 @@ export async function POST(request: Request) {
       );
     }
 
+    if (campanha.status !== "ATIVA") {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Esta campanha está encerrada e não aceita novas fichas.",
+        },
+        { status: 400, headers: rateLimitHeaders }
+      );
+    }
+
     if (!classe) {
       return NextResponse.json(
         { ok: false, error: "Classe não encontrada." },

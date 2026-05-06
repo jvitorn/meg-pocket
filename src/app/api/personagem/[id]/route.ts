@@ -431,6 +431,16 @@ export async function PUT(
       );
     }
 
+    if (campanha.status !== "ATIVA") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Esta campanha está encerrada e não aceita alterações de ficha.",
+        },
+        { status: 400, headers: rateLimitHeaders }
+      );
+    }
+
     if (!classe) {
       return NextResponse.json(
         { success: false, error: "Classe não encontrada." },

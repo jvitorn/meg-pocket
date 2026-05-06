@@ -13,6 +13,11 @@ enum Elemento {
   vento
 }
 
+enum CampanhaStatus {
+  ATIVA
+  ENCERRADA
+}
+
 /// Raça
 model Raca {
   id                            Int                  @id @default(autoincrement())
@@ -67,6 +72,7 @@ model Campanha {
   count_jogadores Int?
   mestre          String?
   userId          String?
+  status          CampanhaStatus @default(ATIVA)
   tags            Json?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -76,6 +82,7 @@ model Campanha {
   user            User?         @relation(fields: [userId], references: [id])
 
   @@index([userId])
+  @@index([status])
 }
 
 /// NPC salvo na campanha

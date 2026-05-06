@@ -25,6 +25,7 @@ export async function validarMestreDaCampanha(campanhaId: number) {
       sinopse: true,
       capa: true,
       mestre: true,
+      status: true,
       tags: true,
       userId: true,
     },

@@ -143,4 +143,25 @@ describe("CampanhaNpcsPageClient", () => {
     expect(within(drawer).getByRole("tab", { name: /Perfil/i })).toBeInTheDocument();
     expect(within(drawer).queryByRole("tab", { name: /Itens/i })).not.toBeInTheDocument();
   });
+
+  it("mostra os campos obrigatórios reais ao iniciar NPC manual", () => {
+    render(
+      <CampanhaNpcsPageClient
+        campanha={campanha}
+        npcs={[]}
+        racas={racas}
+        classes={classes}
+        estilosNarrativos={estilosNarrativos}
+        limite={50}
+        personagensCount={1}
+        inventarioCount={0}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Novo NPC" }));
+
+    expect(
+      screen.getByText(/Nome, Raça, Gênero e Objetivo na campanha/i)
+    ).toBeInTheDocument();
+  });
 });

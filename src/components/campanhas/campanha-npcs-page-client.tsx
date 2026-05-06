@@ -521,6 +521,14 @@ export function CampanhaNpcsPageClient({
                 </div>
               </div>
 
+              {isEditing && !editingId ? (
+                <div className="border-b bg-emerald-500/8 p-4 text-sm text-emerald-950 sm:p-5 dark:text-emerald-100">
+                  Para criar um NPC manualmente, preencha apenas Nome, Raça,
+                  Gênero e Objetivo na campanha. As demais abas servem para
+                  detalhamento e podem ser completadas depois.
+                </div>
+              ) : null}
+
               <div className="border-b bg-background/70 p-4 sm:p-5">
                 <NpcHighlights
                   objetivo={form.objetivoCampanha}

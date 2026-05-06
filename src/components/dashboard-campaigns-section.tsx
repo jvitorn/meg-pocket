@@ -9,6 +9,13 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   CampanhaInfoDialog,
   normalizeCampanhaTags,
   type CampanhaInfoValues,
@@ -29,20 +36,27 @@ export type DashboardCampanhaItem = {
   updatedAtLabel: string;
   isOwner: boolean;
   tags: string[];
+  status?: "ATIVA" | "ENCERRADA";
 };
 
 type Props = {
   initialCampanhas: DashboardCampanhaItem[];
+  initialCampanhasEncerradas?: DashboardCampanhaItem[];
   defaultMestre: string;
 };
 
 export function DashboardCampaignsSection({
   initialCampanhas,
+  initialCampanhasEncerradas = [],
   defaultMestre,
 }: Props) {
   const router = useRouter();
   const [campanhas, setCampanhas] = useState(initialCampanhas);
+  const [campanhasEncerradas, setCampanhasEncerradas] = useState(
+    initialCampanhasEncerradas
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [archivedDialogOpen, setArchivedDialogOpen] = useState(false);
   const [editingCampanha, setEditingCampanha] =
     useState<DashboardCampanhaItem | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +65,10 @@ export function DashboardCampaignsSection({
   useEffect(() => {
     setCampanhas(initialCampanhas);
   }, [initialCampanhas]);
+
+  useEffect(() => {
+    setCampanhasEncerradas(initialCampanhasEncerradas);
+  }, [initialCampanhasEncerradas]);
 
   async function handleCreateCampaign(values: CampanhaInfoValues) {
     if (loading) {
@@ -83,6 +101,7 @@ export function DashboardCampaignsSection({
             createdAtLabel: "agora",
             updatedAtLabel: "agora",
             isOwner: true,
+            status: createdCampaign.status ?? "ATIVA",
             tags: Array.isArray(createdCampaign.tags)
               ? createdCampaign.tags.map(String)
               : normalizeCampanhaTags(values.tags),
@@ -289,6 +308,16 @@ export function DashboardCampaignsSection({
             </Button>
           </div>
         )}
+
+        <div className="mt-5 border-t border-border/60 pt-4">
+          <button
+            type="button"
+            className="text-sm font-medium text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline"
+            onClick={() => setArchivedDialogOpen(true)}
+          >
+            Clique aqui para verificar campanhas encerradas
+          </button>
+        </div>
       </section>
 
       {dialogOpen ? (
@@ -341,6 +370,73 @@ export function DashboardCampaignsSection({
           onSubmit={handleEditCampaign}
         />
       ) : null}
+
+      <CampanhasEncerradasDialog
+        open={archivedDialogOpen}
+        campanhas={campanhasEncerradas}
+        onOpenChange={setArchivedDialogOpen}
+      />
     </>
+  );
+}
+
+function CampanhasEncerradasDialog({
+  open,
+  campanhas,
+  onOpenChange,
+}: {
+  open: boolean;
+  campanhas: DashboardCampanhaItem[];
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[86vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Campanhas encerradas</DialogTitle>
+          <DialogDescription>
+            Campanhas inativas ficam fora das listagens principais, mas podem
+            ser consultadas pelo escudo.
+          </DialogDescription>
+        </DialogHeader>
+
+        {campanhas.length > 0 ? (
+          <div className="grid gap-3">
+            {campanhas.map((campanha) => (
+              <article
+                key={campanha.id}
+                className="rounded-lg border border-border/70 bg-card p-4 shadow-xs"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{campanha.nome}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Mestre: {campanha.mestre || "Nao informado"} · Encerrada
+                      ou atualizada em {campanha.updatedAtLabel}
+                    </p>
+                    <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
+                      {campanha.sinopse?.trim() || "Sem sinopse cadastrada."}
+                    </p>
+                  </div>
+                  <Button asChild size="sm" className="shrink-0 gap-2">
+                    <Link
+                      href={`/campanhas/escudo/${campanha.id}`}
+                      onClick={() => onOpenChange(false)}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      Abrir escudo
+                    </Link>
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+            Nenhuma campanha encerrada encontrada.
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
