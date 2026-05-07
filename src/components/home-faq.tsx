@@ -32,7 +32,19 @@ const faqItems = [
     id: "gm-panel",
     question: "Existe um painel de mestre da campanha?",
     answer:
-      "Ainda não nesta versão. Estamos desenvolvendo um painel de mestre e a ideia é disponibilizar essa funcionalidade em breve.",
+      "Sim. Ao criar uma campanha, você se torna automaticamente o mestre dela. A partir do painel de mestre, é possível gerenciar os recursos da campanha conforme as funcionalidades disponíveis no sistema.",
+  },
+  {
+    id: "unique-class",
+    question: "Por que a classe Único não aparece na criação da ficha?",
+    answer:
+      "A classe Único não aparece na criação comum de ficha porque foi pensada para casos especiais. Em uma versão futura, ela será usada para personagens com magias, características ou regras únicas dentro da campanha.",
+  },
+  {
+    id: "character-progression",
+    question: "O sistema possui evolução de personagem?",
+    answer:
+      "No momento, a versão atual foi pensada principalmente para campanhas rápidas, aventuras curtas e one-shots. A evolução de personagem está planejada para uma versão futura do sistema.",
   },
 ] as const;
 

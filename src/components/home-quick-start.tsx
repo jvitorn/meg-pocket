@@ -20,7 +20,7 @@ const steps = [
     icon: Sword,
     title: "3. Entre em ação",
     description:
-      "Gerencie magias, recursos e evolução do personagem em tempo real durante a aventura.",
+      "Acompanhe magias, recursos, inventário e informações da ficha em tempo real durante a aventura.",
   },
 ] as const;
 

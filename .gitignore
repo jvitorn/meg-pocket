@@ -15,6 +15,11 @@
 /playwright-report
 /test-results
 
+# local installer state
+/installers/.seed-inicial-concluido
+/installers/.cloudflared-tunnel.pid
+/installers/cloudflared-tunnel.log
+
 # next.js
 /.next/
 /out/

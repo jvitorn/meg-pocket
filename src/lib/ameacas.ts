@@ -32,7 +32,15 @@ type AmeacaDbRow = {
   golpes: Prisma.JsonValue;
 };
 
+function shouldUseStaticBestiary() {
+  return process.env.MEG_POCKET_STATIC_BESTIARY === "1";
+}
+
 export async function listarAmeacas() {
+  if (shouldUseStaticBestiary()) {
+    return dataBestiario;
+  }
+
   try {
     const ameacas = await prisma.ameaca.findMany({
       orderBy: [{ va: "asc" }, { nome: "asc" }],
@@ -45,6 +53,10 @@ export async function listarAmeacas() {
 }
 
 export async function buscarAmeacaPorSlug(slug: string) {
+  if (shouldUseStaticBestiary()) {
+    return getAmeacaById(slug);
+  }
+
   try {
     const ameaca = await prisma.ameaca.findUnique({
       where: { slug },

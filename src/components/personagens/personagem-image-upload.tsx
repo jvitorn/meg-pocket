@@ -80,7 +80,7 @@ function loadImageDimensions(sourceUrl: string) {
           naturalHeight: image.naturalHeight,
         });
       image.onerror = () =>
-        reject(new Error("Nao foi possivel ler a imagem selecionada."));
+        reject(new Error("Não foi possível ler a imagem selecionada."));
       image.src = sourceUrl;
     }
   );
@@ -91,7 +91,7 @@ function loadImageElement(sourceUrl: string) {
     const image = new window.Image();
     image.onload = () => resolve(image);
     image.onerror = () =>
-      reject(new Error("Nao foi possivel preparar a imagem para recorte."));
+      reject(new Error("Não foi possível preparar a imagem para recorte."));
     image.src = sourceUrl;
   });
 }
@@ -227,7 +227,7 @@ export function PersonagemImageUpload({ value, onChange, disabled = false }: Pro
       setError(
         err instanceof Error
           ? err.message
-          : "Nao foi possivel ler a imagem selecionada."
+          : "Não foi possível ler a imagem selecionada."
       );
     }
   }
@@ -320,7 +320,7 @@ export function PersonagemImageUpload({ value, onChange, disabled = false }: Pro
       const context = canvas.getContext("2d");
 
       if (!context) {
-        throw new Error("Nao foi possivel preparar o recorte da imagem.");
+        throw new Error("Não foi possível preparar o recorte da imagem.");
       }
 
       context.drawImage(
@@ -339,7 +339,7 @@ export function PersonagemImageUpload({ value, onChange, disabled = false }: Pro
         canvas.toBlob(
           (result) => {
             if (!result) {
-              reject(new Error("Nao foi possivel gerar a imagem recortada."));
+              reject(new Error("Não foi possível gerar a imagem recortada."));
               return;
             }
 
@@ -370,7 +370,7 @@ export function PersonagemImageUpload({ value, onChange, disabled = false }: Pro
       setError(
         err instanceof Error
           ? err.message
-          : "Nao foi possivel recortar a imagem."
+          : "Não foi possível recortar a imagem."
       );
     } finally {
       setCropLoading(false);
@@ -406,8 +406,8 @@ export function PersonagemImageUpload({ value, onChange, disabled = false }: Pro
                 Selecione uma imagem e ajuste o enquadramento antes do upload.
               </p>
               <FieldDescription>
-                O recorte e feito localmente e a imagem so e enviada ao salvar a
-                ficha. Limite maximo de {MAX_FILE_SIZE_MB} MB.
+                O recorte é feito localmente, e a imagem só é enviada ao salvar
+                a ficha. Limite máximo de {MAX_FILE_SIZE_MB} MB.
               </FieldDescription>
               {value?.file ? (
                 <p className="text-xs text-muted-foreground">
@@ -415,7 +415,7 @@ export function PersonagemImageUpload({ value, onChange, disabled = false }: Pro
                 </p>
               ) : value?.previewUrl ? (
                 <p className="text-xs text-muted-foreground">
-                  Imagem atual mantida ate voce trocar ou remover.
+                  Imagem atual mantida até você trocar ou remover.
                 </p>
               ) : null}
             </div>
@@ -501,7 +501,7 @@ export function PersonagemImageUpload({ value, onChange, disabled = false }: Pro
                 </div>
 
                 <p className="text-center text-xs text-muted-foreground">
-                  O recorte final sera exportado em formato WEBP.
+                  O recorte final será exportado em formato WEBP.
                 </p>
               </div>
 
@@ -554,12 +554,12 @@ export function PersonagemImageUpload({ value, onChange, disabled = false }: Pro
                         Arraste para mover
                       </div>
                       <p className="mt-2">
-                        O quadro central mostra exatamente a area que sera salva.
+                        O quadro central mostra exatamente a área que será salva.
                       </p>
                     </div>
 
                     <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
-                      Area visivel: {cropViewportSize}px x {cropViewportSize}px
+                      Área visível: {cropViewportSize}px x {cropViewportSize}px
                     </div>
                   </div>
                 </div>

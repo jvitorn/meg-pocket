@@ -6,7 +6,7 @@ export default function TermosPage() {
       filename="TERMS.md"
       eyebrow="Uso do projeto"
       title="Termos de Uso"
-      description="Condicoes gerais para usar, hospedar, adaptar e contribuir com o Meg Pocket."
+      description="Condições gerais para usar, hospedar, adaptar e contribuir com o Meg Pocket."
     />
   );
 }

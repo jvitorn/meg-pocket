@@ -182,10 +182,10 @@ export function DashboardCampaignsSection({
               Campanhas
             </p>
             <h2 className="mt-2 text-2xl font-semibold">
-              Mesas que voce conduz
+              Mesas que você conduz
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              Aqui ficam suas campanhas criadas e as mesas em que voce aparece
+              Aqui ficam suas campanhas criadas e as mesas em que você aparece
               como mestre.
             </p>
           </div>
@@ -228,7 +228,7 @@ export function DashboardCampaignsSection({
                         {campanha.nome}
                       </h3>
                       <p className="text-xs text-white/80">
-                        Mestre: {campanha.mestre || "Nao informado"}
+                        Mestre: {campanha.mestre || "Não informado"}
                       </p>
                     </div>
                     <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm">
@@ -241,7 +241,7 @@ export function DashboardCampaignsSection({
                 <div className="space-y-4 p-5">
                   <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
                     <span className="rounded-full border border-border/60 px-2 py-1">
-                      {campanha.isOwner ? "Criada por voce" : "Mestrando"}
+                      {campanha.isOwner ? "Criada por você" : "Mestrando"}
                     </span>
                     <span className="rounded-full border border-border/60 px-2 py-1">
                       Atualizada em {campanha.updatedAtLabel}
@@ -250,7 +250,7 @@ export function DashboardCampaignsSection({
 
                   <p className="min-h-12 text-sm text-muted-foreground">
                     {campanha.sinopse?.trim() ||
-                      "Ainda sem sinopse. Abra a mesa e comece a registrar sua historia."}
+                      "Ainda sem sinopse. Abra a mesa e comece a registrar sua história."}
                   </p>
 
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -331,7 +331,7 @@ export function DashboardCampaignsSection({
             setError(null);
           }}
           title="Criar campanha"
-          description="Cadastre a base da mesa agora. Depois voce pode evoluir a narrativa e os detalhes visuais."
+          description="Cadastre a base da mesa agora. Depois você pode evoluir a narrativa e os detalhes visuais."
           submitLabel="Criar campanha"
           loading={loading}
           error={error}
@@ -411,7 +411,7 @@ function CampanhasEncerradasDialog({
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{campanha.nome}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Mestre: {campanha.mestre || "Nao informado"} · Encerrada
+                      Mestre: {campanha.mestre || "Não informado"} · Encerrada
                       ou atualizada em {campanha.updatedAtLabel}
                     </p>
                     <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">

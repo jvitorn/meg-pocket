@@ -187,9 +187,9 @@ export default async function DashboardPage() {
                 </h1>
                 <p className="text-sm text-muted-foreground mt-3 max-w-xl">
                   Bem-vindo{session?.user?.name ? "," : ""}{" "}
-                  {session?.user?.name ?? "mestre"} — daqui voce acompanha suas
+                  {session?.user?.name ?? "mestre"} — daqui você acompanha suas
                   campanhas e as fichas mais recentes sem misturar tudo numa
-                  unica tela.
+                  única tela.
                 </p>
               </div>
 
@@ -244,7 +244,7 @@ export default async function DashboardPage() {
 
             <div className="rounded-2xl border border-border/60 bg-card/80 p-5 shadow-sm">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Ultima atividade
+                Última atividade
               </p>
               <p className="mt-2 text-2xl font-semibold">
                 {ultimaAtualizacao
@@ -270,10 +270,10 @@ export default async function DashboardPage() {
                   Fichas recentes
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold">
-                  Seus ultimos personagens
+                  Seus últimos personagens
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Uma visao rapida do que foi atualizado por ultimo, com atalho
+                  Uma visão rápida do que foi atualizado por último, com atalho
                   direto para a lista completa.
                 </p>
               </div>
@@ -291,7 +291,7 @@ export default async function DashboardPage() {
                   const detalhe =
                     classe && raca
                       ? `${classe} • ${raca}`
-                      : classe || raca || "Origem nao definida";
+                      : classe || raca || "Origem não definida";
                   const imageSrc = resolverImagemPerfilPersonagem(personagem);
                   const hpMax = resolverBaseAtributo({
                     basePersistida: personagem.hp_base,
@@ -336,7 +336,7 @@ export default async function DashboardPage() {
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Quando suas fichas nascerem, elas aparecem aqui como atalho
-                  rapido para a mesa.
+                  rápido para a mesa.
                 </p>
                 <Button asChild className="mt-5">
                   <Link href="/fichas/novo">Criar ficha</Link>

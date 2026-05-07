@@ -16,8 +16,14 @@ const rootDir = process.cwd();
 const envPath = path.join(rootDir, ".env.local");
 const sqlPath = path.join(rootDir, sqlArg);
 
-if (!fs.existsSync(envPath)) {
-  console.error("Arquivo de ambiente nao encontrado: .env.local");
+if (
+  !fs.existsSync(envPath) &&
+  !process.env.DATABASE_URL &&
+  !process.env.DIRECT_URL
+) {
+  console.error(
+    "Arquivo de ambiente nao encontrado: .env.local, DATABASE_URL ou DIRECT_URL"
+  );
   process.exit(1);
 }
 
@@ -26,11 +32,11 @@ if (!fs.existsSync(sqlPath)) {
   process.exit(1);
 }
 
-const envText = fs.readFileSync(envPath, "utf8");
+const envText = fs.existsSync(envPath) ? fs.readFileSync(envPath, "utf8") : "";
 const envEntries = envText
   .split(/\r?\n/)
   .map((line) => line.trim())
-  .filter((line) => line && !line.startsWith("#"))
+  .filter((line) => line && !line.startsWith("#") && line.includes("="))
   .map((line) => {
     const separatorIndex = line.indexOf("=");
     const key = line.slice(0, separatorIndex);
@@ -40,7 +46,8 @@ const envEntries = envText
   });
 
 const envMap = Object.fromEntries(envEntries);
-const rawDbUrl = envMap.DIRECT_URL || envMap.DATABASE_URL;
+const runtimeEnv = { ...process.env, ...envMap };
+const rawDbUrl = runtimeEnv.DIRECT_URL || runtimeEnv.DATABASE_URL;
 
 if (!rawDbUrl) {
   console.error("DATABASE_URL/DIRECT_URL nao definido em .env.local");
@@ -50,7 +57,9 @@ if (!rawDbUrl) {
 function isLocalDatabaseUrl(rawUrl) {
   try {
     const url = new URL(rawUrl);
-    return ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+    return ["localhost", "127.0.0.1", "::1", "postgres"].includes(
+      url.hostname
+    );
   } catch {
     return false;
   }
@@ -75,7 +84,7 @@ if (
 const dbUrl = rawDbUrl.split("?")[0];
 const result = spawnSync("psql", [dbUrl, "-v", "ON_ERROR_STOP=1", "-f", sqlPath], {
   stdio: "inherit",
-  env: { ...process.env, ...envMap },
+  env: runtimeEnv,
 });
 
 process.exit(result.status ?? 1);

@@ -262,10 +262,10 @@ Por padrão, seeds só podem rodar quando `DATABASE_URL` ou `DIRECT_URL` apontam
 - `127.0.0.1`
 - `::1`
 
-Para um override consciente, é necessário definir:
+Para um override consciente, é necessário usar:
 
 ```bash
-ALLOW_NON_LOCAL_DB_SEED=1
+npm run db:seed:prod
 ```
 
 Esse override deve ser usado com extrema cautela.

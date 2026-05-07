@@ -66,15 +66,15 @@ export default async function FichasPage() {
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                  Seu grimorio
+                  Seu grimório
                 </p>
                 <h1 className="font-display text-3xl md:text-4xl font-bold">
                   Fichas
                 </h1>
                 <p className="text-sm text-muted-foreground mt-3 max-w-xl">
                   Bem-vindo{session?.user?.name ? "," : ""}{" "}
-                  {session?.user?.name ?? "aventureiro"} — aqui estao as fichas
-                  que voce ja criou e seus proximos passos.
+                  {session?.user?.name ?? "aventureiro"} — aqui estão as fichas
+                  que você já criou e seus próximos passos.
                 </p>
               </div>
 
@@ -102,8 +102,8 @@ export default async function FichasPage() {
             </div>
             <div className="text-xs text-muted-foreground">
               {personagens.length >= MAX_PERSONAGENS
-                ? "Limite alcancado — arquive um personagem para criar outro."
-                : "Voce pode criar mais personagens quando quiser."}
+                ? "Limite alcançado — arquive um personagem para criar outro."
+                : "Você pode criar mais personagens quando quiser."}
             </div>
           </div>
 
@@ -117,7 +117,7 @@ export default async function FichasPage() {
                   Nenhum personagem criado
                 </h2>
                 <p className="text-sm text-muted-foreground mt-3">
-                  Crie sua primeira ficha para comecar sua jornada em Valthera
+                  Crie sua primeira ficha para começar sua jornada em Valthera
                   com estilo.
                 </p>
                 <Button asChild className="mt-6 px-6">
@@ -136,7 +136,7 @@ export default async function FichasPage() {
                   const detalhe =
                     classe && raca
                       ? `${classe} • ${raca}`
-                      : classe || raca || "Origem nao definida";
+                      : classe || raca || "Origem não definida";
                   const imageSrc = resolverImagemPerfilPersonagem(personagem);
                   const hpMax = resolverBaseAtributo({
                     basePersistida: personagem.hp_base,

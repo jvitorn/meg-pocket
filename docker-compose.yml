@@ -1,14 +1,45 @@
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      DATABASE_URL: "postgresql://meg:meg@postgres:5432/meg_pocket?schema=public"
+      DIRECT_URL: "postgresql://meg:meg@postgres:5432/meg_pocket?schema=public"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-meg-pocket-local-secret-change-me}"
+      NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
+      NEXT_PUBLIC_BASE_URL: "${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-local-google-client-id}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-local-google-client-secret}"
+      STORAGE_DRIVER: local
+      STORAGE_BUCKET: personagens
+      STORAGE_LOCAL_DIR: /app/storage/local/public
+      STORAGE_LOCAL_PUBLIC_URL: "http://storage"
+      NEXT_PUBLIC_STORAGE_MAX_FILE_SIZE_MB: "40"
+      ADMINER_URL: "http://localhost:8081"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./storage/local/public:/app/storage/local/public
+    depends_on:
+      postgres:
+        condition: service_healthy
+      storage:
+        condition: service_started
+
   postgres:
     image: postgres:16-alpine
-    container_name: meg-pocket-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: meg_pocket
       POSTGRES_USER: meg
       POSTGRES_PASSWORD: meg
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - meg-pocket-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -19,19 +50,17 @@ services:
 
   storage:
     image: nginx:1.29-alpine
-    container_name: meg-pocket-storage
     restart: unless-stopped
     ports:
-      - "9323:80"
+      - "127.0.0.1:9323:80"
     volumes:
       - ./storage/local/public:/usr/share/nginx/html:ro
 
   adminer:
     image: adminer:4.8.1
-    container_name: meg-pocket-adminer
     restart: unless-stopped
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"
     depends_on:
       - postgres
 

@@ -608,7 +608,7 @@ export default function PersonagemCreateForm({
 
         if (!uploadResponse.ok) {
           setError(
-            uploadData?.error ?? "Nao foi possivel enviar a imagem para o storage."
+            uploadData?.error ?? "Não foi possível enviar a imagem para o storage."
           );
           return;
         }

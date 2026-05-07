@@ -5,8 +5,8 @@ export default function PrivacidadePage() {
     <LegalMarkdownPage
       filename="PRIVACY.md"
       eyebrow="Dados e privacidade"
-      title="Politica de Privacidade"
-      description="Como o Meg Pocket trata dados pessoais em contas, fichas, anotacoes e instancias proprias."
+      title="Política de Privacidade"
+      description="Como o Meg Pocket trata dados pessoais em contas, fichas, anotações e instâncias próprias."
     />
   );
 }

@@ -22,12 +22,27 @@ Este repositório está em fase de refinamento para uma versão 1.0 funcional. A
 
 A documentação de uso, ambiente e políticas fica concentrada em `docs/`:
 
+- [Guia de instalação fácil](./docs/GUIA_INSTALACAO_FACIL.md)
 - [Guia de desenvolvimento](./docs/development.md)
 - [Termos de Uso](./docs/TERMS.md)
 - [Política de Privacidade](./docs/PRIVACY.md)
 - [Licença de Conteúdo](./docs/CONTENT_LICENSE.md)
 
-## Início Rápido
+## Instalação Fácil
+
+Para rodar o M&G Pocket localmente sem instalar Node.js, npm ou PostgreSQL no computador, use o guia fácil com Docker:
+
+```text
+docs/GUIA_INSTALACAO_FACIL.md
+```
+
+Os scripts ficam em:
+
+```text
+installers/
+```
+
+## Início Rápido Para Desenvolvimento
 
 Versão recomendada:
 
