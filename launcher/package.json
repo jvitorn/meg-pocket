@@ -8,6 +8,11 @@
     "build": "tsc && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "fix:icons": "node scripts/fix-icons.mjs",
+    "check": "npm run fix:icons && npm run build && cargo check --manifest-path src-tauri/Cargo.toml",
+    "build:launcher": "npm run fix:icons && npm run tauri:build",
     "test": "vitest run && npm run test:assets",
     "test:assets": "node scripts/validate-tauri-assets.mjs"
   },
@@ -27,6 +32,7 @@
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.0",
     "jsdom": "^29.0.1",
+    "sharp": "^0.34.5",
     "typescript": "^5.9.3",
     "vite": "^7.0.0",
     "vitest": "^4.1.2"

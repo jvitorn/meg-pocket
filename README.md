@@ -24,6 +24,7 @@ A documentação de uso, ambiente e políticas fica concentrada em `docs/`:
 
 - [Guia de instalação fácil](./docs/GUIA_INSTALACAO_FACIL.md)
 - [Guia do launcher](./docs/GUIA_LAUNCHER.md)
+- [Guia de build do launcher](./docs/GUIA_LAUNCHER_BUILD.md)
 - [Guia de instalação manual](./docs/GUIA_INSTALACAO_MANUAL.md)
 - [Guia de desenvolvimento](./docs/development.md)
 - [Termos de Uso](./docs/TERMS.md)

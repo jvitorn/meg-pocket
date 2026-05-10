@@ -1,9 +1,12 @@
 use serde::Serialize;
 use std::{
     env,
+    fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use tauri::{AppHandle, Manager};
 
 #[derive(Debug, Serialize)]
@@ -19,7 +22,15 @@ fn command_error(context: &str, error: impl std::fmt::Display) -> String {
     format!("{context}: {error}")
 }
 
-fn installers_dir(app: &AppHandle) -> Result<PathBuf, String> {
+fn is_installers_dir(path: &Path) -> bool {
+    path.join("linux/doctor.sh").exists() || path.join("windows/doctor.ps1").exists()
+}
+
+fn normalize_candidate(path: PathBuf) -> PathBuf {
+    path.components().collect()
+}
+
+fn dev_installers_dir() -> Option<PathBuf> {
     let mut candidates = Vec::new();
 
     if let Ok(cwd) = env::current_dir() {
@@ -37,20 +48,129 @@ fn installers_dir(app: &AppHandle) -> Result<PathBuf, String> {
         }
     }
 
-    if let Ok(resource_dir) = app.path().resource_dir() {
-        candidates.push(resource_dir.join("installers"));
-        candidates.push(resource_dir);
+    candidates
+        .into_iter()
+        .map(normalize_candidate)
+        .find(|path| is_installers_dir(path))
+}
+
+fn launcher_data_dir() -> Result<PathBuf, String> {
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(local_app_data) = env::var_os("LOCALAPPDATA") {
+            return Ok(PathBuf::from(local_app_data).join("mg-pocket-launcher"));
+        }
     }
+
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(home) = env::var_os("HOME") {
+            return Ok(PathBuf::from(home)
+                .join("Library")
+                .join("Application Support")
+                .join("mg-pocket-launcher"));
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Some(home) = env::var_os("HOME") {
+            return Ok(PathBuf::from(home)
+                .join(".local")
+                .join("share")
+                .join("mg-pocket-launcher"));
+        }
+    }
+
+    Err("Não consegui resolver a pasta local do launcher.".to_string())
+}
+
+fn bundled_installers_dir(app: &AppHandle) -> Option<PathBuf> {
+    let resource_dir = app.path().resource_dir().ok()?;
+    let candidates = [
+        resource_dir.join("installers"),
+        resource_dir.join("../installers"),
+        resource_dir.join("../../installers"),
+        resource_dir,
+    ];
 
     candidates
         .into_iter()
         .map(normalize_candidate)
-        .find(|path| path.join("linux/doctor.sh").exists() || path.join("windows/doctor.ps1").exists())
-        .ok_or_else(|| "Não encontrei a pasta installers embutida ou no repositório local.".to_string())
+        .find(|path| is_installers_dir(path))
 }
 
-fn normalize_candidate(path: PathBuf) -> PathBuf {
-    path.components().collect()
+fn copy_dir_all(source: &Path, destination: &Path) -> Result<(), String> {
+    fs::create_dir_all(destination)
+        .map_err(|error| command_error("Não foi possível criar pasta local de installers", error))?;
+
+    for entry in fs::read_dir(source)
+        .map_err(|error| command_error("Não foi possível ler resources do launcher", error))?
+    {
+        let entry = entry.map_err(|error| command_error("Não foi possível ler item de resource", error))?;
+        let file_type = entry
+            .file_type()
+            .map_err(|error| command_error("Não foi possível identificar item de resource", error))?;
+        let target = destination.join(entry.file_name());
+
+        if file_type.is_dir() {
+            copy_dir_all(&entry.path(), &target)?;
+        } else if file_type.is_file() {
+            fs::copy(entry.path(), &target)
+                .map_err(|error| command_error("Não foi possível copiar script do launcher", error))?;
+
+            #[cfg(unix)]
+            if target.extension().and_then(|extension| extension.to_str()) == Some("sh") {
+                let mut permissions = fs::metadata(&target)
+                    .map_err(|error| command_error("Não foi possível ler permissão do script", error))?
+                    .permissions();
+                permissions.set_mode(0o755);
+                fs::set_permissions(&target, permissions)
+                    .map_err(|error| command_error("Não foi possível aplicar permissão de execução", error))?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn local_installers_dir() -> Result<PathBuf, String> {
+    Ok(launcher_data_dir()?.join("installers"))
+}
+
+fn prepare_bundled_installers(app: &AppHandle) -> Result<PathBuf, String> {
+    let source = bundled_installers_dir(app)
+        .ok_or_else(|| "Não encontrei a pasta installers embutida no bundle do launcher.".to_string())?;
+    let destination = local_installers_dir()?;
+
+    copy_dir_all(&source, &destination)?;
+
+    if is_installers_dir(&destination) {
+        Ok(destination)
+    } else {
+        Err("A cópia local dos installers ficou incompleta.".to_string())
+    }
+}
+
+fn installers_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    if let Some(path) = dev_installers_dir() {
+        return Ok(path);
+    }
+
+    if bundled_installers_dir(app).is_some() {
+        return prepare_bundled_installers(app);
+    }
+
+    let local = local_installers_dir()?;
+    if is_installers_dir(&local) {
+        return Ok(local);
+    }
+
+    prepare_bundled_installers(app).map_err(|error| {
+        format!(
+            "{error}\nO launcher precisa dos scripts installers/ empacotados como resource."
+        )
+    })
 }
 
 #[cfg(target_os = "windows")]

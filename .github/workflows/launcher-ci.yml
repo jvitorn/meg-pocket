@@ -1,22 +1,34 @@
-name: Launcher Release
+name: Launcher CI
 
 on:
-  workflow_dispatch:
+  pull_request:
+    paths:
+      - "launcher/**"
+      - "installers/**"
+      - "scripts/generate-launcher-checksums.mjs"
+      - ".github/workflows/launcher-ci.yml"
+      - ".github/workflows/launcher-prerelease.yml"
   push:
-    tags:
-      - "launcher-v*"
+    branches:
+      - main
+      - master
+    paths:
+      - "launcher/**"
+      - "installers/**"
+      - "scripts/generate-launcher-checksums.mjs"
+      - ".github/workflows/launcher-ci.yml"
+      - ".github/workflows/launcher-prerelease.yml"
 
 jobs:
-  build-linux:
-    name: Build Linux Launcher
+  check-launcher:
+    name: Check Launcher
     runs-on: ubuntu-22.04
-    permissions:
-      contents: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -54,42 +66,18 @@ jobs:
         working-directory: launcher
         run: npm ci
 
-      - name: Test launcher
+      - name: Fix and validate icons
         working-directory: launcher
-        run: npm test
+        run: npm run fix:icons
 
       - name: Build launcher frontend
         working-directory: launcher
         run: npm run build
 
       - name: Check Tauri Rust backend
-        working-directory: launcher/src-tauri
-        run: cargo check
+        working-directory: launcher
+        run: cargo check --manifest-path src-tauri/Cargo.toml
 
-      - name: Build launcher AppImage
-        uses: tauri-apps/tauri-action@v0.6.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          projectPath: launcher
-          tauriScript: npm run tauri
-          args: --bundles appimage,deb
-          tagName: launcher-v__VERSION__
-          releaseName: "M&G Pocket Launcher v__VERSION__"
-          releaseBody: "Build inicial do launcher Linux. Windows e pacotes adicionais entram nas próximas etapas."
-          releaseDraft: true
-          prerelease: false
-
-      - name: Generate checksums
-        if: always()
-        run: |
-          find launcher/src-tauri/target/release/bundle -type f \( -name "*.AppImage" -o -name "*.deb" \) \
-            -exec sha256sum {} \; > checksums.txt || true
-
-      - name: Upload checksums artifact
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: launcher-checksums
-          path: checksums.txt
-          if-no-files-found: ignore
+      - name: Run launcher tests
+        working-directory: launcher
+        run: npm test

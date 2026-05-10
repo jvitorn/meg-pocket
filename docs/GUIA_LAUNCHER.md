@@ -32,6 +32,12 @@ Launcher/bootstrap:
 ~/.local/share/mg-pocket-launcher
 ```
 
+Scripts embutidos em execução empacotada:
+
+```text
+~/.local/share/mg-pocket-launcher/installers
+```
+
 Configurações:
 
 ```text
@@ -143,8 +149,9 @@ Build:
 
 ```bash
 cd launcher
+npm run fix:icons
 npm run build
-npm run tauri build
+npm run tauri:build
 ```
 
 Testes:

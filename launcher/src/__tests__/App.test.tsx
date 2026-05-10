@@ -166,4 +166,29 @@ describe("M&G Pocket Launcher", () => {
       }),
     );
   });
+
+  it("Ver Logs exibe o snapshot retornado pelo backend", async () => {
+    mockDoctor();
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /Ver Logs/i }));
+
+    expect(await screen.findByText("app log")).toBeInTheDocument();
+    expect(invokeMock).toHaveBeenCalledWith("readLogs");
+  });
+
+  it("Abrir Site e Abrir Adminer chamam apenas comandos permitidos", async () => {
+    mockDoctor();
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /Abrir Site/i }));
+    await user.click(screen.getByRole("button", { name: /Abrir Adminer/i }));
+
+    expect(invokeMock).toHaveBeenCalledWith("openSite");
+    expect(invokeMock).toHaveBeenCalledWith("openAdminer");
+  });
 });
