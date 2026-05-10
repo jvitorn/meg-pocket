@@ -14,10 +14,10 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -41,6 +41,15 @@ jobs:
             patchelf \
             wget
 
+      - name: Test installer scripts
+        run: |
+          for file in installers/linux/*.sh installers/bootstrap/*.sh installers/tests/*.sh installers/*.sh; do
+            bash -n "$file"
+          done
+          installers/tests/test-detect-distro.sh
+          installers/tests/test-compose-helper.sh
+          installers/tests/test-doctor-output.sh
+
       - name: Install launcher dependencies
         working-directory: launcher
         run: npm ci
@@ -49,12 +58,22 @@ jobs:
         working-directory: launcher
         run: npm test
 
+      - name: Build launcher frontend
+        working-directory: launcher
+        run: npm run build
+
+      - name: Check Tauri Rust backend
+        working-directory: launcher/src-tauri
+        run: cargo check
+
       - name: Build launcher AppImage
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: launcher
+          tauriScript: npm run tauri
+          args: --bundles appimage,deb
           tagName: launcher-v__VERSION__
           releaseName: "M&G Pocket Launcher v__VERSION__"
           releaseBody: "Build inicial do launcher Linux. Windows e pacotes adicionais entram nas próximas etapas."
@@ -64,12 +83,12 @@ jobs:
       - name: Generate checksums
         if: always()
         run: |
-          find launcher/src-tauri/target/release/bundle -type f \( -name "*.AppImage" -o -name "*.deb" \) -print0 \
-            | xargs -0 sha256sum > checksums.txt || true
+          find launcher/src-tauri/target/release/bundle -type f \( -name "*.AppImage" -o -name "*.deb" \) \
+            -exec sha256sum {} \; > checksums.txt || true
 
       - name: Upload checksums artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: launcher-checksums
           path: checksums.txt
