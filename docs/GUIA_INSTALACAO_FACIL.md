@@ -36,6 +36,34 @@ O bootstrap não instala Docker, não baixa o projeto web e não roda Docker Com
 
 Outras distros exigem instalação manual do Docker. Depois de instalar Docker manualmente, volte ao launcher e clique em **Preparar ambiente**.
 
+## Linux — AppImage Abriu Em Branco
+
+Em alguns ambientes Linux com Wayland/WebKitGTK, o AppImage pode abrir em branco.
+
+Teste pelo terminal:
+
+```bash
+WEBKIT_DISABLE_COMPOSITING_MODE=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
+```
+
+Se continuar:
+
+```bash
+WEBKIT_DISABLE_DMABUF_RENDERER=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
+```
+
+Ou:
+
+```bash
+GDK_BACKEND=x11 WEBKIT_DISABLE_COMPOSITING_MODE=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
+```
+
+No Arch Linux, garanta dependências comuns:
+
+```bash
+sudo pacman -S webkit2gtk-4.1 gtk3 glib2 libayatana-appindicator librsvg fuse2
+```
+
 ## Windows
 
 No Windows, instale o Docker Desktop primeiro:

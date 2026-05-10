@@ -125,8 +125,8 @@ jobs:
         run: npm run build
 
       - name: Check Tauri Rust backend
-        working-directory: launcher
-        run: cargo check --manifest-path src-tauri/Cargo.toml
+        working-directory: launcher/src-tauri
+        run: cargo check
 
       - name: Run launcher tests
         working-directory: launcher
@@ -155,8 +155,7 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Generate checksums
-        shell: bash
-        run: node scripts/generate-launcher-checksums.mjs "checksums-${{ matrix.artifactName }}.txt"
+        run: node scripts/generate-launcher-checksums.mjs "checksums-${{ matrix.artifactName }}.txt" --allow-empty
 
       - name: Upload checksums artifact
         uses: actions/upload-artifact@v6

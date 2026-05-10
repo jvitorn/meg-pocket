@@ -69,6 +69,32 @@ chmod +x src-tauri/target/release/bundle/appimage/*.AppImage
 ./src-tauri/target/release/bundle/appimage/*.AppImage
 ```
 
+## Linux — AppImage Abriu Em Branco
+
+Em alguns ambientes Linux com Wayland/WebKitGTK, o AppImage pode abrir em branco por falha de EGL/DMABUF. O launcher já aplica workarounds antes de criar o WebView, mas estes comandos ajudam a diagnosticar o ambiente:
+
+```bash
+WEBKIT_DISABLE_COMPOSITING_MODE=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
+```
+
+Se continuar:
+
+```bash
+WEBKIT_DISABLE_DMABUF_RENDERER=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
+```
+
+Ou:
+
+```bash
+GDK_BACKEND=x11 WEBKIT_DISABLE_COMPOSITING_MODE=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
+```
+
+No Arch Linux, garanta as dependências comuns:
+
+```bash
+sudo pacman -S webkit2gtk-4.1 gtk3 glib2 libayatana-appindicator librsvg fuse2
+```
+
 ## Resources empacotados
 
 O bundle inclui a pasta `installers/` como resource Tauri. Em execução empacotada, o launcher copia esses scripts para:
