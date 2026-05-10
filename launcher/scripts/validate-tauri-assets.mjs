@@ -6,6 +6,7 @@ import sharp from "sharp";
 const launcherRoot = process.cwd();
 const tauriDir = path.join(launcherRoot, "src-tauri");
 const configPath = path.join(tauriDir, "tauri.conf.json");
+const postcssConfigPath = path.join(launcherRoot, "postcss.config.mjs");
 const requiredIcons = [
   "icons/32x32.png",
   "icons/128x128.png",
@@ -84,5 +85,11 @@ if (!resources.includes("../../installers")) {
 }
 
 assertFile(path.join(tauriDir, "capabilities", "default.json"), "capability default");
+assertFile(postcssConfigPath, "config PostCSS local do launcher");
+
+const postcssConfig = fs.readFileSync(postcssConfigPath, "utf8");
+if (postcssConfig.includes("@tailwindcss/postcss")) {
+  fail("o launcher não deve depender do PostCSS/Tailwind do projeto principal");
+}
 
 console.log("validate-tauri-assets: ok");
