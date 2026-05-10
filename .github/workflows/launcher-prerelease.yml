@@ -1,0 +1,166 @@
+name: Build Launcher Pre-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag da pre-release. Ex: v1.1.0-beta.1"
+        required: false
+        type: string
+      draft:
+        description: "Criar como draft release"
+        required: false
+        default: true
+        type: boolean
+      prerelease:
+        description: "Marcar como pre-release"
+        required: false
+        default: true
+        type: boolean
+  push:
+    tags:
+      - "v*"
+      - "launcher-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-launcher:
+    name: Build ${{ matrix.name }} Launcher
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            artifactName: launcher-linux-checksums
+            platform: ubuntu-22.04
+            rustTarget: ""
+            args: "--bundles appimage,deb"
+          - name: Windows
+            artifactName: launcher-windows-checksums
+            platform: windows-latest
+            rustTarget: ""
+            args: "--bundles nsis,msi"
+          - name: macOS Apple Silicon
+            artifactName: launcher-macos-apple-silicon-checksums
+            platform: macos-latest
+            rustTarget: aarch64-apple-darwin
+            args: "--target aarch64-apple-darwin --bundles dmg,app"
+          - name: macOS Intel
+            artifactName: launcher-macos-intel-checksums
+            platform: macos-latest
+            rustTarget: x86_64-apple-darwin
+            args: "--target x86_64-apple-darwin --bundles dmg,app"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve release metadata
+        id: release
+        shell: bash
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          INPUT_DRAFT: ${{ github.event.inputs.draft }}
+          INPUT_PRERELEASE: ${{ github.event.inputs.prerelease }}
+        run: |
+          if [ -n "${INPUT_TAG}" ]; then
+            tag="${INPUT_TAG}"
+          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+          else
+            tag="launcher-dev-${GITHUB_RUN_NUMBER}"
+          fi
+
+          draft="${INPUT_DRAFT:-true}"
+          prerelease="${INPUT_PRERELEASE:-true}"
+
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "draft=${draft}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${prerelease}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: launcher/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add macOS Rust target
+        if: matrix.rustTarget != ''
+        shell: bash
+        run: rustup target add "${{ matrix.rustTarget }}"
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            wget
+
+      - name: Install launcher dependencies
+        working-directory: launcher
+        run: npm ci
+
+      - name: Fix and validate Tauri icons
+        working-directory: launcher
+        run: npm run fix:icons
+
+      - name: Build launcher frontend
+        working-directory: launcher
+        run: npm run build
+
+      - name: Check Tauri Rust backend
+        working-directory: launcher
+        run: cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: Run launcher tests
+        working-directory: launcher
+        run: npm test
+
+      - name: Build Tauri bundles
+        uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: launcher
+          tauriScript: npm run tauri
+          tagName: ${{ steps.release.outputs.tag }}
+          releaseName: "M&G Pocket Launcher ${{ steps.release.outputs.tag }}"
+          releaseBody: |
+            Pre-release do M&G Pocket Launcher.
+
+            Inclui builds para Linux, Windows e macOS.
+
+            Observações:
+            - Linux: use preferencialmente AppImage.
+            - Windows: requer Docker Desktop instalado.
+            - Linux Ubuntu/Debian/Arch-based: o launcher pode ajudar na instalação/validação do Docker.
+          releaseDraft: ${{ steps.release.outputs.draft }}
+          prerelease: ${{ steps.release.outputs.prerelease }}
+          args: ${{ matrix.args }}
+
+      - name: Generate checksums
+        shell: bash
+        run: node scripts/generate-launcher-checksums.mjs "checksums-${{ matrix.artifactName }}.txt"
+
+      - name: Upload checksums artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifactName }}
+          path: checksums-${{ matrix.artifactName }}.txt
+          if-no-files-found: error

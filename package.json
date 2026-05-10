@@ -13,6 +13,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:workflows": "node scripts/validate-github-actions.mjs",
     "test:e2e": "node scripts/run-e2e.mjs",
     "test:e2e:install": "playwright install chromium",
     "test:all": "npm run test && npm run test:e2e",

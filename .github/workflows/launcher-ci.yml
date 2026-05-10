@@ -1,0 +1,83 @@
+name: Launcher CI
+
+on:
+  pull_request:
+    paths:
+      - "launcher/**"
+      - "installers/**"
+      - "scripts/generate-launcher-checksums.mjs"
+      - ".github/workflows/launcher-ci.yml"
+      - ".github/workflows/launcher-prerelease.yml"
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "launcher/**"
+      - "installers/**"
+      - "scripts/generate-launcher-checksums.mjs"
+      - ".github/workflows/launcher-ci.yml"
+      - ".github/workflows/launcher-prerelease.yml"
+
+jobs:
+  check-launcher:
+    name: Check Launcher
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: launcher/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            wget
+
+      - name: Test installer scripts
+        run: |
+          for file in installers/linux/*.sh installers/bootstrap/*.sh installers/tests/*.sh installers/*.sh; do
+            bash -n "$file"
+          done
+          installers/tests/test-detect-distro.sh
+          installers/tests/test-compose-helper.sh
+          installers/tests/test-doctor-output.sh
+
+      - name: Install launcher dependencies
+        working-directory: launcher
+        run: npm ci
+
+      - name: Fix and validate icons
+        working-directory: launcher
+        run: npm run fix:icons
+
+      - name: Build launcher frontend
+        working-directory: launcher
+        run: npm run build
+
+      - name: Check Tauri Rust backend
+        working-directory: launcher
+        run: cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: Run launcher tests
+        working-directory: launcher
+        run: npm test

@@ -123,4 +123,72 @@ describe("M&G Pocket Launcher", () => {
     expect(await screen.findByText(/instale o Docker Desktop antes de continuar/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Abrir página de download/i })).toBeInTheDocument();
   });
+
+  it("Linux não suportado não tenta instalar Docker automaticamente", async () => {
+    mockDoctor({
+      ...baseStatus,
+      distroFamily: "unsupported",
+      distroName: "Fedora Linux",
+      supported: false,
+      dockerInstalled: false,
+      dockerRunning: false,
+      dockerComposeInstalled: false,
+    });
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByText("Fedora Linux");
+    await user.click(screen.getByRole("button", { name: /Preparar ambiente/i }));
+
+    expect(await screen.findByText(/Esta distribuição ainda não é suportada/i)).toBeInTheDocument();
+    expect(invokeMock).not.toHaveBeenCalledWith("installDockerLinux");
+  });
+
+  it("restore exige confirmação forte antes de chamar backend", async () => {
+    mockDoctor();
+    vi.spyOn(window, "prompt").mockReturnValue("/tmp/mg-pocket-backup.tar.gz");
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /Restaurar Backup/i }));
+
+    const confirm = screen.getByRole("button", { name: "Restaurar" });
+    expect(confirm).toBeDisabled();
+
+    await user.type(screen.getByLabelText(/Digite RESTAURAR/i), "RESTAURAR");
+    await user.click(confirm);
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith("restoreBackup", {
+        backupPath: "/tmp/mg-pocket-backup.tar.gz",
+        confirmed: true,
+      }),
+    );
+  });
+
+  it("Ver Logs exibe o snapshot retornado pelo backend", async () => {
+    mockDoctor();
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /Ver Logs/i }));
+
+    expect(await screen.findByText("app log")).toBeInTheDocument();
+    expect(invokeMock).toHaveBeenCalledWith("readLogs");
+  });
+
+  it("Abrir Site e Abrir Adminer chamam apenas comandos permitidos", async () => {
+    mockDoctor();
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /Abrir Site/i }));
+    await user.click(screen.getByRole("button", { name: /Abrir Adminer/i }));
+
+    expect(invokeMock).toHaveBeenCalledWith("openSite");
+    expect(invokeMock).toHaveBeenCalledWith("openAdminer");
+  });
 });
