@@ -23,6 +23,8 @@
 # next.js
 /.next/
 /out/
+/launcher/dist/
+/launcher/src-tauri/target/
 
 # production
 /build

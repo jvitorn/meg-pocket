@@ -4,11 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-cd "$PROJECT_DIR"
-mkdir -p storage/local/public
+if [ -f "$PROJECT_DIR/docker-compose.yml" ]; then
+  export MG_POCKET_PROJECT_DIR="$PROJECT_DIR"
+fi
 
-docker compose up -d
-
-echo
-echo "M&G Pocket iniciado."
-echo "Acesse: http://localhost:3000"
+exec "$SCRIPT_DIR/linux/start.sh"

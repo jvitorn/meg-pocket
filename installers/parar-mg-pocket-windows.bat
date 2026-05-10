@@ -2,22 +2,13 @@
 setlocal EnableExtensions
 chcp 65001 >nul
 
-cd /d "%~dp0.."
+set "MG_POCKET_PROJECT_DIR=%~dp0.."
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0windows\stop.ps1"
 if errorlevel 1 (
-  echo Não foi possível entrar na pasta do projeto.
+  echo.
+  echo Não foi possível parar o M^&G Pocket.
   pause
   exit /b 1
 )
 
-docker compose down
-if errorlevel 1 (
-  echo Não foi possível desligar o M^&G Pocket.
-  pause
-  exit /b 1
-)
-
-echo.
-echo M^&G Pocket desligado.
-echo Seus dados locais foram mantidos.
-echo.
 pause

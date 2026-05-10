@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+
+MG_POCKET_REPO_URL="${MG_POCKET_REPO_URL:-https://github.com/jvitorn/meg-pocket.git}"
+MG_POCKET_ZIP_URL="${MG_POCKET_ZIP_URL:-https://github.com/jvitorn/meg-pocket/archive/refs/heads/master.zip}"
+MG_POCKET_PROJECT_DIR="${MG_POCKET_PROJECT_DIR:-$HOME/.local/share/mg-pocket/app}"
+MG_POCKET_CONFIG_DIR="${MG_POCKET_CONFIG_DIR:-$HOME/.config/mg-pocket}"
+MG_POCKET_LAUNCHER_DIR="${MG_POCKET_LAUNCHER_DIR:-$HOME/.local/share/mg-pocket-launcher}"
+
+fail() {
+  printf '\nErro: %s\n' "$1" >&2
+  exit 1
+}
+
+info() {
+  printf '%s\n' "$*"
+}
+
+has_command() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+project_dir() {
+  printf '%s\n' "$MG_POCKET_PROJECT_DIR"
+}
+
+config_dir() {
+  printf '%s\n' "$MG_POCKET_CONFIG_DIR"
+}
+
+backup_dir() {
+  if [ -d "$HOME/Documentos" ]; then
+    printf '%s\n' "$HOME/Documentos/MG Pocket/backups"
+  elif [ -d "$HOME/Documents" ]; then
+    printf '%s\n' "$HOME/Documents/MG Pocket/backups"
+  else
+    printf '%s\n' "$HOME/.local/share/mg-pocket/backups"
+  fi
+}
+
+launcher_dir() {
+  printf '%s\n' "$MG_POCKET_LAUNCHER_DIR"
+}
+
+http_ok() {
+  local url="$1"
+
+  if has_command curl; then
+    curl -fsS --max-time 4 "$url" >/dev/null 2>&1
+    return $?
+  fi
+
+  if has_command wget; then
+    wget -q --spider --timeout=4 "$url" >/dev/null 2>&1
+    return $?
+  fi
+
+  return 1
+}
+
+wait_for_url() {
+  local url="$1"
+  local attempts="${2:-60}"
+  local delay="${3:-2}"
+  local i
+
+  for i in $(seq 1 "$attempts"); do
+    if http_ok "$url"; then
+      return 0
+    fi
+    sleep "$delay"
+  done
+
+  return 1
+}
+
+compose_cmd() {
+  if has_command docker && docker compose version >/dev/null 2>&1; then
+    printf '%s\n' "docker compose"
+    return 0
+  fi
+
+  if has_command docker-compose && docker-compose version >/dev/null 2>&1; then
+    printf '%s\n' "docker-compose"
+    return 0
+  fi
+
+  if has_command sudo && has_command docker && sudo docker compose version >/dev/null 2>&1; then
+    printf '%s\n' "sudo docker compose"
+    return 0
+  fi
+
+  if has_command sudo && has_command docker-compose && sudo docker-compose version >/dev/null 2>&1; then
+    printf '%s\n' "sudo docker-compose"
+    return 0
+  fi
+
+  return 1
+}
+
+run_compose() {
+  local cmd
+  local -a parts
+
+  cmd="$(compose_cmd)" || fail "Docker Compose não foi encontrado ou não está acessível."
+  read -r -a parts <<< "$cmd"
+  "${parts[@]}" "$@"
+}
+
+run_compose_no_prompt_cmd() {
+  if has_command docker && docker compose version >/dev/null 2>&1; then
+    printf '%s\n' "docker compose"
+    return 0
+  fi
+
+  if has_command docker-compose && docker-compose version >/dev/null 2>&1; then
+    printf '%s\n' "docker-compose"
+    return 0
+  fi
+
+  if has_command sudo && has_command docker && sudo -n docker compose version >/dev/null 2>&1; then
+    printf '%s\n' "sudo docker compose"
+    return 0
+  fi
+
+  if has_command sudo && has_command docker-compose && sudo -n docker-compose version >/dev/null 2>&1; then
+    printf '%s\n' "sudo docker-compose"
+    return 0
+  fi
+
+  return 1
+}
+
+docker_info_works() {
+  has_command docker && docker info >/dev/null 2>&1
+}
+
+sudo_docker_info_works() {
+  has_command sudo && has_command docker && sudo docker info >/dev/null 2>&1
+}
+
+sudo_docker_info_works_no_prompt() {
+  has_command sudo && has_command docker && sudo -n docker info >/dev/null 2>&1
+}
+
+ensure_project_ready_dir() {
+  local dir
+  dir="$(project_dir)"
+  mkdir -p "$dir"
+}
+
+ensure_env_file() {
+  local dir="$1"
+  local env_file="$dir/.env.docker-local"
+  local secret
+
+  if [ -f "$env_file" ]; then
+    info ".env.docker-local já existe. Mantendo arquivo atual."
+    return 0
+  fi
+
+  if [ -f "$dir/.env.example" ]; then
+    cp "$dir/.env.example" "$env_file"
+  else
+    cat > "$env_file" <<'ENV'
+DATABASE_URL="postgresql://meg:meg@localhost:5433/meg_pocket?schema=public"
+DIRECT_URL="postgresql://meg:meg@localhost:5433/meg_pocket?schema=public"
+NEXTAUTH_SECRET="meg-pocket-local-secret-change-me"
+NEXTAUTH_URL="http://localhost:3000"
+NEXT_PUBLIC_BASE_URL="http://localhost:3000"
+GOOGLE_CLIENT_ID="local-google-client-id"
+GOOGLE_CLIENT_SECRET="local-google-client-secret"
+STORAGE_DRIVER="local"
+STORAGE_BUCKET="personagens"
+STORAGE_LOCAL_DIR="./storage/local/public"
+STORAGE_LOCAL_PUBLIC_URL="http://localhost:9323"
+NEXT_PUBLIC_STORAGE_MAX_FILE_SIZE_MB="40"
+ADMINER_URL="http://localhost:8081"
+ENV
+  fi
+
+  if has_command openssl; then
+    secret="$(openssl rand -hex 32)"
+    sed -i.bak "s/^NEXTAUTH_SECRET=.*/NEXTAUTH_SECRET=\"$secret\"/" "$env_file"
+    rm -f "$env_file.bak"
+  fi
+
+  info ".env.docker-local criado."
+}
+
+wait_for_postgres() {
+  local attempts="${1:-60}"
+  local i
+
+  for i in $(seq 1 "$attempts"); do
+    if run_compose --env-file .env.docker-local exec -T postgres pg_isready -U meg -d meg_pocket >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  return 1
+}
+
+seed_ready() {
+  run_compose --env-file .env.docker-local exec -T postgres psql -U meg -d meg_pocket -tAc "SELECT CASE WHEN to_regclass('\"Classe\"') IS NULL OR to_regclass('\"Raca\"') IS NULL OR to_regclass('\"MagiaCatalog\"') IS NULL OR to_regclass('\"PericiaCatalog\"') IS NULL OR to_regclass('\"Item\"') IS NULL THEN 0 WHEN (SELECT count(*) FROM \"Classe\") > 0 AND (SELECT count(*) FROM \"Raca\") > 0 AND (SELECT count(*) FROM \"MagiaCatalog\") > 0 AND (SELECT count(*) FROM \"PericiaCatalog\") > 0 AND (SELECT count(*) FROM \"Item\") > 0 THEN 1 ELSE 0 END;" 2>/dev/null | tr -d '[:space:]'
+}
+
+project_version() {
+  local dir="$1"
+
+  if [ -d "$dir/.git" ] && has_command git; then
+    git -C "$dir" describe --tags --always --dirty 2>/dev/null && return 0
+  fi
+
+  if [ -f "$dir/package.json" ] && has_command node; then
+    node -e "const p=require(process.argv[1]); console.log(p.version || 'desconhecida')" "$dir/package.json" 2>/dev/null && return 0
+  fi
+
+  printf '%s\n' "desconhecida"
+}
+
+json_escape() {
+  local value="${1:-}"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/ }"
+  value="${value//$'\r'/ }"
+  printf '%s' "$value"
+}
