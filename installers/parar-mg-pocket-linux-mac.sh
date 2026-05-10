@@ -4,10 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-cd "$PROJECT_DIR"
+if [ -f "$PROJECT_DIR/docker-compose.yml" ]; then
+  export MG_POCKET_PROJECT_DIR="$PROJECT_DIR"
+fi
 
-docker compose down
-
-echo
-echo "M&G Pocket desligado."
-echo "Seus dados locais foram mantidos."
+exec "$SCRIPT_DIR/linux/stop.sh"
