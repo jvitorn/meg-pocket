@@ -7,7 +7,7 @@ use std::{
 };
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use tauri::{AppHandle, Manager};
+use tauri::{path::BaseDirectory, AppHandle, Manager};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -86,13 +86,23 @@ fn launcher_data_dir() -> Result<PathBuf, String> {
 }
 
 fn bundled_installers_dir(app: &AppHandle) -> Option<PathBuf> {
-    let resource_dir = app.path().resource_dir().ok()?;
-    let candidates = [
-        resource_dir.join("installers"),
-        resource_dir.join("../installers"),
-        resource_dir.join("../../installers"),
-        resource_dir,
-    ];
+    let mut candidates = Vec::new();
+
+    if let Ok(path) = app.path().resolve("installers", BaseDirectory::Resource) {
+        candidates.push(path);
+    }
+
+    if let Ok(path) = app.path().resolve("../../installers", BaseDirectory::Resource) {
+        candidates.push(path);
+    }
+
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        candidates.push(resource_dir.join("installers"));
+        candidates.push(resource_dir.join("_up_").join("_up_").join("installers"));
+        candidates.push(resource_dir.join("../installers"));
+        candidates.push(resource_dir.join("../../installers"));
+        candidates.push(resource_dir);
+    }
 
     candidates
         .into_iter()
@@ -153,8 +163,10 @@ fn prepare_bundled_installers(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 fn installers_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    if let Some(path) = dev_installers_dir() {
-        return Ok(path);
+    if cfg!(debug_assertions) {
+        if let Some(path) = dev_installers_dir() {
+            return Ok(path);
+        }
     }
 
     if bundled_installers_dir(app).is_some() {

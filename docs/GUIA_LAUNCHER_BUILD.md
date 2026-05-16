@@ -7,7 +7,7 @@ Este guia descreve a validação local e o empacotamento do launcher Tauri.
 - Node.js 22 ou superior.
 - npm.
 - Rust estável com Cargo.
-- Dependências Linux do Tauri quando estiver gerando AppImage ou `.deb`.
+- Dependências Linux do Tauri quando estiver gerando AppImage, `.deb` ou `.rpm`.
 
 No Ubuntu 22.04, use:
 
@@ -23,6 +23,7 @@ sudo apt-get install -y \
   libwebkit2gtk-4.1-dev \
   libxdo-dev \
   patchelf \
+  rpm \
   wget
 ```
 
@@ -97,7 +98,7 @@ sudo pacman -S webkit2gtk-4.1 gtk3 glib2 libayatana-appindicator librsvg fuse2
 
 ## Resources empacotados
 
-O bundle inclui a pasta `installers/` como resource Tauri. Em execução empacotada, o launcher copia esses scripts para:
+O bundle inclui a pasta `installers/` como resource Tauri mapeado para `$RESOURCE/installers/`. Em execução empacotada, o launcher copia esses scripts para:
 
 ```text
 ~/.local/share/mg-pocket-launcher/installers/

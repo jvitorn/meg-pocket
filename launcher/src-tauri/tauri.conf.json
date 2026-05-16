@@ -36,6 +36,8 @@
       "icons/icon.ico",
       "icons/icon.png"
     ],
-    "resources": ["../../installers"]
+    "resources": {
+      "../../installers/": "installers/"
+    }
   }
 }

@@ -12,7 +12,7 @@
     "tauri:build": "tauri build",
     "fix:icons": "node scripts/fix-icons.mjs",
     "check": "npm run fix:icons && npm run build && cargo check --manifest-path src-tauri/Cargo.toml",
-    "build:launcher": "npm run fix:icons && npm run tauri:build",
+    "build:launcher": "npm run fix:icons && npm run test:assets && npm run tauri:build",
     "test": "vitest run && npm run test:assets",
     "test:assets": "node scripts/validate-tauri-assets.mjs"
   },

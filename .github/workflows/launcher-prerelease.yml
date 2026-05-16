@@ -37,7 +37,7 @@ jobs:
             artifactName: launcher-linux-checksums
             platform: ubuntu-22.04
             rustTarget: ""
-            args: "--bundles appimage,deb"
+            args: "--bundles appimage,deb,rpm"
           - name: Windows
             artifactName: launcher-windows-checksums
             platform: windows-latest
@@ -110,6 +110,7 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libxdo-dev \
             patchelf \
+            rpm \
             wget
 
       - name: Install launcher dependencies
@@ -148,6 +149,7 @@ jobs:
 
             Observações:
             - Linux: use preferencialmente AppImage.
+            - Linux também inclui pacotes .deb e .rpm quando o build concluir com sucesso.
             - Windows: requer Docker Desktop instalado.
             - Linux Ubuntu/Debian/Arch-based: o launcher pode ajudar na instalação/validação do Docker.
           releaseDraft: ${{ steps.release.outputs.draft }}
