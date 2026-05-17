@@ -4,6 +4,9 @@ const baseURL =
   process.env.PLAYWRIGHT_BASE_URL ??
   process.env.NEXTAUTH_URL ??
   "http://localhost:3000";
+const reuseExistingServer =
+  process.env.MEG_E2E_REUSE_SERVER === "1" ||
+  (!process.env.CI && process.env.MEG_E2E !== "1");
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -19,7 +22,7 @@ export default defineConfig({
   webServer: {
     command: "npm run dev -- --hostname 127.0.0.1 --port 3000",
     url: baseURL,
-    reuseExistingServer: !process.env.CI && process.env.MEG_E2E !== "1",
+    reuseExistingServer,
     timeout: 120_000,
   },
   projects: [

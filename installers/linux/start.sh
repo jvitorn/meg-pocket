@@ -13,8 +13,11 @@ project_path="$(project_dir)"
 cd "$project_path"
 mkdir -p storage/local/public
 ensure_env_file "$project_path"
+cleanup_legacy_app_compose_project
 
-run_compose --env-file .env.docker-local up -d
+run_compose --env-file .env.docker-local up -d postgres storage app
+start_optional_adminer
+wait_for_app_database 60 || fail "M&G Pocket iniciou, mas o app ainda não consegue acessar o Postgres."
 
 if wait_for_url "http://localhost:3000" 60 2; then
   info "M&G Pocket iniciado em http://localhost:3000"

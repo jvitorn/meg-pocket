@@ -1,11 +1,12 @@
 # syntax=docker/dockerfile:1
 
-ARG NODE_VERSION=22.12.0
+ARG NODE_VERSION=22.13.1
 
 FROM node:${NODE_VERSION}-bookworm-slim AS base
 WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED=1 \
+    PLAYWRIGHT_BROWSERS_PATH="/ms-playwright" \
     DATABASE_URL="postgresql://meg:meg@postgres:5432/meg_pocket?schema=public" \
     DIRECT_URL="postgresql://meg:meg@postgres:5432/meg_pocket?schema=public" \
     NEXTAUTH_SECRET="meg-pocket-local-build-secret" \
@@ -50,9 +51,15 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/tests ./tests
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/vitest.config.ts ./vitest.config.ts
+COPY --from=builder /app/playwright.config.ts ./playwright.config.ts
 
-RUN mkdir -p /app/storage/local/public \
-  && chown -R node:node /app
+RUN npx playwright install --with-deps chromium \
+  && mkdir -p /app/storage/local/public \
+  && chown -R node:node /app /ms-playwright
 
 USER node
 

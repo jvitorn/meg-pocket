@@ -91,6 +91,43 @@ function friendlyActionError(label: string, error: unknown) {
   return `Não consegui concluir "${label}". Os detalhes técnicos foram enviados para Logs.`;
 }
 
+function progressCopy(busy: string | null) {
+  switch (busy) {
+    case "prepare":
+      return {
+        title: "Preparando ambiente",
+        detail: "Validando Docker, permissões, banco de dados e aplicação.",
+      };
+    case "Instalar/Atualizar":
+      return {
+        title: "Instalando ou atualizando",
+        detail: "Baixando arquivos, preparando containers e aplicando banco de dados.",
+      };
+    case "dependências":
+      return {
+        title: "Instalando dependências",
+        detail: "Aguardando o gerenciador de pacotes concluir a instalação.",
+      };
+    case "diagnose":
+      return {
+        title: "Diagnosticando",
+        detail: "Lendo o estado do sistema e dos containers locais.",
+      };
+    case "Logs":
+      return {
+        title: "Carregando logs",
+        detail: "Buscando as últimas mensagens dos containers.",
+      };
+    case null:
+      return null;
+    default:
+      return {
+        title: `Processando ${busy}`,
+        detail: "Aguarde enquanto o launcher conclui esta ação.",
+      };
+  }
+}
+
 type PendingDependencyAction = "install" | "prepare";
 
 function unique(values: string[]) {
@@ -345,6 +382,7 @@ export default function App() {
 
   const showLinuxInstallDocker = status?.os === "linux" && status.supported && !status.dockerInstalled;
   const showWindowsDockerGuide = status?.os === "windows" && !status.dockerInstalled;
+  const activeProgress = progressCopy(busy);
 
   return (
     <AppShell>
@@ -380,6 +418,17 @@ export default function App() {
             Abrir página de download do Docker Desktop
           </button>
         </div>
+      ) : null}
+      {activeProgress ? (
+        <section className="operation-progress" role="status" aria-live="polite">
+          <div>
+            <strong>{activeProgress.title}</strong>
+            <span>{activeProgress.detail}</span>
+          </div>
+          <div className="operation-progress__track" aria-hidden="true">
+            <span />
+          </div>
+        </section>
       ) : null}
 
       <div className="status-grid">

@@ -4,6 +4,7 @@ import path from "node:path";
 
 const rootDir = process.cwd();
 const localEnvCandidates = [".env.docker-local", ".env.example"];
+const dockerDatabaseHosts = new Set(["postgres", "localhost", "127.0.0.1", "::1"]);
 
 function parseEnvText(envText) {
   return Object.fromEntries(
@@ -30,7 +31,38 @@ function isLocalDatabaseUrl(rawUrl) {
   }
 }
 
+function isDockerDatabaseUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    return dockerDatabaseHosts.has(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function loadLocalEnv() {
+  if (process.env.MEG_E2E_DOCKER === "1") {
+    const dbUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
+
+    if (!dbUrl || !isDockerDatabaseUrl(dbUrl)) {
+      console.error(
+        "E2E bloqueado: DATABASE_URL/DIRECT_URL precisa apontar para o Postgres local do Docker."
+      );
+      process.exit(1);
+    }
+
+    return {
+      ...process.env,
+      PLAYWRIGHT_BASE_URL:
+        process.env.PLAYWRIGHT_BASE_URL ||
+        process.env.NEXTAUTH_URL ||
+        process.env.NEXT_PUBLIC_BASE_URL ||
+        "http://127.0.0.1:3000",
+      MEG_E2E: "1",
+      MEG_E2E_REUSE_SERVER: "1",
+    };
+  }
+
   const sourcePath = localEnvCandidates
     .map((file) => path.join(rootDir, file))
     .find((file) => fs.existsSync(file));

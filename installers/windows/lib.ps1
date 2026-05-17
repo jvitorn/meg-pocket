@@ -53,11 +53,30 @@ function Resolve-ComposeCommand {
   throw "Docker Compose não foi encontrado. Atualize o Docker Desktop."
 }
 
+function Get-ComposeProjectName {
+  if (-not [string]::IsNullOrWhiteSpace($env:MG_POCKET_COMPOSE_PROJECT_NAME)) {
+    return $env:MG_POCKET_COMPOSE_PROJECT_NAME
+  }
+
+  return "meg-pocket"
+}
+
 function Invoke-Compose {
   param([string[]]$ComposeArgs)
 
   $compose = Resolve-ComposeCommand
-  $allArgs = @($compose.Prefix) + @($ComposeArgs)
+  $allArgs = @($compose.Prefix) + @("--project-name", (Get-ComposeProjectName)) + @($ComposeArgs)
+  & $compose.File @allArgs
+  if ($LASTEXITCODE -ne 0) {
+    throw "docker compose falhou com código $LASTEXITCODE."
+  }
+}
+
+function Invoke-ComposeProject {
+  param([string]$ProjectName, [string[]]$ComposeArgs)
+
+  $compose = Resolve-ComposeCommand
+  $allArgs = @($compose.Prefix) + @("--project-name", $ProjectName) + @($ComposeArgs)
   & $compose.File @allArgs
   if ($LASTEXITCODE -ne 0) {
     throw "docker compose falhou com código $LASTEXITCODE."
@@ -124,6 +143,47 @@ function Wait-Postgres {
   }
 
   throw "Postgres não ficou pronto a tempo."
+}
+
+function Wait-AppDatabase {
+  param([int]$Attempts = 60)
+
+  for ($i = 0; $i -lt $Attempts; $i++) {
+    try {
+      Invoke-Compose @("exec", "-T", "app", "pg_isready", "-h", "postgres", "-p", "5432", "-U", "meg", "-d", "meg_pocket") *> $null
+      return
+    } catch {
+      Start-Sleep -Seconds 2
+    }
+  }
+
+  throw "O app iniciou, mas ainda não consegue acessar o Postgres pelo Docker."
+}
+
+function Start-OptionalAdminer {
+  try {
+    Invoke-Compose @("up", "-d", "adminer")
+  } catch {
+    Write-Host "Adminer não foi iniciado automaticamente, provavelmente porque a porta 8081 já está em uso."
+    Write-Host "O M&G Pocket pode continuar funcionando sem o Adminer."
+  }
+}
+
+function Stop-LegacyAppComposeProject {
+  if ((Get-ComposeProjectName) -eq "app") {
+    return
+  }
+
+  try {
+    Invoke-ComposeProject "app" @("down", "--remove-orphans") *> $null
+  } catch {}
+}
+
+function Invoke-ProjectTestSuite {
+  Write-Host "Executando testes automatizados do M&G Pocket..."
+  Write-Host "Esta etapa pode levar alguns minutos na primeira instalação."
+  Invoke-Compose @("exec", "-T", "app", "sh", "-lc", "NODE_ENV=test MEG_E2E_DOCKER=1 MEG_E2E_REUSE_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run test:all")
+  Write-Host "Testes automatizados concluídos com sucesso."
 }
 
 function Wait-App {

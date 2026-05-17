@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import { StatusCard } from "../components/StatusCard";
-import type { DependencyStatus, SystemStatus } from "../types";
+import type { CommandOutput, DependencyStatus, SystemStatus } from "../types";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -140,6 +140,31 @@ describe("M&G Pocket Launcher", () => {
     await user.click(screen.getByRole("button", { name: /Instalar Docker no Linux/i }));
 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installDockerLinux"));
+  });
+
+  it("mostra progresso enquanto uma ação está em execução", async () => {
+    let resolveStart!: (output: CommandOutput) => void;
+    const startPromise = new Promise<CommandOutput>((resolve) => {
+      resolveStart = resolve;
+    });
+
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "doctor") return JSON.stringify(baseStatus);
+      if (command === "checkSystemDependencies") return JSON.stringify(baseDependencies);
+      if (command === "startApp") return startPromise;
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /^Iniciar M&G Pocket$/i }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/Processando Iniciar/i);
+
+    resolveStart({ success: true, code: 0, stdout: "start ok", stderr: "" });
+    await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
   });
 
   it("Instalar/Atualizar valida dependências antes de instalar", async () => {

@@ -144,6 +144,49 @@ main {
   border: 1px solid rgba(247, 216, 143, 0.34);
 }
 
+.operation-progress {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 13px 14px;
+  border: 1px solid rgba(134, 213, 196, 0.28);
+  border-radius: 8px;
+  color: #d8fff5;
+  background: rgba(20, 38, 43, 0.68);
+}
+
+.operation-progress div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.operation-progress strong {
+  font-size: 0.98rem;
+}
+
+.operation-progress span {
+  color: #bdd8d2;
+}
+
+.operation-progress__track {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.operation-progress__track span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #86d5c4, #f7d88f);
+  animation: progress-sweep 1.15s ease-in-out infinite;
+}
+
 .status-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -485,6 +528,20 @@ main {
   }
 }
 
+@keyframes progress-sweep {
+  0% {
+    transform: translateX(-105%);
+  }
+
+  50% {
+    transform: translateX(85%);
+  }
+
+  100% {
+    transform: translateX(265%);
+  }
+}
+
 @media (max-width: 980px) {
   body {
     min-width: 0;
@@ -495,7 +552,8 @@ main {
   }
 
   .hero-band,
-  .message {
+  .message,
+  .operation-progress div:first-child {
     align-items: stretch;
     flex-direction: column;
   }

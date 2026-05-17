@@ -41,6 +41,10 @@ launcher_dir() {
   printf '%s\n' "$MG_POCKET_LAUNCHER_DIR"
 }
 
+compose_project_name() {
+  printf '%s\n' "${MG_POCKET_COMPOSE_PROJECT_NAME:-meg-pocket}"
+}
+
 http_ok() {
   local url="$1"
 
@@ -99,11 +103,24 @@ compose_cmd() {
 
 run_compose() {
   local cmd
+  local project_name
   local -a parts
 
   cmd="$(compose_cmd)" || fail "Docker Compose não foi encontrado ou não está acessível."
+  project_name="$(compose_project_name)"
   read -r -a parts <<< "$cmd"
-  "${parts[@]}" "$@"
+  "${parts[@]}" --project-name "$project_name" "$@"
+}
+
+run_compose_project() {
+  local project_name="$1"
+  local cmd
+  local -a parts
+  shift
+
+  cmd="$(compose_cmd)" || fail "Docker Compose não foi encontrado ou não está acessível."
+  read -r -a parts <<< "$cmd"
+  "${parts[@]}" --project-name "$project_name" "$@"
 }
 
 run_compose_no_prompt_cmd() {
@@ -199,6 +216,45 @@ wait_for_postgres() {
   done
 
   return 1
+}
+
+wait_for_app_database() {
+  local attempts="${1:-60}"
+  local i
+
+  for i in $(seq 1 "$attempts"); do
+    if run_compose exec -T app pg_isready -h postgres -p 5432 -U meg -d meg_pocket >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  return 1
+}
+
+start_optional_adminer() {
+  if run_compose up -d adminer; then
+    return 0
+  fi
+
+  info "Adminer não foi iniciado automaticamente, provavelmente porque a porta 8081 já está em uso."
+  info "O M&G Pocket pode continuar funcionando sem o Adminer. Se quiser usar o Adminer do launcher, libere a porta 8081 e clique em Instalar/Atualizar novamente."
+  return 0
+}
+
+cleanup_legacy_app_compose_project() {
+  if [ "$(compose_project_name)" = "app" ]; then
+    return 0
+  fi
+
+  run_compose_project app down --remove-orphans >/dev/null 2>&1 || true
+}
+
+run_project_test_suite() {
+  info "Executando testes automatizados do M&G Pocket..."
+  info "Esta etapa pode levar alguns minutos na primeira instalação."
+  run_compose exec -T app sh -lc 'NODE_ENV=test MEG_E2E_DOCKER=1 MEG_E2E_REUSE_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run test:all'
+  info "Testes automatizados concluídos com sucesso."
 }
 
 seed_ready() {
