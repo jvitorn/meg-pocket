@@ -184,8 +184,8 @@ DIRECT_URL="postgresql://meg:meg@localhost:5433/meg_pocket?schema=public"
 NEXTAUTH_SECRET="meg-pocket-local-secret-change-me"
 NEXTAUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_BASE_URL="http://localhost:3000"
-GOOGLE_CLIENT_ID="local-google-client-id"
-GOOGLE_CLIENT_SECRET="local-google-client-secret"
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
 STORAGE_DRIVER="local"
 STORAGE_BUCKET="personagens"
 STORAGE_LOCAL_DIR="./storage/local/public"
@@ -248,6 +248,34 @@ cleanup_legacy_app_compose_project() {
   fi
 
   run_compose_project app down --remove-orphans >/dev/null 2>&1 || true
+}
+
+stop_compose_project_stack() {
+  local project_name="$1"
+  local -a compose_args
+
+  compose_args=()
+  if [ -f ".env.docker-local" ]; then
+    compose_args+=(--env-file .env.docker-local)
+  fi
+  compose_args+=(down --remove-orphans)
+
+  run_compose_project "$project_name" "${compose_args[@]}"
+}
+
+stop_all_project_stacks() {
+  local current_project
+
+  current_project="$(compose_project_name)"
+  stop_compose_project_stack "$current_project" || fail "não foi possível parar os containers do M&G Pocket."
+
+  if [ "$current_project" != "meg-pocket" ]; then
+    stop_compose_project_stack "meg-pocket" >/dev/null 2>&1 || true
+  fi
+
+  if [ "$current_project" != "app" ]; then
+    stop_compose_project_stack "app" >/dev/null 2>&1 || true
+  fi
 }
 
 run_project_test_suite() {

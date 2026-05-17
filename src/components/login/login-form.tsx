@@ -29,10 +29,14 @@ import {
 } from "@/lib/clientAuthCache";
 
 export function LoginForm({
+  googleLoginEnabled = false,
   showExpiredNotice = false,
   className,
   ...props
-}: React.ComponentProps<"div"> & { showExpiredNotice?: boolean }) {
+}: React.ComponentProps<"div"> & {
+  googleLoginEnabled?: boolean;
+  showExpiredNotice?: boolean;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,7 +68,7 @@ export function LoginForm({
 
     try {
       setLoading(true);
-     
+
       const result = await authService.loginComSenha(email, password);
 
       if (result?.error) {
@@ -103,20 +107,24 @@ export function LoginForm({
         <CardContent>
           <form onSubmit={handleSubmit}>
             <FieldGroup>
-              <Field>
-                <Button
-                  variant="outline"
-                  type="button"
-                  className="w-full"
-                  onClick={() => authService.loginComGoogle()}
-                >
-                  Login com Google
-                </Button>
-              </Field>
+              {googleLoginEnabled && (
+                <>
+                  <Field>
+                    <Button
+                      variant="outline"
+                      type="button"
+                      className="w-full"
+                      onClick={() => authService.loginComGoogle()}
+                    >
+                      Login com Google
+                    </Button>
+                  </Field>
 
-              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-                Ou utilize acesso tradicional
-              </FieldSeparator>
+                  <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
+                    Ou utilize acesso tradicional
+                  </FieldSeparator>
+                </>
+              )}
 
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>

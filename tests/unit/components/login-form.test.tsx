@@ -48,10 +48,18 @@ describe("LoginForm", () => {
     routerMocks.refresh.mockReset();
   });
 
+  it("esconde o login com Google quando as credenciais nao estao habilitadas", () => {
+    render(<LoginForm />);
+
+    expect(
+      screen.queryByRole("button", { name: "Login com Google" })
+    ).not.toBeInTheDocument();
+  });
+
   it("aciona o login com Google ao clicar no botao dedicado", async () => {
     const user = userEvent.setup();
 
-    render(<LoginForm />);
+    render(<LoginForm googleLoginEnabled />);
 
     await user.click(screen.getByRole("button", { name: "Login com Google" }));
 

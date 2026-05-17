@@ -113,8 +113,8 @@ DIRECT_URL="postgresql://meg:meg@localhost:5433/meg_pocket?schema=public"
 NEXTAUTH_SECRET="meg-pocket-local-secret-change-me"
 NEXTAUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_BASE_URL="http://localhost:3000"
-GOOGLE_CLIENT_ID="local-google-client-id"
-GOOGLE_CLIENT_SECRET="local-google-client-secret"
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
 STORAGE_DRIVER="local"
 STORAGE_BUCKET="personagens"
 STORAGE_LOCAL_DIR="./storage/local/public"
@@ -177,6 +177,41 @@ function Stop-LegacyAppComposeProject {
   try {
     Invoke-ComposeProject "app" @("down", "--remove-orphans") *> $null
   } catch {}
+}
+
+function Stop-ComposeProjectStack {
+  param(
+    [string]$ProjectName,
+    [switch]$Required
+  )
+
+  $composeArgs = @()
+  if (Test-Path ".env.docker-local") {
+    $composeArgs += @("--env-file", ".env.docker-local")
+  }
+  $composeArgs += @("down", "--remove-orphans")
+
+  if ($Required) {
+    Invoke-ComposeProject $ProjectName $composeArgs
+    return
+  }
+
+  try {
+    Invoke-ComposeProject $ProjectName $composeArgs *> $null
+  } catch {}
+}
+
+function Stop-AllProjectStacks {
+  $currentProject = Get-ComposeProjectName
+  Stop-ComposeProjectStack $currentProject -Required
+
+  if ($currentProject -ne "meg-pocket") {
+    Stop-ComposeProjectStack "meg-pocket"
+  }
+
+  if ($currentProject -ne "app") {
+    Stop-ComposeProjectStack "app"
+  }
 }
 
 function Invoke-ProjectTestSuite {
