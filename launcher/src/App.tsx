@@ -16,11 +16,13 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import {
   backup,
+  checkSystemDependencies,
   doctor,
   ensureDockerPermission,
   ensureDockerRunning,
   installDockerLinux,
   installProject,
+  installSystemDependencies,
   openAdminer,
   openDockerGuide,
   openSite,
@@ -37,7 +39,7 @@ import { ConfirmDialog } from "./components/ConfirmDialog";
 import { LogPanel } from "./components/LogPanel";
 import { StatusCard, type StatusItem } from "./components/StatusCard";
 import { StepProgress } from "./components/StepProgress";
-import type { CommandOutput, ProgressStep, SystemStatus } from "./types";
+import type { CommandOutput, DependencyStatus, ProgressStep, SystemStatus } from "./types";
 
 const initialSteps: ProgressStep[] = [
   { id: "doctor", label: "Diagnóstico", state: "pending" },
@@ -68,6 +70,23 @@ function appendOutput(current: string, label: string, output?: CommandOutput | s
   return `${current}${current ? "\n\n" : ""}# ${label}\n${text.trim()}`;
 }
 
+type PendingDependencyAction = "install" | "prepare";
+
+function unique(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+function dependencyInstructions(dependencies: DependencyStatus) {
+  if (dependencies.os === "windows") {
+    return dependencies.manualInstructions || "Instale as ferramentas indicadas e tente novamente.";
+  }
+
+  return (
+    dependencies.manualInstructions ||
+    "Instale manualmente os pacotes listados. Depois, volte ao launcher e clique em Diagnosticar ou Instalar novamente."
+  );
+}
+
 export default function App() {
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [logs, setLogs] = useState("");
@@ -77,6 +96,8 @@ export default function App() {
   const [resetOpen, setResetOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [restorePath, setRestorePath] = useState("");
+  const [dependencyPrompt, setDependencyPrompt] = useState<DependencyStatus | null>(null);
+  const [pendingDependencyAction, setPendingDependencyAction] = useState<PendingDependencyAction | null>(null);
 
   const isBusy = busy !== null;
 
@@ -117,6 +138,34 @@ export default function App() {
     }
   };
 
+  const checkDependenciesBefore = async (nextAction: PendingDependencyAction) => {
+    const dependencies = await checkSystemDependencies();
+    if (dependencies.missing.length === 0) return true;
+
+    setPendingDependencyAction(nextAction);
+    setDependencyPrompt(dependencies);
+    return false;
+  };
+
+  const runProjectInstall = async () => {
+    const projectOutput = await installProject();
+    setLogs((current) => appendOutput(current, "Instalar/atualizar M&G Pocket", projectOutput));
+  };
+
+  const installOrUpdateProject = async () => {
+    setBusy("Instalar/Atualizar");
+    setError("");
+    try {
+      if (!(await checkDependenciesBefore("install"))) return;
+      await runProjectInstall();
+      await diagnose();
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const prepareEnvironment = async () => {
     setBusy("prepare");
     setError("");
@@ -128,6 +177,8 @@ export default function App() {
       let currentStatus = await doctor();
       setStatus(currentStatus);
       setStep("doctor", "done");
+
+      if (!(await checkDependenciesBefore("prepare"))) return;
 
       setStep("docker", "running");
       if (!currentStatus.dockerInstalled) {
@@ -150,8 +201,7 @@ export default function App() {
       setStep("permission", "done");
 
       setStep("project", "running");
-      const projectOutput = await installProject();
-      setLogs((current) => appendOutput(current, "Instalar/atualizar M&G Pocket", projectOutput));
+      await runProjectInstall();
       setStep("project", "done");
 
       setStep("online", "running");
@@ -192,6 +242,50 @@ export default function App() {
   const confirmRestore = async () => {
     setRestoreOpen(false);
     await runAction("Restaurar backup", () => restoreBackup(restorePath));
+  };
+
+  const closeDependencyPrompt = () => {
+    setDependencyPrompt(null);
+    setPendingDependencyAction(null);
+  };
+
+  const confirmDependencyInstall = async () => {
+    if (!dependencyPrompt?.installable) {
+      closeDependencyPrompt();
+      return;
+    }
+
+    const nextAction = pendingDependencyAction;
+    setDependencyPrompt(null);
+    setPendingDependencyAction(null);
+    setBusy("dependências");
+    setError("");
+
+    try {
+      const output = await installSystemDependencies();
+      setLogs((current) => appendOutput(current, "Instalar dependências do sistema", output));
+
+      const dependencies = await checkSystemDependencies();
+      if (dependencies.missing.length > 0) {
+        setDependencyPrompt(dependencies);
+        setPendingDependencyAction(nextAction);
+        setError("Ainda há dependências ausentes. Confira a lista exibida pelo launcher antes de tentar instalar novamente.");
+        return;
+      }
+
+      if (nextAction === "prepare") {
+        await prepareEnvironment();
+      } else if (nextAction === "install") {
+        await installOrUpdateProject();
+      } else {
+        await diagnose();
+      }
+    } catch (err) {
+      setLogs((current) => appendOutput(current, "Erro ao instalar dependências do sistema", String(err)));
+      setError("Não consegui instalar as dependências automaticamente. Veja os detalhes em Ver Logs e tente a instalação manual.");
+    } finally {
+      setBusy(null);
+    }
   };
 
   const statusItems = useMemo(() => {
@@ -286,7 +380,12 @@ export default function App() {
         <ActionButton icon={<RefreshCw size={18} />} disabled={isBusy} loading={busy === "diagnose"} onClick={diagnose}>
           Diagnosticar
         </ActionButton>
-        <ActionButton icon={<Database size={18} />} disabled={isBusy} onClick={() => runAction("Instalar/Atualizar", installProject)}>
+        <ActionButton
+          icon={<Database size={18} />}
+          disabled={isBusy}
+          loading={busy === "Instalar/Atualizar"}
+          onClick={installOrUpdateProject}
+        >
           Instalar/Atualizar M&G Pocket
         </ActionButton>
         <ActionButton icon={<Play size={18} />} disabled={isBusy} onClick={() => runAction("Iniciar", startApp)}>
@@ -337,6 +436,57 @@ export default function App() {
         confirmLabel="Restaurar"
         onCancel={() => setRestoreOpen(false)}
         onConfirm={confirmRestore}
+      />
+      <ConfirmDialog
+        open={dependencyPrompt !== null}
+        title="Dependências necessárias"
+        description={
+          dependencyPrompt ? (
+            <>
+              <p>Algumas dependências precisam ser instaladas para continuar.</p>
+              <p>
+                O launcher encontrou pacotes ausentes no seu sistema e precisa desses componentes antes de preparar o
+                M&G Pocket.
+              </p>
+              <p>Dependências detectadas:</p>
+              <ul>
+                {unique(dependencyPrompt.missing).map((dependency) => (
+                  <li key={dependency}>{dependency}</li>
+                ))}
+              </ul>
+              {dependencyPrompt.installable ? (
+                <>
+                  <p>Deseja instalar automaticamente agora?</p>
+                  {dependencyPrompt.sudoRequired ? <p>Essa instalação pode pedir sua senha de administrador.</p> : null}
+                  {dependencyPrompt.installCommand ? <code>{dependencyPrompt.installCommand}</code> : null}
+                </>
+              ) : dependencyPrompt.os === "windows" ? (
+                <p>{dependencyInstructions(dependencyPrompt)}</p>
+              ) : (
+                <>
+                  <p>Não consegui identificar uma forma segura de instalar automaticamente nesta distribuição.</p>
+                  <p>{dependencyInstructions(dependencyPrompt)}</p>
+                  {dependencyPrompt.packages.length > 0 ? (
+                    <>
+                      <p>Pacotes sugeridos:</p>
+                      <ul>
+                        {unique(dependencyPrompt.packages).map((dependency) => (
+                          <li key={dependency}>{dependency}</li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : null}
+                </>
+              )}
+            </>
+          ) : (
+            ""
+          )
+        }
+        confirmLabel={dependencyPrompt?.installable ? "Instalar dependências" : "Entendi"}
+        cancelLabel={dependencyPrompt?.installable ? "Agora não" : "Fechar"}
+        onCancel={closeDependencyPrompt}
+        onConfirm={confirmDependencyInstall}
       />
     </AppShell>
   );

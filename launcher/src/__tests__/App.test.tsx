@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import { StatusCard } from "../components/StatusCard";
-import type { SystemStatus } from "../types";
+import type { DependencyStatus, SystemStatus } from "../types";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -29,9 +29,23 @@ const baseStatus: SystemStatus = {
   adminerOnline: true,
 };
 
+const baseDependencies: DependencyStatus = {
+  os: "linux",
+  distroFamily: "arch_like",
+  distroName: "Arch Linux",
+  supported: true,
+  missing: [],
+  packages: [],
+  installable: false,
+  sudoRequired: false,
+  installCommand: "",
+  manualInstructions: "",
+};
+
 function mockDoctor(status: SystemStatus = baseStatus) {
   invokeMock.mockImplementation(async (command: string) => {
     if (command === "doctor") return JSON.stringify(status);
+    if (command === "checkSystemDependencies") return JSON.stringify(baseDependencies);
     if (command === "readLogs") return "app log";
     return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
   });
@@ -77,6 +91,36 @@ describe("M&G Pocket Launcher", () => {
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installProject"));
     expect(invokeMock).toHaveBeenCalledWith("ensureDockerRunning");
     expect(invokeMock).toHaveBeenCalledWith("ensureDockerPermission");
+  });
+
+  it("Instalar/Atualizar valida dependências antes de instalar", async () => {
+    const missingDependencies: DependencyStatus = {
+      ...baseDependencies,
+      missing: ["git", "curl", "docker compose"],
+      packages: ["git", "curl", "docker-compose"],
+      installable: true,
+      sudoRequired: true,
+      installCommand: "sudo pacman -S --needed git curl docker docker-compose bash coreutils",
+    };
+
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "doctor") return JSON.stringify(baseStatus);
+      if (command === "checkSystemDependencies") return JSON.stringify(missingDependencies);
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /Instalar\/Atualizar M&G Pocket/i }));
+
+    expect(await screen.findByText(/Algumas dependências precisam ser instaladas/i)).toBeInTheDocument();
+    expect(screen.getByText("git")).toBeInTheDocument();
+    expect(screen.getByText("curl")).toBeInTheDocument();
+    expect(screen.getByText("docker compose")).toBeInTheDocument();
+    expect(screen.getByText(/senha de administrador/i)).toBeInTheDocument();
+    expect(invokeMock).not.toHaveBeenCalledWith("installProject");
   });
 
   it("reset local exige confirmação", async () => {

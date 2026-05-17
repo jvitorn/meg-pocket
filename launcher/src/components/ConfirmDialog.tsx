@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 type ConfirmDialogProps = {
   open: boolean;
   title: string;
-  description: string;
+  description: ReactNode;
   confirmationText?: string;
   confirmLabel: string;
   cancelLabel?: string;
@@ -31,7 +31,7 @@ export function ConfirmDialog({
     <div className="dialog-backdrop" role="presentation">
       <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
         <h2 id="confirm-title">{title}</h2>
-        <p>{description}</p>
+        <div className="confirm-dialog__description">{description}</div>
         {confirmationText ? (
           <label>
             <span>Digite {confirmationText}</span>

@@ -1,6 +1,6 @@
 export type SystemStatus = {
   os: "linux" | "windows" | "macos" | "unknown";
-  distroFamily?: "ubuntu_like" | "debian_like" | "arch_like" | "unsupported";
+  distroFamily?: "ubuntu_like" | "debian_like" | "arch_like" | "fedora_like" | "opensuse_like" | "unsupported";
   distroName?: string;
   supported: boolean;
   dockerInstalled: boolean;
@@ -16,6 +16,19 @@ export type SystemStatus = {
   projectVersion?: string;
   appOnline: boolean;
   adminerOnline: boolean;
+};
+
+export type DependencyStatus = {
+  os: "linux" | "windows" | "macos" | "unknown";
+  distroFamily?: SystemStatus["distroFamily"] | null;
+  distroName?: string | null;
+  supported: boolean;
+  missing: string[];
+  packages: string[];
+  installable: boolean;
+  sudoRequired: boolean;
+  installCommand?: string;
+  manualInstructions?: string;
 };
 
 export type CommandOutput = {

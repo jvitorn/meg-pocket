@@ -279,6 +279,28 @@ fn installDockerLinux(app: AppHandle) -> Result<CommandOutput, String> {
 
 #[tauri::command]
 #[allow(non_snake_case)]
+fn checkSystemDependencies(app: AppHandle) -> Result<String, String> {
+    let output = run_or_error(&app, "check-dependencies", &[])?;
+    Ok(output.stdout)
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+fn installSystemDependencies(app: AppHandle) -> Result<CommandOutput, String> {
+    #[cfg(target_os = "linux")]
+    {
+        run_or_error(&app, "install-system-dependencies", &[])
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = app;
+        Err("A instalação automática de dependências do sistema é suportada apenas no Linux.".to_string())
+    }
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
 fn ensureDockerRunning(app: AppHandle) -> Result<CommandOutput, String> {
     #[cfg(target_os = "linux")]
     {
@@ -452,6 +474,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             doctor,
             installDockerLinux,
+            checkSystemDependencies,
+            installSystemDependencies,
             ensureDockerRunning,
             ensureDockerPermission,
             installProject,

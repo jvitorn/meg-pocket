@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { CommandOutput, SystemStatus } from "./types";
+import type { CommandOutput, DependencyStatus, SystemStatus } from "./types";
 
 export async function doctor(): Promise<SystemStatus> {
   const raw = await invoke<string>("doctor");
@@ -8,6 +8,15 @@ export async function doctor(): Promise<SystemStatus> {
 
 export function installDockerLinux(): Promise<CommandOutput> {
   return invoke<CommandOutput>("installDockerLinux");
+}
+
+export async function checkSystemDependencies(): Promise<DependencyStatus> {
+  const raw = await invoke<string>("checkSystemDependencies");
+  return JSON.parse(raw) as DependencyStatus;
+}
+
+export function installSystemDependencies(): Promise<CommandOutput> {
+  return invoke<CommandOutput>("installSystemDependencies");
 }
 
 export function ensureDockerRunning(): Promise<CommandOutput> {

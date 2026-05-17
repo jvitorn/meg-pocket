@@ -395,10 +395,24 @@ main {
   margin: 0 0 8px;
 }
 
-.confirm-dialog p {
+.confirm-dialog__description {
   margin: 0 0 14px;
   color: #ddcfb8;
   line-height: 1.45;
+}
+
+.confirm-dialog__description p {
+  margin: 0 0 10px;
+}
+
+.confirm-dialog__description ul {
+  margin: 8px 0 10px;
+  padding-left: 22px;
+}
+
+.confirm-dialog__description code {
+  overflow-wrap: anywhere;
+  color: #f7d88f;
 }
 
 .confirm-dialog label {
