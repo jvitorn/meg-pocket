@@ -70,6 +70,27 @@ function appendOutput(current: string, label: string, output?: CommandOutput | s
   return `${current}${current ? "\n\n" : ""}# ${label}\n${text.trim()}`;
 }
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function isFriendlyError(message: string) {
+  return (
+    message.length > 0 &&
+    message.length <= 180 &&
+    !message.includes("\n") &&
+    !message.includes("/usr/") &&
+    !message.includes("/tmp/") &&
+    !message.includes("symbol lookup error")
+  );
+}
+
+function friendlyActionError(label: string, error: unknown) {
+  const message = errorMessage(error);
+  if (isFriendlyError(message)) return message;
+  return `Não consegui concluir "${label}". Os detalhes técnicos foram enviados para Logs.`;
+}
+
 type PendingDependencyAction = "install" | "prepare";
 
 function unique(values: string[]) {
@@ -132,7 +153,8 @@ export default function App() {
       if (output) setLogs((current) => appendOutput(current, label, output));
       await diagnose();
     } catch (err) {
-      setError(String(err));
+      setLogs((current) => appendOutput(current, `Erro em ${label}`, errorMessage(err)));
+      setError(friendlyActionError(label, err));
     } finally {
       setBusy(null);
     }
@@ -160,7 +182,8 @@ export default function App() {
       await runProjectInstall();
       await diagnose();
     } catch (err) {
-      setError(String(err));
+      setLogs((current) => appendOutput(current, "Erro ao instalar/atualizar M&G Pocket", errorMessage(err)));
+      setError(friendlyActionError("Instalar/Atualizar M&G Pocket", err));
     } finally {
       setBusy(null);
     }
@@ -213,7 +236,8 @@ export default function App() {
       setStep("online", "done");
     } catch (err) {
       setSteps((current) => current.map((step) => (step.state === "running" ? { ...step, state: "error" } : step)));
-      setError(String(err));
+      setLogs((current) => appendOutput(current, "Erro ao preparar ambiente", errorMessage(err)));
+      setError(friendlyActionError("Preparar ambiente", err));
     } finally {
       setBusy(null);
     }

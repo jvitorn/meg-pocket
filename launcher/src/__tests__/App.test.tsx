@@ -51,6 +51,16 @@ function mockDoctor(status: SystemStatus = baseStatus) {
   });
 }
 
+async function renderReady(status: SystemStatus = baseStatus) {
+  mockDoctor(status);
+  const user = userEvent.setup();
+  render(<App />);
+  await screen.findByRole("heading", { name: "Launcher" });
+  await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("doctor"));
+  invokeMock.mockClear();
+  return user;
+}
+
 describe("M&G Pocket Launcher", () => {
   beforeEach(() => {
     invokeMock.mockReset();
@@ -93,6 +103,45 @@ describe("M&G Pocket Launcher", () => {
     expect(invokeMock).toHaveBeenCalledWith("ensureDockerPermission");
   });
 
+  it.each([
+    [/^Diagnosticar$/i, "doctor"],
+    [/^Instalar\/Atualizar M&G Pocket$/i, "installProject"],
+    [/^Iniciar M&G Pocket$/i, "startApp"],
+    [/^Parar$/i, "stopApp"],
+    [/^Reiniciar$/i, "restartApp"],
+    [/^Abrir Site$/i, "openSite"],
+    [/^Abrir Adminer$/i, "openAdminer"],
+    [/^Ver Logs$/i, "readLogs"],
+    [/^Backup$/i, "backup"],
+  ])("botão %s chama %s", async (buttonName, command) => {
+    const user = await renderReady();
+
+    await user.click(screen.getByRole("button", { name: buttonName }));
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith(command));
+  });
+
+  it("botão Atualizar do painel de logs chama readLogs", async () => {
+    const user = await renderReady();
+
+    await user.click(screen.getByRole("button", { name: "Atualizar" }));
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("readLogs"));
+  });
+
+  it("botão Instalar Docker no Linux chama installDockerLinux", async () => {
+    const user = await renderReady({
+      ...baseStatus,
+      dockerInstalled: false,
+      dockerRunning: false,
+      dockerComposeInstalled: false,
+    });
+
+    await user.click(screen.getByRole("button", { name: /Instalar Docker no Linux/i }));
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installDockerLinux"));
+  });
+
   it("Instalar/Atualizar valida dependências antes de instalar", async () => {
     const missingDependencies: DependencyStatus = {
       ...baseDependencies,
@@ -123,6 +172,64 @@ describe("M&G Pocket Launcher", () => {
     expect(invokeMock).not.toHaveBeenCalledWith("installProject");
   });
 
+  it("botão Instalar dependências pede consentimento e retoma instalação", async () => {
+    const missingDependencies: DependencyStatus = {
+      ...baseDependencies,
+      missing: ["git", "docker compose"],
+      packages: ["git", "docker-compose"],
+      installable: true,
+      sudoRequired: true,
+      installCommand: "sudo pacman -S --needed git docker docker-compose bash coreutils",
+    };
+    let dependencyChecks = 0;
+
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "doctor") return JSON.stringify(baseStatus);
+      if (command === "checkSystemDependencies") {
+        dependencyChecks += 1;
+        return JSON.stringify(dependencyChecks === 1 ? missingDependencies : baseDependencies);
+      }
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByText("Arch Linux");
+    invokeMock.mockClear();
+    await user.click(screen.getByRole("button", { name: /Instalar\/Atualizar M&G Pocket/i }));
+    await user.click(await screen.findByRole("button", { name: /Instalar dependências/i }));
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installSystemDependencies"));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installProject"));
+  });
+
+  it("erro técnico de instalação fica fora do alerta principal", async () => {
+    const rawError =
+      "git: /tmp/.mount_mg-pocket/usr/lib/libpcre2-8.so.0: no version information available\nsymbol lookup error";
+
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "doctor") return JSON.stringify(baseStatus);
+      if (command === "checkSystemDependencies") return JSON.stringify(baseDependencies);
+      if (command === "installProject") throw rawError;
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    const user = userEvent.setup();
+    const { container } = render(<App />);
+
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /Instalar\/Atualizar M&G Pocket/i }));
+
+    const alert = await waitFor(() => {
+      const element = container.querySelector(".message--error");
+      expect(element).toBeInTheDocument();
+      return element as HTMLElement;
+    });
+    expect(alert).toHaveTextContent(/Não consegui concluir/i);
+    expect(alert).not.toHaveTextContent("/tmp/.mount_mg-pocket");
+  });
+
   it("reset local exige confirmação", async () => {
     mockDoctor();
     const user = userEvent.setup();
@@ -136,6 +243,9 @@ describe("M&G Pocket Launcher", () => {
 
     await user.type(screen.getByLabelText(/Digite RESETAR/i), "RESETAR");
     expect(confirm).toBeEnabled();
+    await user.click(confirm);
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("resetLocalData", { confirmed: true }));
   });
 
   it("requiresRelogin mostra aviso", async () => {
@@ -168,6 +278,22 @@ describe("M&G Pocket Launcher", () => {
     expect(screen.getByRole("button", { name: /Abrir página de download/i })).toBeInTheDocument();
   });
 
+  it("botão do guia Docker no Windows chama openDockerGuide", async () => {
+    const user = await renderReady({
+      ...baseStatus,
+      os: "windows",
+      distroFamily: undefined,
+      distroName: "Windows",
+      dockerInstalled: false,
+      dockerRunning: false,
+      dockerComposeInstalled: false,
+    });
+
+    await user.click(screen.getByRole("button", { name: /Abrir página de download/i }));
+
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("openDockerGuide"));
+  });
+
   it("Linux não suportado não tenta instalar Docker automaticamente", async () => {
     mockDoctor({
       ...baseStatus,
@@ -184,7 +310,7 @@ describe("M&G Pocket Launcher", () => {
     await screen.findByText("Fedora Linux");
     await user.click(screen.getByRole("button", { name: /Preparar ambiente/i }));
 
-    expect(await screen.findByText(/Esta distribuição ainda não é suportada/i)).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector(".message--error")).toHaveTextContent(/Esta distribuição ainda não é suportada/i));
     expect(invokeMock).not.toHaveBeenCalledWith("installDockerLinux");
   });
 

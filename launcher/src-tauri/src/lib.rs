@@ -5,6 +5,8 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
+#[cfg(target_os = "linux")]
+use std::ffi::OsString;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use tauri::{path::BaseDirectory, AppHandle, Manager};
@@ -221,13 +223,64 @@ fn build_script_command(script: &Path, args: &[&str]) -> Command {
     command
 }
 
+#[cfg(target_os = "linux")]
+fn sanitize_linux_child_environment(
+    command: &mut Command,
+    original_path: Option<OsString>,
+    original_ld_library_path: Option<OsString>,
+) {
+    for key in [
+        "LD_LIBRARY_PATH",
+        "LD_PRELOAD",
+        "APPDIR",
+        "APPIMAGE",
+        "ARGV0",
+        "GIO_MODULE_DIR",
+        "GI_TYPELIB_PATH",
+        "GSETTINGS_SCHEMA_DIR",
+        "GST_PLUGIN_PATH",
+        "GST_PLUGIN_SYSTEM_PATH",
+    ] {
+        command.env_remove(key);
+    }
+
+    if let Some(path) = original_path {
+        command.env("PATH", path);
+    }
+
+    if let Some(path) = original_ld_library_path {
+        if !path.is_empty() {
+            command.env("LD_LIBRARY_PATH", path);
+        }
+    }
+}
+
+fn sanitize_child_environment(command: &mut Command) {
+    #[cfg(target_os = "linux")]
+    {
+        sanitize_linux_child_environment(
+            command,
+            env::var_os("APPIMAGE_ORIGINAL_PATH"),
+            env::var_os("APPIMAGE_ORIGINAL_LD_LIBRARY_PATH"),
+        );
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = command;
+    }
+}
+
 fn run_platform_script(app: &AppHandle, script_name: &str, args: &[&str]) -> Result<CommandOutput, String> {
     let script = platform_script_path(app, script_name)?;
     if !script.exists() {
         return Err(format!("Script não encontrado: {}", script.display()));
     }
 
-    let output = build_script_command(&script, args)
+    let mut command = build_script_command(&script, args);
+    sanitize_child_environment(&mut command);
+
+    let output = command
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -420,6 +473,7 @@ fn open_allowed_url(url: &str) -> Result<(), String> {
             if opener == "gio" {
                 command.arg("open");
             }
+            sanitize_child_environment(&mut command);
             if command.arg(url).spawn().is_ok() {
                 return Ok(());
             }
@@ -492,4 +546,40 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar M&G Pocket Launcher");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[cfg(target_os = "linux")]
+    use std::ffi::OsStr;
+
+    #[cfg(target_os = "linux")]
+    fn command_env(command: &Command, key: &str) -> Option<Option<OsString>> {
+        command
+            .get_envs()
+            .find(|entry| entry.0 == OsStr::new(key))
+            .map(|(_, value)| value.map(OsString::from))
+    }
+
+    #[test]
+    #[cfg(target_os = "linux")]
+    fn sanitize_linux_child_environment_removes_appimage_loader_vars() {
+        let mut command = Command::new("git");
+        command.env("LD_LIBRARY_PATH", "/tmp/.mount/usr/lib");
+        command.env("LD_PRELOAD", "/usr/lib/libwayland-client.so");
+
+        sanitize_linux_child_environment(
+            &mut command,
+            Some(OsString::from("/usr/local/bin:/usr/bin")),
+            None,
+        );
+
+        assert_eq!(command_env(&command, "LD_LIBRARY_PATH"), Some(None));
+        assert_eq!(command_env(&command, "LD_PRELOAD"), Some(None));
+        assert_eq!(
+            command_env(&command, "PATH"),
+            Some(Some(OsString::from("/usr/local/bin:/usr/bin")))
+        );
+    }
 }
