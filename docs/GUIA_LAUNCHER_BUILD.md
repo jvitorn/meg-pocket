@@ -109,7 +109,9 @@ No modo de desenvolvimento, o launcher usa a pasta `installers/` do próprio rep
 ## GitHub Actions
 
 - `.github/workflows/launcher-ci.yml` valida ícones, frontend, backend Rust e testes do launcher em PR/push.
-- `.github/workflows/launcher-prerelease.yml` gera builds Linux, Windows e macOS via `tauri-apps/tauri-action` e cria pre-release/draft release.
+- `.github/workflows/launcher-prerelease.yml` gera builds Linux e Windows via `tauri-apps/tauri-action` e cria pre-release/draft release.
+
+macOS não é gerado nem publicado por enquanto, porque não há validação local disponível para esses artefatos.
 
 O workflow de pre-release pode ser executado manualmente com uma tag como:
 

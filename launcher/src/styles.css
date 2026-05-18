@@ -463,7 +463,8 @@ main {
   margin: 0 0 10px;
 }
 
-.confirm-dialog__description ul {
+.confirm-dialog__description ul,
+.confirm-dialog__description ol {
   margin: 8px 0 10px;
   padding-left: 22px;
 }
@@ -512,6 +513,18 @@ main {
 }
 
 .danger-button {
+  border-color: rgba(255, 145, 128, 0.34) !important;
+  background: rgba(122, 35, 28, 0.86) !important;
+}
+
+.dialog-button--primary {
+  color: #171412 !important;
+  border-color: #f7d88f !important;
+  background: #f7d88f !important;
+  font-weight: 800;
+}
+
+.dialog-button--danger {
   border-color: rgba(255, 145, 128, 0.34) !important;
   background: rgba(122, 35, 28, 0.86) !important;
 }

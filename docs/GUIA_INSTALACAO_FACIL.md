@@ -66,15 +66,18 @@ sudo pacman -S webkit2gtk-4.1 gtk3 glib2 libayatana-appindicator librsvg fuse2
 
 ## Windows
 
-No Windows, instale o Docker Desktop primeiro:
+Baixe o instalador `.exe` do M&G Pocket Launcher pela página de Releases.
 
-```text
-https://www.docker.com/products/docker-desktop/
+No Windows, o launcher detecta `winget`, Git for Windows, Docker Desktop, Docker CLI, Docker Compose, PowerShell e WSL2 quando necessário.
+
+Se Git ou Docker Desktop estiverem ausentes e `winget` existir, o launcher oferece instalação guiada com confirmação:
+
+```powershell
+winget install -e --id Git.Git
+winget install -e --id Docker.DockerDesktop
 ```
 
-Depois baixe o instalador `.exe` do M&G Pocket Launcher pela página de Releases.
-
-O launcher no Windows detecta Docker Desktop e, quando ele estiver rodando, permite preparar, iniciar, parar, reiniciar e ver logs do projeto.
+Depois de instalar Docker Desktop, abra o Docker Desktop e aguarde o Docker Engine iniciar. Se o Windows pedir reinicialização, reinicie antes de voltar ao launcher.
 
 ## Onde Ficam Os Arquivos
 
@@ -127,7 +130,7 @@ http://localhost:8081
 
 Os scripts antigos em `installers/` foram mantidos como wrappers de compatibilidade.
 
-- `instalar-mg-pocket-linux-mac.sh` agora abre o fluxo do launcher no Linux.
-- `iniciar-mg-pocket-linux-mac.sh` chama `installers/linux/start.sh`.
-- `parar-mg-pocket-linux-mac.sh` chama `installers/linux/stop.sh`.
+- `instalar-mg-pocket-linux-mac.sh` agora abre o fluxo do launcher no Linux; macOS não tem artefatos publicados nesta fase.
+- `iniciar-mg-pocket-linux-mac.sh` chama `installers/linux/start.sh` no Linux.
+- `parar-mg-pocket-linux-mac.sh` chama `installers/linux/stop.sh` no Linux.
 - Os `.bat` do Windows chamam os scripts PowerShell novos.

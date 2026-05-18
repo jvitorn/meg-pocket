@@ -102,27 +102,31 @@ describe("M&G Pocket Launcher", () => {
     await screen.findByText("Arch Linux");
     await user.click(screen.getByRole("button", { name: /Preparar ambiente/i }));
 
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installProject"));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installProject", { useSudoDocker: false }));
     expect(invokeMock).toHaveBeenCalledWith("ensureDockerRunning");
     expect(invokeMock).toHaveBeenCalledWith("ensureDockerPermission");
   });
 
   it.each([
-    [/^Diagnosticar$/i, "doctor"],
-    [/^Instalar\/Atualizar M&G Pocket$/i, "installProject"],
-    [/^Iniciar M&G Pocket$/i, "startApp"],
-    [/^Parar$/i, "stopApp"],
-    [/^Reiniciar$/i, "restartApp"],
-    [/^Abrir Site$/i, "openSite"],
-    [/^Abrir Adminer$/i, "openAdminer"],
-    [/^Ver Logs$/i, "readLogs"],
-    [/^Backup$/i, "backup"],
-  ])("botão %s chama %s", async (buttonName, command) => {
+    [/^Diagnosticar$/i, "doctor", false],
+    [/^Instalar\/Atualizar M&G Pocket$/i, "installProject", true],
+    [/^Iniciar M&G Pocket$/i, "startApp", true],
+    [/^Parar$/i, "stopApp", true],
+    [/^Reiniciar$/i, "restartApp", true],
+    [/^Abrir Site$/i, "openSite", false],
+    [/^Abrir Adminer$/i, "openAdminer", false],
+    [/^Ver Logs$/i, "readLogs", true],
+    [/^Backup$/i, "backup", true],
+  ])("botão %s chama %s", async (buttonName, command, withDockerOptions) => {
     const user = await renderReady();
 
     await user.click(screen.getByRole("button", { name: buttonName }));
 
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith(command));
+    await waitFor(() =>
+      withDockerOptions
+        ? expect(invokeMock).toHaveBeenCalledWith(command, { useSudoDocker: false })
+        : expect(invokeMock).toHaveBeenCalledWith(command),
+    );
   });
 
   it("botão Atualizar do painel de logs chama readLogs", async () => {
@@ -130,7 +134,7 @@ describe("M&G Pocket Launcher", () => {
 
     await user.click(screen.getByRole("button", { name: "Atualizar" }));
 
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("readLogs"));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("readLogs", { useSudoDocker: false }));
   });
 
   it("botão Instalar Docker no Linux chama installDockerLinux", async () => {
@@ -142,6 +146,7 @@ describe("M&G Pocket Launcher", () => {
     });
 
     await user.click(screen.getByRole("button", { name: /Instalar Docker no Linux/i }));
+    await user.click(await screen.findByRole("button", { name: /^Continuar$/i }));
 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installDockerLinux"));
   });
@@ -197,7 +202,7 @@ describe("M&G Pocket Launcher", () => {
     expect(screen.getByText("git")).toBeInTheDocument();
     expect(screen.getByText("curl")).toBeInTheDocument();
     expect(screen.getByText("docker compose")).toBeInTheDocument();
-    expect(screen.getByText(/senha de administrador/i)).toBeInTheDocument();
+    expect(screen.getByText(/mecanismo do sistema/i)).toBeInTheDocument();
     expect(invokeMock).not.toHaveBeenCalledWith("installProject");
   });
 
@@ -228,9 +233,10 @@ describe("M&G Pocket Launcher", () => {
     invokeMock.mockClear();
     await user.click(screen.getByRole("button", { name: /Instalar\/Atualizar M&G Pocket/i }));
     await user.click(await screen.findByRole("button", { name: /Instalar dependências/i }));
+    await user.click(await screen.findByRole("button", { name: /^Continuar$/i }));
 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installSystemDependencies"));
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installProject"));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installProject", { useSudoDocker: false }));
   });
 
   it("erro técnico de instalação fica fora do alerta principal", async () => {
@@ -274,14 +280,38 @@ describe("M&G Pocket Launcher", () => {
     expect(confirm).toBeEnabled();
     await user.click(confirm);
 
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("resetLocalData", { confirmed: true }));
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("resetLocalData", { confirmed: true, useSudoDocker: false }));
+  });
+
+  it("desinstalação local completa exige confirmação forte", async () => {
+    mockDoctor();
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /Desinstalar M&G Pocket Local/i }));
+
+    const confirm = screen.getByRole("button", { name: "Desinstalar" });
+    expect(confirm).toBeDisabled();
+
+    await user.type(screen.getByLabelText(/Digite REMOVER/i), "REMOVER");
+    await user.click(confirm);
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith("removeLocalProject", {
+        mode: "complete",
+        confirmed: true,
+        useSudoDocker: false,
+      }),
+    );
   });
 
   it("requiresRelogin mostra aviso", async () => {
     mockDoctor({ ...baseStatus, dockerPermissionOk: false, sudoDockerWorks: true, requiresRelogin: true });
     render(<App />);
 
-    expect(await screen.findByText(/Talvez seja necessário sair e entrar novamente/i)).toBeInTheDocument();
+    expect(await screen.findByText("Permissão do Docker ainda não está ativa")).toBeInTheDocument();
+    expect(screen.getByText(/Salve seus arquivos, saia da sessão do Linux/i)).toBeInTheDocument();
   });
 
   it("Docker ausente em Linux suportado mostra ação de instalação", async () => {
@@ -303,7 +333,7 @@ describe("M&G Pocket Launcher", () => {
     });
     render(<App />);
 
-    expect(await screen.findByText(/instale o Docker Desktop antes de continuar/i)).toBeInTheDocument();
+    expect(await screen.findByText(/pode instalar Docker Desktop via winget/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Abrir página de download/i })).toBeInTheDocument();
   });
 
@@ -362,6 +392,7 @@ describe("M&G Pocket Launcher", () => {
       expect(invokeMock).toHaveBeenCalledWith("restoreBackup", {
         backupPath: "/tmp/mg-pocket-backup.tar.gz",
         confirmed: true,
+        useSudoDocker: false,
       }),
     );
   });
@@ -375,7 +406,7 @@ describe("M&G Pocket Launcher", () => {
     await user.click(screen.getByRole("button", { name: /Ver Logs/i }));
 
     expect(await screen.findByText("app log")).toBeInTheDocument();
-    expect(invokeMock).toHaveBeenCalledWith("readLogs");
+    expect(invokeMock).toHaveBeenCalledWith("readLogs", { useSudoDocker: false });
   });
 
   it("Abrir Site e Abrir Adminer chamam apenas comandos permitidos", async () => {

@@ -1,6 +1,7 @@
 use std::{
     env,
     ffi::OsString,
+    fs,
     io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -11,6 +12,8 @@ use std::{
     thread,
 };
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use serde::Serialize;
 use tauri::AppHandle;
 
@@ -18,6 +21,7 @@ use crate::{
     errors::{LauncherError, LauncherResult},
     installers::installers_dir,
     jobs::{self, JobManager},
+    paths::launcher_data_dir,
 };
 
 #[derive(Debug, Serialize)]
@@ -36,12 +40,23 @@ pub fn run_or_error(
     action: &str,
     args: &[&str],
 ) -> LauncherResult<CommandOutput> {
+    run_or_error_with_env(app, job_manager, script_name, action, args, &[])
+}
+
+pub fn run_or_error_with_env(
+    app: &AppHandle,
+    job_manager: &JobManager,
+    script_name: &str,
+    action: &str,
+    args: &[&str],
+    extra_env: &[(&str, &str)],
+) -> LauncherResult<CommandOutput> {
     let job = job_manager.start(action)?;
     let progress = Arc::new(AtomicU8::new(0));
 
     jobs::emit_started(app, &job, "Iniciando", "Iniciando operação.", 0);
 
-    let result = run_platform_script(app, &job, &progress, script_name, args);
+    let result = run_platform_script(app, &job, &progress, script_name, args, extra_env);
     match result {
         Ok(output) if output.success => {
             progress.store(100, Ordering::Relaxed);
@@ -100,12 +115,92 @@ pub fn run_or_error(
     }
 }
 
+pub fn run_admin_or_error(
+    app: &AppHandle,
+    job_manager: &JobManager,
+    script_name: &str,
+    action: &str,
+    args: &[&str],
+) -> LauncherResult<CommandOutput> {
+    #[cfg(target_os = "linux")]
+    {
+        let job = job_manager.start(action)?;
+        let progress = Arc::new(AtomicU8::new(0));
+
+        jobs::emit_started(app, &job, "Aguardando permissão", "Abrindo terminal administrativo.", 0);
+
+        let result = run_linux_admin_script(app, &job, &progress, script_name, args);
+        match result {
+            Ok(output) if output.success => {
+                progress.store(100, Ordering::Relaxed);
+                jobs::emit_finished(
+                    app,
+                    job.job_id(),
+                    job.action(),
+                    "Concluído",
+                    "Operação concluída.",
+                    100,
+                    "success",
+                );
+                Ok(output)
+            }
+            Ok(output) => {
+                let error = script_failure_error(script_name, action, &output);
+                jobs::emit_error(
+                    app,
+                    job.job_id(),
+                    job.action(),
+                    "Erro",
+                    error.technical_message(),
+                    progress.load(Ordering::Relaxed),
+                );
+                jobs::emit_finished(
+                    app,
+                    job.job_id(),
+                    job.action(),
+                    "Erro",
+                    error.friendly_message(),
+                    progress.load(Ordering::Relaxed),
+                    "error",
+                );
+                Err(error)
+            }
+            Err(error) => {
+                jobs::emit_error(
+                    app,
+                    job.job_id(),
+                    job.action(),
+                    "Erro",
+                    error.technical_message(),
+                    progress.load(Ordering::Relaxed),
+                );
+                jobs::emit_finished(
+                    app,
+                    job.job_id(),
+                    job.action(),
+                    "Erro",
+                    error.friendly_message(),
+                    progress.load(Ordering::Relaxed),
+                    "error",
+                );
+                Err(error)
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        run_or_error(app, job_manager, script_name, action, args)
+    }
+}
+
 fn run_platform_script(
     app: &AppHandle,
     job: &jobs::JobGuard<'_>,
     progress: &Arc<AtomicU8>,
     script_name: &str,
     args: &[&str],
+    extra_env: &[(&str, &str)],
 ) -> LauncherResult<CommandOutput> {
     update_progress(
         app,
@@ -137,6 +232,9 @@ fn run_platform_script(
 
     let mut command = build_script_command(&script, args);
     sanitize_child_environment(&mut command);
+    for (key, value) in extra_env {
+        command.env(key, value);
+    }
 
     let mut child = command
         .stdout(Stdio::piped())
@@ -220,6 +318,8 @@ fn spawn_stream_reader<R: Read + Send + 'static>(
                 }
             };
 
+            let line = redact_sensitive(&line);
+
             if let Ok(mut buffer) = output.lock() {
                 buffer.push_str(&line);
                 buffer.push('\n');
@@ -276,7 +376,178 @@ fn take_buffer(buffer: &Arc<Mutex<String>>) -> String {
         .unwrap_or_default()
 }
 
+#[cfg(target_os = "linux")]
+fn run_linux_admin_script(
+    app: &AppHandle,
+    job: &jobs::JobGuard<'_>,
+    progress: &Arc<AtomicU8>,
+    script_name: &str,
+    args: &[&str],
+) -> LauncherResult<CommandOutput> {
+    let script = platform_script_path(app, script_name)?;
+    let log_dir = launcher_data_dir()?.join("logs");
+    fs::create_dir_all(&log_dir)
+        .map_err(|error| LauncherError::technical("Não foi possível criar pasta de logs", error))?;
+
+    let safe_job_id = job
+        .job_id()
+        .replace('/', "_")
+        .replace('\\', "_")
+        .replace(':', "_");
+    let log_path = log_dir.join(format!("admin-{script_name}-{safe_job_id}.log"));
+    let wrapper_path = log_dir.join(format!("admin-{script_name}-{safe_job_id}.sh"));
+    let commands = admin_command_summary(script_name).join("\\n- ");
+    let script_args = args
+        .iter()
+        .map(|arg| shell_quote(arg))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let wrapper = format!(
+        r#"#!/usr/bin/env bash
+set -uo pipefail
+LOG_FILE={log_file}
+SCRIPT={script}
+echo "M&G Pocket Launcher" | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Etapa: {action}" | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Esta etapa precisa de permissão administrativa." | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Comandos que serão executados:" | tee -a "$LOG_FILE"
+printf -- "- {commands}\n" | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Se o sistema pedir senha, use a senha do seu usuário." | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+bash "$SCRIPT" {args} 2>&1 | tee -a "$LOG_FILE"
+code=${{PIPESTATUS[0]}}
+echo "" | tee -a "$LOG_FILE"
+if [ "$code" -eq 0 ]; then
+  echo "Sucesso: etapa concluída." | tee -a "$LOG_FILE"
+else
+  echo "Falha: veja o log técnico em $LOG_FILE" | tee -a "$LOG_FILE"
+fi
+echo ""
+read -r -p "Pressione Enter para fechar este terminal."
+exit "$code"
+"#,
+        log_file = shell_quote(log_path.to_string_lossy().as_ref()),
+        script = shell_quote(script.to_string_lossy().as_ref()),
+        action = job.action(),
+        commands = commands,
+        args = script_args,
+    );
+
+    fs::write(&wrapper_path, wrapper)
+        .map_err(|error| LauncherError::technical("Não foi possível preparar terminal administrativo", error))?;
+    let mut permissions = fs::metadata(&wrapper_path)
+        .map_err(|error| LauncherError::technical("Não foi possível ler script administrativo", error))?
+        .permissions();
+    permissions.set_mode(0o700);
+    fs::set_permissions(&wrapper_path, permissions)
+        .map_err(|error| LauncherError::technical("Não foi possível proteger script administrativo", error))?;
+
+    update_progress(
+        app,
+        job.job_id(),
+        job.action(),
+        progress,
+        "Terminal administrativo",
+        "Aguardando conclusão no terminal externo.",
+        20,
+    );
+
+    let status = run_terminal_and_wait(&wrapper_path)?;
+    let stdout = fs::read_to_string(&log_path)
+        .map(|text| limit_lines(&text, 500))
+        .unwrap_or_default();
+    let _ = fs::remove_file(&wrapper_path);
+
+    Ok(CommandOutput {
+        success: status.success(),
+        code: status.code(),
+        stdout,
+        stderr: String::new(),
+    })
+}
+
+#[cfg(target_os = "linux")]
+fn run_terminal_and_wait(wrapper_path: &Path) -> LauncherResult<std::process::ExitStatus> {
+    let wrapper = wrapper_path.to_string_lossy().to_string();
+    let candidates: Vec<(&str, Vec<String>)> = vec![
+        ("gnome-terminal", vec!["--wait".into(), "--".into(), "bash".into(), wrapper.clone()]),
+        ("konsole", vec!["--nofork".into(), "-e".into(), "bash".into(), wrapper.clone()]),
+        ("x-terminal-emulator", vec!["-e".into(), "bash".into(), wrapper.clone()]),
+        ("xterm", vec!["-e".into(), "bash".into(), wrapper]),
+    ];
+
+    let mut last_error = None;
+    for (program, args) in candidates {
+        let mut command = Command::new(program);
+        command.args(args);
+        sanitize_child_environment(&mut command);
+        match command.status() {
+            Ok(status) => return Ok(status),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                last_error = Some(error);
+            }
+            Err(error) => {
+                last_error = Some(error);
+            }
+        }
+    }
+
+    Err(LauncherError::new(
+        "Não encontrei um terminal gráfico para pedir permissão administrativa.",
+        format!(
+            "Falha ao abrir terminal externo: {}",
+            last_error
+                .map(|error| error.to_string())
+                .unwrap_or_else(|| "nenhum terminal encontrado".to_string())
+        ),
+    ))
+}
+
+#[cfg(target_os = "linux")]
+fn admin_command_summary(script_name: &str) -> &'static [&'static str] {
+    match script_name {
+        "install-docker" => &[
+            "verificar Docker",
+            "instalar Docker e Docker Compose, se necessário",
+            "iniciar o serviço docker",
+            "ajustar o grupo docker para seu usuário",
+        ],
+        "install-system-dependencies" => &[
+            "verificar Git, curl, Docker e Docker Compose",
+            "instalar dependências ausentes pelo gerenciador de pacotes",
+            "iniciar o serviço docker",
+            "ajustar permissões do usuário",
+        ],
+        _ => &["executar etapa administrativa permitida pelo launcher"],
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+fn limit_lines(text: &str, max_lines: usize) -> String {
+    let lines = text.lines().collect::<Vec<_>>();
+    if lines.len() <= max_lines {
+        return text.trim_end().to_string();
+    }
+
+    lines[lines.len().saturating_sub(max_lines)..].join("\n")
+}
+
 fn platform_script_path(app: &AppHandle, script_name: &str) -> LauncherResult<PathBuf> {
+    if !allowed_script_name(script_name) {
+        return Err(LauncherError::friendly(
+            "Script não permitido pelo launcher.",
+        ));
+    }
+
     #[cfg(target_os = "windows")]
     {
         Ok(installers_dir(app)?
@@ -299,6 +570,27 @@ fn platform_script_path(app: &AppHandle, script_name: &str) -> LauncherResult<Pa
             "Este launcher v1.1 oferece suporte operacional para Linux e Windows.",
         ))
     }
+}
+
+fn allowed_script_name(script_name: &str) -> bool {
+    matches!(
+        script_name,
+        "backup"
+            | "check-dependencies"
+            | "doctor"
+            | "ensure-docker-permission"
+            | "ensure-docker-running"
+            | "install-docker"
+            | "install-project"
+            | "install-system-dependencies"
+            | "logs"
+            | "remove-local-project"
+            | "reset"
+            | "restart"
+            | "restore"
+            | "start"
+            | "stop"
+    )
 }
 
 #[cfg(target_os = "windows")]
@@ -454,6 +746,31 @@ fn script_failure_error(script_name: &str, action: &str, output: &CommandOutput)
             technical,
         )
     }
+}
+
+fn redact_sensitive(line: &str) -> String {
+    let lower = line.to_ascii_lowercase();
+    let sensitive = [
+        "nextauth_secret",
+        "google_client_secret",
+        "database_url",
+        "direct_url",
+        "password",
+        "passwd",
+        "token",
+        "secret",
+        "senha",
+    ];
+
+    if !sensitive.iter().any(|key| lower.contains(key)) {
+        return line.to_string();
+    }
+
+    if let Some((key, _)) = line.split_once('=') {
+        return format!("{}=<oculto>", key.trim());
+    }
+
+    "[linha ocultada por conter segredo ou token]".to_string()
 }
 
 fn is_friendly_error(message: &str) -> bool {

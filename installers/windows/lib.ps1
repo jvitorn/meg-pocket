@@ -22,8 +22,80 @@ function Get-MgBackupDir {
   return (Join-Path $documents "MG Pocket\backups")
 }
 
+function Get-MgLauncherLogDir {
+  $root = $env:LOCALAPPDATA
+  if ([string]::IsNullOrWhiteSpace($root)) {
+    $root = Join-Path $HOME ".local\share"
+  }
+
+  $dir = Join-Path $root "mg-pocket-launcher\logs"
+  New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  return $dir
+}
+
 function Test-Command($Name) {
   return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+function Test-DockerDesktopInstalled {
+  if (Test-Command "docker") {
+    return $true
+  }
+
+  $candidates = @()
+  if (-not [string]::IsNullOrWhiteSpace($env:ProgramFiles)) {
+    $candidates += (Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe")
+  }
+  $programFilesX86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+  if (-not [string]::IsNullOrWhiteSpace($programFilesX86)) {
+    $candidates += (Join-Path $programFilesX86 "Docker\Docker\Docker Desktop.exe")
+  }
+  if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+    $candidates += (Join-Path $env:LOCALAPPDATA "Programs\Docker\Docker\Docker Desktop.exe")
+  }
+
+  foreach ($candidate in $candidates) {
+    if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path $candidate)) {
+      return $true
+    }
+  }
+
+  return $false
+}
+
+function Get-DockerDesktopPath {
+  $candidates = @()
+  if (-not [string]::IsNullOrWhiteSpace($env:ProgramFiles)) {
+    $candidates += (Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe")
+  }
+  $programFilesX86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+  if (-not [string]::IsNullOrWhiteSpace($programFilesX86)) {
+    $candidates += (Join-Path $programFilesX86 "Docker\Docker\Docker Desktop.exe")
+  }
+  if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+    $candidates += (Join-Path $env:LOCALAPPDATA "Programs\Docker\Docker\Docker Desktop.exe")
+  }
+
+  foreach ($candidate in $candidates) {
+    if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path $candidate)) {
+      return $candidate
+    }
+  }
+
+  return ""
+}
+
+function Test-Wsl2Available {
+  if (-not (Test-Command "wsl")) {
+    return $false
+  }
+
+  try {
+    $status = (& wsl --status 2>$null) -join "`n"
+    return $status -match "2" -or $status -match "WSL"
+  } catch {
+    return $false
+  }
 }
 
 function Test-Url($Url) {

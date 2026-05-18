@@ -64,6 +64,7 @@ prepare_project_source() {
 
 "$SCRIPT_DIR/ensure-docker-running.sh"
 "$SCRIPT_DIR/ensure-docker-permission.sh" || true
+ensure_docker_permission_or_explicit_sudo
 
 project_path="$(project_dir)"
 prepare_project_source "$project_path"

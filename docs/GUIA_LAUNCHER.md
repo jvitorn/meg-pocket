@@ -10,13 +10,14 @@ Ele fica em `launcher/` no mesmo repositório do projeto web e usa os scripts em
 - Instala Docker automaticamente em Ubuntu/Debian-based e Arch-based.
 - Inicia o serviço Docker no Linux quando necessário.
 - Ajusta o usuário para o grupo `docker` quando necessário.
+- No Windows, detecta `winget` e pode instalar Git for Windows e Docker Desktop com confirmação.
 - Baixa ou atualiza o projeto em `~/.local/share/mg-pocket/app`.
 - Cria `.env.docker-local` sem sobrescrever um arquivo existente.
 - Sobe o projeto com Docker Compose.
 - Aplica migrations e seed inicial.
 - Abre o site em `http://localhost:3000`.
 - Abre o Adminer em `http://localhost:8081`.
-- Exibe logs, para, reinicia, cria backup, restaura backup e reseta dados locais com confirmação.
+- Exibe logs, para, reinicia, cria backup, restaura backup, remove o projeto local e reseta dados locais com confirmação.
 
 ## Diretórios Locais
 
@@ -72,15 +73,20 @@ O botão **Preparar ambiente** executa o fluxo:
 9. Migrations e seed.
 10. Validação de `http://localhost:3000`.
 
-Se o usuário for adicionado ao grupo `docker`, talvez seja necessário sair e entrar novamente na sessão. A primeira instalação pode continuar usando `sudo docker compose`.
+Se o usuário for adicionado ao grupo `docker`, é necessário sair e entrar novamente na sessão do Linux. O launcher mostra uma decisão explícita: sair/entrar depois ou continuar temporariamente usando `sudo` nesta sessão. Ele não reinicia sua sessão automaticamente.
 
 ## Windows
 
-Na v1.1, o launcher não instala Docker Desktop automaticamente.
+No Windows, o launcher detecta `winget`, Git for Windows, Docker Desktop, Docker CLI, Docker Compose, PowerShell e WSL2 quando necessário.
 
-Se Docker não existir, o launcher mostra a orientação para instalar Docker Desktop e oferece um botão para abrir a página oficial.
+Se Git ou Docker Desktop estiverem ausentes e `winget` existir, o launcher oferece instalação guiada com confirmação:
 
-Com Docker Desktop instalado e rodando, o launcher pode preparar, iniciar, parar, reiniciar e ler logs do projeto.
+```powershell
+winget install -e --id Git.Git
+winget install -e --id Docker.DockerDesktop
+```
+
+Depois de instalar Docker Desktop, abra o Docker Desktop e aguarde o Docker Engine iniciar. Se o Windows pedir reinicialização, reinicie antes de voltar ao launcher.
 
 ## Logs
 
@@ -118,13 +124,21 @@ No launcher, confirme a ação digitando `RESETAR`. No terminal, o script també
 
 O reset tenta criar backup antes de apagar volumes e storage locais.
 
+## Remoção Local
+
+O botão **Remover Projeto Local** para containers e remove a pasta local do projeto, preservando volumes Docker quando possível.
+
+O botão **Desinstalar M&G Pocket Local** também remove containers, volumes e redes do projeto. Essa ação exige confirmação digitando `REMOVER`.
+
+Docker, Git, winget e dependências globais nunca são removidos pelo launcher.
+
 ## Segurança
 
 - O launcher não salva senha.
-- A senha de `sudo`, quando necessária, é solicitada pelo sistema.
+- A senha de `sudo` ou administrador, quando necessária, é solicitada pelo sistema ou por um terminal externo claro.
 - O frontend chama apenas comandos Tauri específicos.
 - Não existe execução arbitrária de shell pela interface.
-- Reset e restore exigem confirmação.
+- Reset, restore e remoção completa exigem confirmação.
 - `.env.docker-local` não é sobrescrito sem confirmação.
 - As portas do compose continuam presas em `127.0.0.1`.
 
@@ -176,6 +190,7 @@ installers/linux/logs.sh
 installers/linux/backup.sh
 installers/linux/restore.sh
 installers/linux/reset.sh
+installers/linux/remove-local-project.sh
 ```
 
 Windows:
@@ -187,6 +202,8 @@ installers/windows/start.ps1
 installers/windows/stop.ps1
 installers/windows/restart.ps1
 installers/windows/logs.ps1
+installers/windows/install-system-dependencies.ps1
+installers/windows/remove-local-project.ps1
 installers/windows/open-docker-guide.ps1
 ```
 
@@ -195,6 +212,6 @@ installers/windows/open-docker-guide.ps1
 - Cloudflare Tunnel.
 - URL pública de campanha.
 - Auto-update completo do launcher.
-- Instalação automática do Docker Desktop no Windows.
+- Build e publicação de artefatos macOS enquanto macOS não estiver testável.
 - Suporte automático para Fedora/openSUSE.
-- Empacotamento final completo para todas as plataformas.
+- Empacotamento final completo para plataformas fora de Windows e Linux.

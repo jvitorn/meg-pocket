@@ -3,6 +3,11 @@ export type SystemStatus = {
   distroFamily?: "ubuntu_like" | "debian_like" | "arch_like" | "fedora_like" | "opensuse_like" | "unsupported";
   distroName?: string;
   supported: boolean;
+  wingetInstalled?: boolean;
+  gitInstalled?: boolean;
+  powerShellInstalled?: boolean;
+  wsl2Installed?: boolean;
+  dockerDesktopInstalled?: boolean;
   dockerInstalled: boolean;
   dockerVersion?: string;
   dockerRunning: boolean;
@@ -28,6 +33,7 @@ export type DependencyStatus = {
   installable: boolean;
   sudoRequired: boolean;
   installCommand?: string;
+  commands?: string[];
   manualInstructions?: string;
 };
 

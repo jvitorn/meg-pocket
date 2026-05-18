@@ -78,6 +78,20 @@ wait_for_url() {
 }
 
 compose_cmd() {
+  if [ "${MG_POCKET_DOCKER_USE_SUDO:-}" = "1" ]; then
+    if has_command sudo && has_command docker && sudo -n docker compose version >/dev/null 2>&1; then
+      printf '%s\n' "sudo -n docker compose"
+      return 0
+    fi
+
+    if has_command sudo && has_command docker-compose && sudo -n docker-compose version >/dev/null 2>&1; then
+      printf '%s\n' "sudo -n docker-compose"
+      return 0
+    fi
+
+    return 1
+  fi
+
   if has_command docker && docker compose version >/dev/null 2>&1; then
     printf '%s\n' "docker compose"
     return 0
@@ -85,16 +99,6 @@ compose_cmd() {
 
   if has_command docker-compose && docker-compose version >/dev/null 2>&1; then
     printf '%s\n' "docker-compose"
-    return 0
-  fi
-
-  if has_command sudo && has_command docker && sudo docker compose version >/dev/null 2>&1; then
-    printf '%s\n' "sudo docker compose"
-    return 0
-  fi
-
-  if has_command sudo && has_command docker-compose && sudo docker-compose version >/dev/null 2>&1; then
-    printf '%s\n' "sudo docker-compose"
     return 0
   fi
 
@@ -124,6 +128,20 @@ run_compose_project() {
 }
 
 run_compose_no_prompt_cmd() {
+  if [ "${MG_POCKET_DOCKER_USE_SUDO:-}" = "1" ]; then
+    if has_command sudo && has_command docker && sudo -n docker compose version >/dev/null 2>&1; then
+      printf '%s\n' "sudo -n docker compose"
+      return 0
+    fi
+
+    if has_command sudo && has_command docker-compose && sudo -n docker-compose version >/dev/null 2>&1; then
+      printf '%s\n' "sudo -n docker-compose"
+      return 0
+    fi
+
+    return 1
+  fi
+
   if has_command docker && docker compose version >/dev/null 2>&1; then
     printf '%s\n' "docker compose"
     return 0
@@ -135,12 +153,12 @@ run_compose_no_prompt_cmd() {
   fi
 
   if has_command sudo && has_command docker && sudo -n docker compose version >/dev/null 2>&1; then
-    printf '%s\n' "sudo docker compose"
+    printf '%s\n' "sudo -n docker compose"
     return 0
   fi
 
   if has_command sudo && has_command docker-compose && sudo -n docker-compose version >/dev/null 2>&1; then
-    printf '%s\n' "sudo docker-compose"
+    printf '%s\n' "sudo -n docker-compose"
     return 0
   fi
 
@@ -151,12 +169,29 @@ docker_info_works() {
   has_command docker && docker info >/dev/null 2>&1
 }
 
-sudo_docker_info_works() {
-  has_command sudo && has_command docker && sudo docker info >/dev/null 2>&1
-}
-
 sudo_docker_info_works_no_prompt() {
   has_command sudo && has_command docker && sudo -n docker info >/dev/null 2>&1
+}
+
+docker_needs_relogin_but_sudo_works() {
+  ! docker_info_works && sudo_docker_info_works_no_prompt
+}
+
+ensure_docker_permission_or_explicit_sudo() {
+  if docker_info_works; then
+    return 0
+  fi
+
+  if [ "${MG_POCKET_DOCKER_USE_SUDO:-}" = "1" ]; then
+    sudo_docker_info_works_no_prompt || fail "O sudo para Docker não está autorizado nesta sessão. Abra os logs e tente novamente depois de validar sua permissão administrativa pelo sistema."
+    return 0
+  fi
+
+  if sudo_docker_info_works_no_prompt; then
+    fail "Permissão do Docker ainda não está ativa. Salve seus arquivos, saia da sessão do Linux e entre novamente. Depois abra o launcher e clique em Instalar/Atualizar M&G Pocket. Se preferir continuar temporariamente, escolha a opção de usar sudo nesta sessão no launcher."
+  fi
+
+  fail "Docker não está acessível para seu usuário. Use o fluxo de permissões do launcher antes de continuar."
 }
 
 ensure_project_ready_dir() {

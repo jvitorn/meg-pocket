@@ -25,6 +25,33 @@ fn run_script_command(
     command_result(scripts::run_or_error(app, jobs, script_name, action, args))
 }
 
+const SUDO_DOCKER_ENV: [(&str, &str); 1] = [("MG_POCKET_DOCKER_USE_SUDO", "1")];
+
+fn run_script_command_with_docker_mode(
+    app: &AppHandle,
+    jobs: &JobManager,
+    script_name: &str,
+    action: &str,
+    args: &[&str],
+    use_sudo_docker: bool,
+) -> Result<CommandOutput, String> {
+    let empty_env: &[(&str, &str)] = &[];
+    let extra_env = if use_sudo_docker {
+        &SUDO_DOCKER_ENV[..]
+    } else {
+        empty_env
+    };
+
+    command_result(scripts::run_or_error_with_env(
+        app,
+        jobs,
+        script_name,
+        action,
+        args,
+        extra_env,
+    ))
+}
+
 #[tauri::command]
 fn doctor(app: AppHandle, jobs: State<'_, JobManager>) -> Result<String, String> {
     let output = run_script_command(&app, &jobs, "doctor", "Diagnosticar", &[])?;
@@ -36,14 +63,20 @@ fn doctor(app: AppHandle, jobs: State<'_, JobManager>) -> Result<String, String>
 fn installDockerLinux(app: AppHandle, jobs: State<'_, JobManager>) -> Result<CommandOutput, String> {
     #[cfg(target_os = "linux")]
     {
-        run_script_command(&app, &jobs, "install-docker", "Instalar Docker", &[])
+        command_result(scripts::run_admin_or_error(
+            &app,
+            &jobs,
+            "install-docker",
+            "Instalar Docker",
+            &[],
+        ))
     }
 
     #[cfg(not(target_os = "linux"))]
     {
         let _ = app;
         let _ = jobs;
-        Err("A instalação automática do Docker é suportada apenas no Linux. No Windows, instale o Docker Desktop manualmente.".to_string())
+        Err("Use o fluxo de dependências do Windows para instalar Docker Desktop via winget.".to_string())
     }
 }
 
@@ -68,6 +101,17 @@ fn installSystemDependencies(
 ) -> Result<CommandOutput, String> {
     #[cfg(target_os = "linux")]
     {
+        command_result(scripts::run_admin_or_error(
+            &app,
+            &jobs,
+            "install-system-dependencies",
+            "Instalar dependências",
+            &[],
+        ))
+    }
+
+    #[cfg(target_os = "windows")]
+    {
         run_script_command(
             &app,
             &jobs,
@@ -77,11 +121,11 @@ fn installSystemDependencies(
         )
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     {
         let _ = app;
         let _ = jobs;
-        Err("A instalação automática de dependências do sistema é suportada apenas no Linux.".to_string())
+        Err("A instalação automática de dependências do sistema é suportada apenas no Linux e Windows.".to_string())
     }
 }
 
@@ -101,7 +145,13 @@ fn ensureDockerRunning(app: AppHandle, jobs: State<'_, JobManager>) -> Result<Co
 
     #[cfg(target_os = "windows")]
     {
-        run_script_command(&app, &jobs, "doctor", "Verificar Docker", &[])
+        run_script_command(
+            &app,
+            &jobs,
+            "ensure-docker-running",
+            "Verificar Docker",
+            &[],
+        )
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "windows")))]
@@ -142,17 +192,22 @@ fn ensureDockerPermission(
     }
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 #[allow(non_snake_case)]
-fn installProject(app: AppHandle, jobs: State<'_, JobManager>) -> Result<CommandOutput, String> {
+fn installProject(
+    app: AppHandle,
+    jobs: State<'_, JobManager>,
+    use_sudo_docker: Option<bool>,
+) -> Result<CommandOutput, String> {
     #[cfg(any(target_os = "linux", target_os = "windows"))]
     {
-        run_script_command(
+        run_script_command_with_docker_mode(
             &app,
             &jobs,
             "install-project",
             "Instalar/Atualizar M&G Pocket",
             &[],
+            use_sudo_docker.unwrap_or(false),
         )
     }
 
@@ -164,34 +219,89 @@ fn installProject(app: AppHandle, jobs: State<'_, JobManager>) -> Result<Command
     }
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 #[allow(non_snake_case)]
-fn startApp(app: AppHandle, jobs: State<'_, JobManager>) -> Result<CommandOutput, String> {
-    run_script_command(&app, &jobs, "start", "Iniciar M&G Pocket", &[])
+fn startApp(
+    app: AppHandle,
+    jobs: State<'_, JobManager>,
+    use_sudo_docker: Option<bool>,
+) -> Result<CommandOutput, String> {
+    run_script_command_with_docker_mode(
+        &app,
+        &jobs,
+        "start",
+        "Iniciar M&G Pocket",
+        &[],
+        use_sudo_docker.unwrap_or(false),
+    )
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 #[allow(non_snake_case)]
-fn stopApp(app: AppHandle, jobs: State<'_, JobManager>) -> Result<CommandOutput, String> {
-    run_script_command(&app, &jobs, "stop", "Parar M&G Pocket", &[])
+fn stopApp(
+    app: AppHandle,
+    jobs: State<'_, JobManager>,
+    use_sudo_docker: Option<bool>,
+) -> Result<CommandOutput, String> {
+    run_script_command_with_docker_mode(
+        &app,
+        &jobs,
+        "stop",
+        "Parar M&G Pocket",
+        &[],
+        use_sudo_docker.unwrap_or(false),
+    )
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 #[allow(non_snake_case)]
-fn restartApp(app: AppHandle, jobs: State<'_, JobManager>) -> Result<CommandOutput, String> {
-    run_script_command(&app, &jobs, "restart", "Reiniciar M&G Pocket", &[])
+fn restartApp(
+    app: AppHandle,
+    jobs: State<'_, JobManager>,
+    use_sudo_docker: Option<bool>,
+) -> Result<CommandOutput, String> {
+    run_script_command_with_docker_mode(
+        &app,
+        &jobs,
+        "restart",
+        "Reiniciar M&G Pocket",
+        &[],
+        use_sudo_docker.unwrap_or(false),
+    )
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 #[allow(non_snake_case)]
-fn readLogs(app: AppHandle, jobs: State<'_, JobManager>) -> Result<String, String> {
-    let output = run_script_command(&app, &jobs, "logs", "Ler logs", &[])?;
+fn readLogs(
+    app: AppHandle,
+    jobs: State<'_, JobManager>,
+    use_sudo_docker: Option<bool>,
+) -> Result<String, String> {
+    let output = run_script_command_with_docker_mode(
+        &app,
+        &jobs,
+        "logs",
+        "Ler logs",
+        &[],
+        use_sudo_docker.unwrap_or(false),
+    )?;
     Ok(output.stdout)
 }
 
-#[tauri::command]
-fn backup(app: AppHandle, jobs: State<'_, JobManager>) -> Result<CommandOutput, String> {
-    run_script_command(&app, &jobs, "backup", "Backup", &[])
+#[tauri::command(rename_all = "camelCase")]
+fn backup(
+    app: AppHandle,
+    jobs: State<'_, JobManager>,
+    use_sudo_docker: Option<bool>,
+) -> Result<CommandOutput, String> {
+    run_script_command_with_docker_mode(
+        &app,
+        &jobs,
+        "backup",
+        "Backup",
+        &[],
+        use_sudo_docker.unwrap_or(false),
+    )
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -201,17 +311,19 @@ fn restoreBackup(
     jobs: State<'_, JobManager>,
     backupPath: String,
     confirmed: bool,
+    use_sudo_docker: Option<bool>,
 ) -> Result<CommandOutput, String> {
     if !confirmed {
         return Err("Restore exige confirmação explícita.".to_string());
     }
 
-    run_script_command(
+    run_script_command_with_docker_mode(
         &app,
         &jobs,
         "restore",
         "Restaurar backup",
         &[backupPath.as_str(), "--yes"],
+        use_sudo_docker.unwrap_or(false),
     )
 }
 
@@ -221,12 +333,47 @@ fn resetLocalData(
     app: AppHandle,
     jobs: State<'_, JobManager>,
     confirmed: bool,
+    use_sudo_docker: Option<bool>,
 ) -> Result<CommandOutput, String> {
     if !confirmed {
         return Err("Reset local exige confirmação explícita.".to_string());
     }
 
-    run_script_command(&app, &jobs, "reset", "Resetar dados locais", &["--yes"])
+    run_script_command_with_docker_mode(
+        &app,
+        &jobs,
+        "reset",
+        "Resetar dados locais",
+        &["--yes"],
+        use_sudo_docker.unwrap_or(false),
+    )
+}
+
+#[tauri::command(rename_all = "camelCase")]
+#[allow(non_snake_case)]
+fn removeLocalProject(
+    app: AppHandle,
+    jobs: State<'_, JobManager>,
+    mode: String,
+    confirmed: bool,
+    use_sudo_docker: Option<bool>,
+) -> Result<CommandOutput, String> {
+    if !confirmed {
+        return Err("Remoção local exige confirmação explícita.".to_string());
+    }
+
+    if mode != "safe" && mode != "complete" {
+        return Err("Modo de remoção inválido.".to_string());
+    }
+
+    run_script_command_with_docker_mode(
+        &app,
+        &jobs,
+        "remove-local-project",
+        "Remover projeto local",
+        &[mode.as_str()],
+        use_sudo_docker.unwrap_or(false),
+    )
 }
 
 fn open_allowed_url(url: &str) -> LauncherResult<()> {
@@ -320,7 +467,8 @@ pub fn run() {
             readLogs,
             backup,
             restoreBackup,
-            resetLocalData
+            resetLocalData,
+            removeLocalProject
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar M&G Pocket Launcher");

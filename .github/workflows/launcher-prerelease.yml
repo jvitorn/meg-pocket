@@ -36,23 +36,11 @@ jobs:
           - name: Linux
             artifactName: launcher-linux-checksums
             platform: ubuntu-22.04
-            rustTarget: ""
             args: "--bundles appimage,deb,rpm"
           - name: Windows
             artifactName: launcher-windows-checksums
             platform: windows-latest
-            rustTarget: ""
             args: "--bundles nsis,msi"
-          - name: macOS Apple Silicon
-            artifactName: launcher-macos-apple-silicon-checksums
-            platform: macos-latest
-            rustTarget: aarch64-apple-darwin
-            args: "--target aarch64-apple-darwin --bundles dmg,app"
-          - name: macOS Intel
-            artifactName: launcher-macos-intel-checksums
-            platform: macos-latest
-            rustTarget: x86_64-apple-darwin
-            args: "--target x86_64-apple-darwin --bundles dmg,app"
 
     steps:
       - name: Checkout
@@ -90,11 +78,6 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Add macOS Rust target
-        if: matrix.rustTarget != ''
-        shell: bash
-        run: rustup target add "${{ matrix.rustTarget }}"
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -145,12 +128,12 @@ jobs:
           releaseBody: |
             Pre-release do M&G Pocket Launcher.
 
-            Inclui builds para Linux, Windows e macOS.
+            Inclui builds para Linux e Windows.
 
             Observações:
             - Linux: use preferencialmente AppImage.
             - Linux também inclui pacotes .deb e .rpm quando o build concluir com sucesso.
-            - Windows: requer Docker Desktop instalado.
+            - Windows: o launcher pode instalar Git e Docker Desktop via winget com confirmação.
             - Linux Ubuntu/Debian/Arch-based: o launcher pode ajudar na instalação/validação do Docker.
           releaseDraft: ${{ steps.release.outputs.draft }}
           prerelease: ${{ steps.release.outputs.prerelease }}

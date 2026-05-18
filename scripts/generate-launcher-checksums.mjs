@@ -14,9 +14,6 @@ const artifactPatterns = [
   /\.rpm$/i,
   /\.msi$/i,
   /\.exe$/i,
-  /\.dmg$/i,
-  /\.app\.tar\.gz$/i,
-  /\.app\.tar\.gz\.sig$/i,
   /\.tar\.gz$/i,
 ];
 

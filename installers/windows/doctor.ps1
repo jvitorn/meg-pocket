@@ -1,6 +1,11 @@
 . "$PSScriptRoot\lib.ps1"
 
 $projectDir = Get-MgProjectDir
+$wingetInstalled = Test-Command "winget"
+$gitInstalled = Test-Command "git"
+$powerShellInstalled = Test-Command "powershell"
+$dockerDesktopInstalled = Test-DockerDesktopInstalled
+$wsl2Installed = Test-Wsl2Available
 $dockerInstalled = Test-Command "docker"
 $dockerRunning = $false
 $dockerComposeInstalled = $false
@@ -30,6 +35,11 @@ $status = [ordered]@{
   distroFamily = $null
   distroName = "Windows"
   supported = $true
+  wingetInstalled = $wingetInstalled
+  gitInstalled = $gitInstalled
+  powerShellInstalled = $powerShellInstalled
+  wsl2Installed = $wsl2Installed
+  dockerDesktopInstalled = $dockerDesktopInstalled
   dockerInstalled = $dockerInstalled
   dockerVersion = $dockerVersion
   dockerRunning = $dockerRunning

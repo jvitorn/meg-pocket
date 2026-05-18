@@ -45,20 +45,24 @@ export function ensureDockerPermission(): Promise<CommandOutput> {
   return invoke<CommandOutput>("ensureDockerPermission");
 }
 
-export function installProject(): Promise<CommandOutput> {
-  return invoke<CommandOutput>("installProject");
+type DockerCommandOptions = {
+  useSudoDocker?: boolean;
+};
+
+export function installProject(options: DockerCommandOptions = {}): Promise<CommandOutput> {
+  return invoke<CommandOutput>("installProject", options);
 }
 
-export function startApp(): Promise<CommandOutput> {
-  return invoke<CommandOutput>("startApp");
+export function startApp(options: DockerCommandOptions = {}): Promise<CommandOutput> {
+  return invoke<CommandOutput>("startApp", options);
 }
 
-export function stopApp(): Promise<CommandOutput> {
-  return invoke<CommandOutput>("stopApp");
+export function stopApp(options: DockerCommandOptions = {}): Promise<CommandOutput> {
+  return invoke<CommandOutput>("stopApp", options);
 }
 
-export function restartApp(): Promise<CommandOutput> {
-  return invoke<CommandOutput>("restartApp");
+export function restartApp(options: DockerCommandOptions = {}): Promise<CommandOutput> {
+  return invoke<CommandOutput>("restartApp", options);
 }
 
 export function openSite(): Promise<void> {
@@ -73,18 +77,25 @@ export function openDockerGuide(): Promise<void> {
   return invoke<void>("openDockerGuide");
 }
 
-export function readLogs(): Promise<string> {
-  return invoke<string>("readLogs");
+export function readLogs(options: DockerCommandOptions = {}): Promise<string> {
+  return invoke<string>("readLogs", options);
 }
 
-export function backup(): Promise<CommandOutput> {
-  return invoke<CommandOutput>("backup");
+export function backup(options: DockerCommandOptions = {}): Promise<CommandOutput> {
+  return invoke<CommandOutput>("backup", options);
 }
 
-export function restoreBackup(backupPath: string): Promise<CommandOutput> {
-  return invoke<CommandOutput>("restoreBackup", { backupPath, confirmed: true });
+export function restoreBackup(backupPath: string, options: DockerCommandOptions = {}): Promise<CommandOutput> {
+  return invoke<CommandOutput>("restoreBackup", { backupPath, confirmed: true, ...options });
 }
 
-export function resetLocalData(): Promise<CommandOutput> {
-  return invoke<CommandOutput>("resetLocalData", { confirmed: true });
+export function resetLocalData(options: DockerCommandOptions = {}): Promise<CommandOutput> {
+  return invoke<CommandOutput>("resetLocalData", { confirmed: true, ...options });
+}
+
+export function removeLocalProject(
+  mode: "safe" | "complete",
+  options: DockerCommandOptions = {},
+): Promise<CommandOutput> {
+  return invoke<CommandOutput>("removeLocalProject", { mode, confirmed: true, ...options });
 }

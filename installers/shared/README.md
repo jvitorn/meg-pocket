@@ -33,6 +33,7 @@ logs.sh
 backup.sh
 restore.sh
 reset.sh
+remove-local-project.sh
 ```
 
 Todos usam `lib.sh` para resolver diretórios locais, comando Docker Compose e helpers comuns.
@@ -42,8 +43,8 @@ O comando Compose é escolhido nesta ordem:
 ```text
 docker compose
 docker-compose
-sudo docker compose
-sudo docker-compose
+sudo -n docker compose, somente quando o launcher recebeu confirmação para usar sudo nesta sessão
+sudo -n docker-compose, somente quando o launcher recebeu confirmação para usar sudo nesta sessão
 ```
 
 ## Windows
@@ -57,10 +58,13 @@ start.ps1
 stop.ps1
 restart.ps1
 logs.ps1
+install-system-dependencies.ps1
+ensure-docker-running.ps1
+remove-local-project.ps1
 open-docker-guide.ps1
 ```
 
-Na v1.1, Docker Desktop deve ser instalado manualmente no Windows.
+Na v1.1, o launcher pode instalar Git for Windows e Docker Desktop via `winget` depois de confirmação explícita.
 
 ## Compatibilidade
 
