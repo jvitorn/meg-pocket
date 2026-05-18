@@ -38,6 +38,17 @@ export type CommandOutput = {
   stderr: string;
 };
 
+export type JobStatus = "idle" | "running" | "success" | "error";
+
+export type LauncherJobEvent = {
+  job_id: string;
+  action: string;
+  step: string;
+  message: string;
+  progress: number;
+  level: "info" | "stdout" | "stderr" | "error" | "success" | string;
+};
+
 export type StepState = "pending" | "running" | "done" | "error";
 
 export type ProgressStep = {

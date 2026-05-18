@@ -1,5 +1,23 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { CommandOutput, DependencyStatus, SystemStatus } from "./types";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { CommandOutput, DependencyStatus, LauncherJobEvent, SystemStatus } from "./types";
+
+export const launcherJobEvents = [
+  "launcher://job-started",
+  "launcher://job-progress",
+  "launcher://job-log",
+  "launcher://job-error",
+  "launcher://job-finished",
+] as const;
+
+export type LauncherJobEventName = (typeof launcherJobEvents)[number];
+
+export function listenLauncherJobEvent(
+  eventName: LauncherJobEventName,
+  handler: (payload: LauncherJobEvent, eventName: LauncherJobEventName) => void,
+): Promise<UnlistenFn> {
+  return listen<LauncherJobEvent>(eventName, (event) => handler(event.payload, eventName));
+}
 
 export async function doctor(): Promise<SystemStatus> {
   const raw = await invoke<string>("doctor");

@@ -23,6 +23,9 @@ import {
   installDockerLinux,
   installProject,
   installSystemDependencies,
+  launcherJobEvents,
+  listenLauncherJobEvent,
+  type LauncherJobEventName,
   openAdminer,
   openDockerGuide,
   openSite,
@@ -39,7 +42,14 @@ import { ConfirmDialog } from "./components/ConfirmDialog";
 import { LogPanel } from "./components/LogPanel";
 import { StatusCard, type StatusItem } from "./components/StatusCard";
 import { StepProgress } from "./components/StepProgress";
-import type { CommandOutput, DependencyStatus, ProgressStep, SystemStatus } from "./types";
+import type {
+  CommandOutput,
+  DependencyStatus,
+  JobStatus,
+  LauncherJobEvent,
+  ProgressStep,
+  SystemStatus,
+} from "./types";
 
 const initialSteps: ProgressStep[] = [
   { id: "doctor", label: "Diagnóstico", state: "pending" },
@@ -70,6 +80,13 @@ function appendOutput(current: string, label: string, output?: CommandOutput | s
   return `${current}${current ? "\n\n" : ""}# ${label}\n${text.trim()}`;
 }
 
+function appendLogLine(current: string, event: LauncherJobEvent) {
+  const text = event.message.trim();
+  if (!text || event.action === "Ler logs") return current;
+  const prefix = event.level === "stderr" || event.level === "error" ? "erro" : "log";
+  return `${current}${current ? "\n" : ""}[${event.action}][${prefix}] ${text}`;
+}
+
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
@@ -87,6 +104,7 @@ function isFriendlyError(message: string) {
 
 function friendlyActionError(label: string, error: unknown) {
   const message = errorMessage(error);
+  if (message.includes("O Windows informou que um arquivo ainda está em uso")) return message;
   if (isFriendlyError(message)) return message;
   return `Não consegui concluir "${label}". Os detalhes técnicos foram enviados para Logs.`;
 }
@@ -97,26 +115,36 @@ function progressCopy(busy: string | null) {
       return {
         title: "Preparando ambiente",
         detail: "Validando Docker, permissões, banco de dados e aplicação.",
+        step: "Iniciando",
+        progress: 5,
       };
     case "Instalar/Atualizar":
       return {
         title: "Instalando ou atualizando",
         detail: "Baixando arquivos, preparando containers e aplicando banco de dados.",
+        step: "Iniciando",
+        progress: 5,
       };
     case "dependências":
       return {
         title: "Instalando dependências",
         detail: "Aguardando o gerenciador de pacotes concluir a instalação.",
+        step: "Instalando",
+        progress: 20,
       };
     case "diagnose":
       return {
         title: "Diagnosticando",
         detail: "Lendo o estado do sistema e dos containers locais.",
+        step: "Diagnóstico",
+        progress: 10,
       };
     case "Logs":
       return {
         title: "Carregando logs",
         detail: "Buscando as últimas mensagens dos containers.",
+        step: "Logs",
+        progress: 10,
       };
     case null:
       return null;
@@ -124,6 +152,8 @@ function progressCopy(busy: string | null) {
       return {
         title: `Processando ${busy}`,
         detail: "Aguarde enquanto o launcher conclui esta ação.",
+        step: "Executando",
+        progress: 10,
       };
   }
 }
@@ -149,6 +179,9 @@ export default function App() {
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [logs, setLogs] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<JobStatus>("idle");
+  const [jobEvent, setJobEvent] = useState<LauncherJobEvent | null>(null);
+  const [recentJobLogs, setRecentJobLogs] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [steps, setSteps] = useState<ProgressStep[]>(initialSteps);
   const [resetOpen, setResetOpen] = useState(false);
@@ -157,14 +190,68 @@ export default function App() {
   const [dependencyPrompt, setDependencyPrompt] = useState<DependencyStatus | null>(null);
   const [pendingDependencyAction, setPendingDependencyAction] = useState<PendingDependencyAction | null>(null);
 
-  const isBusy = busy !== null;
+  const isBusy = busy !== null || jobStatus === "running";
 
   const setStep = (id: string, state: ProgressStep["state"]) => {
     setSteps((current) => current.map((step) => (step.id === id ? { ...step, state } : step)));
   };
 
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: Array<() => void> = [];
+
+    const handleJobEvent = (payload: LauncherJobEvent, eventName: LauncherJobEventName) => {
+      setJobEvent(payload);
+
+      if (eventName === "launcher://job-started") {
+        setJobStatus("running");
+        setRecentJobLogs([]);
+        return;
+      }
+
+      if (eventName === "launcher://job-progress") {
+        setJobStatus("running");
+        return;
+      }
+
+      if (eventName === "launcher://job-log") {
+        setLogs((current) => appendLogLine(current, payload));
+        if (payload.action !== "Ler logs" && payload.message.trim()) {
+          setRecentJobLogs((current) => [...current, payload.message.trim()].slice(-4));
+        }
+        return;
+      }
+
+      if (eventName === "launcher://job-error") {
+        setJobStatus("error");
+        setLogs((current) => appendLogLine(current, payload));
+        return;
+      }
+
+      if (eventName === "launcher://job-finished") {
+        setJobStatus(payload.level === "error" ? "error" : "success");
+      }
+    };
+
+    void Promise.all(launcherJobEvents.map((eventName) => listenLauncherJobEvent(eventName, handleJobEvent))).then(
+      (subscriptions) => {
+        if (disposed) {
+          subscriptions.forEach((unsubscribe) => unsubscribe());
+        } else {
+          unlisten = subscriptions;
+        }
+      },
+    );
+
+    return () => {
+      disposed = true;
+      unlisten.forEach((unsubscribe) => unsubscribe());
+    };
+  }, []);
+
   const diagnose = async () => {
     setBusy("diagnose");
+    setJobStatus("idle");
     setError("");
     try {
       const nextStatus = await doctor();
@@ -183,11 +270,13 @@ export default function App() {
   }, []);
 
   const runAction = async (label: string, action: () => Promise<CommandOutput | string | void>) => {
+    if (isBusy) return;
     setBusy(label);
+    setJobStatus("idle");
     setError("");
     try {
       const output = await action();
-      if (output) setLogs((current) => appendOutput(current, label, output));
+      if (typeof output === "string") setLogs((current) => appendOutput(current, label, output));
       await diagnose();
     } catch (err) {
       setLogs((current) => appendOutput(current, `Erro em ${label}`, errorMessage(err)));
@@ -207,12 +296,13 @@ export default function App() {
   };
 
   const runProjectInstall = async () => {
-    const projectOutput = await installProject();
-    setLogs((current) => appendOutput(current, "Instalar/atualizar M&G Pocket", projectOutput));
+    await installProject();
   };
 
   const installOrUpdateProject = async () => {
+    if (isBusy) return;
     setBusy("Instalar/Atualizar");
+    setJobStatus("idle");
     setError("");
     try {
       if (!(await checkDependenciesBefore("install"))) return;
@@ -227,7 +317,9 @@ export default function App() {
   };
 
   const prepareEnvironment = async () => {
+    if (isBusy) return;
     setBusy("prepare");
+    setJobStatus("idle");
     setError("");
     setLogs("");
     setSteps(initialSteps.map((step) => ({ ...step, state: "pending" })));
@@ -243,21 +335,18 @@ export default function App() {
       setStep("docker", "running");
       if (!currentStatus.dockerInstalled) {
         if (currentStatus.os === "linux" && currentStatus.supported) {
-          const output = await installDockerLinux();
-          setLogs((current) => appendOutput(current, "Instalar Docker", output));
+          await installDockerLinux();
         } else if (currentStatus.os === "windows") {
           throw new Error("No Windows, instale o Docker Desktop antes de continuar.");
         } else {
           throw new Error("Esta distribuição ainda não é suportada pelo instalador automático. Instale o Docker manualmente e depois volte para o launcher.");
         }
       }
-      const runningOutput = await ensureDockerRunning();
-      setLogs((current) => appendOutput(current, "Iniciar Docker", runningOutput));
+      await ensureDockerRunning();
       setStep("docker", "done");
 
       setStep("permission", "running");
-      const permissionOutput = await ensureDockerPermission();
-      setLogs((current) => appendOutput(current, "Permissão Docker", permissionOutput));
+      await ensureDockerPermission();
       setStep("permission", "done");
 
       setStep("project", "running");
@@ -281,6 +370,7 @@ export default function App() {
   };
 
   const loadLogs = async () => {
+    if (isBusy && busy !== "Logs") return;
     await runAction("Logs", async () => {
       const output = await readLogs();
       setLogs(output);
@@ -320,11 +410,11 @@ export default function App() {
     setDependencyPrompt(null);
     setPendingDependencyAction(null);
     setBusy("dependências");
+    setJobStatus("idle");
     setError("");
 
     try {
-      const output = await installSystemDependencies();
-      setLogs((current) => appendOutput(current, "Instalar dependências do sistema", output));
+      await installSystemDependencies();
 
       const dependencies = await checkSystemDependencies();
       if (dependencies.missing.length > 0) {
@@ -334,6 +424,8 @@ export default function App() {
         return;
       }
 
+      setBusy(null);
+      setJobStatus("idle");
       if (nextAction === "prepare") {
         await prepareEnvironment();
       } else if (nextAction === "install") {
@@ -382,7 +474,15 @@ export default function App() {
 
   const showLinuxInstallDocker = status?.os === "linux" && status.supported && !status.dockerInstalled;
   const showWindowsDockerGuide = status?.os === "windows" && !status.dockerInstalled;
-  const activeProgress = progressCopy(busy);
+  const activeProgress =
+    jobStatus === "running" && jobEvent
+      ? {
+          title: jobEvent.action,
+          detail: jobEvent.message || "Operação em andamento.",
+          step: jobEvent.step,
+          progress: Math.max(0, Math.min(100, jobEvent.progress)),
+        }
+      : progressCopy(busy);
 
   return (
     <AppShell>
@@ -423,11 +523,25 @@ export default function App() {
         <section className="operation-progress" role="status" aria-live="polite">
           <div>
             <strong>{activeProgress.title}</strong>
-            <span>{activeProgress.detail}</span>
+            <span>{activeProgress.step ? `${activeProgress.step}: ${activeProgress.detail}` : activeProgress.detail}</span>
           </div>
-          <div className="operation-progress__track" aria-hidden="true">
-            <span />
+          <div
+            className="operation-progress__track"
+            role="progressbar"
+            aria-label={`Progresso ${activeProgress.progress}%`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={activeProgress.progress}
+          >
+            <span style={{ width: `${activeProgress.progress}%` }} />
           </div>
+          {recentJobLogs.length > 0 ? (
+            <ul className="operation-progress__logs">
+              {recentJobLogs.map((line, index) => (
+                <li key={`${index}-${line}`}>{line}</li>
+              ))}
+            </ul>
+          ) : null}
         </section>
       ) : null}
 
@@ -476,7 +590,7 @@ export default function App() {
         <ActionButton icon={<ExternalLink size={18} />} disabled={isBusy || !status?.adminerOnline} onClick={() => void openAdminer()}>
           Abrir Adminer
         </ActionButton>
-        <ActionButton icon={<ScrollText size={18} />} disabled={isBusy} onClick={loadLogs}>
+        <ActionButton icon={<ScrollText size={18} />} disabled={busy === "Logs"} loading={busy === "Logs"} onClick={loadLogs}>
           Ver Logs
         </ActionButton>
         <ActionButton icon={<Archive size={18} />} disabled={isBusy} onClick={() => runAction("Backup", backup)}>

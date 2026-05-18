@@ -181,10 +181,25 @@ main {
 .operation-progress__track span {
   position: absolute;
   inset: 0 auto 0 0;
-  width: 38%;
+  width: 0;
   border-radius: inherit;
   background: linear-gradient(90deg, #86d5c4, #f7d88f);
-  animation: progress-sweep 1.15s ease-in-out infinite;
+  transition: width 180ms ease;
+}
+
+.operation-progress__logs {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: #c7ddd8;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.operation-progress__logs li {
+  overflow-wrap: anywhere;
 }
 
 .status-grid {
@@ -525,20 +540,6 @@ main {
 @keyframes spin {
   to {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes progress-sweep {
-  0% {
-    transform: translateX(-105%);
-  }
-
-  50% {
-    transform: translateX(85%);
-  }
-
-  100% {
-    transform: translateX(265%);
   }
 }
 
