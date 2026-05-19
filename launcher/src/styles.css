@@ -202,6 +202,21 @@ main {
   overflow-wrap: anywhere;
 }
 
+.operation-progress__cancel {
+  justify-self: start;
+  width: fit-content;
+  padding: 7px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #f8fbfa;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.operation-progress__cancel:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
 .status-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

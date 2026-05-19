@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
@@ -10,8 +10,13 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }));
 
+const eventHandlers = vi.hoisted(() => new Map<string, (event: { payload: unknown }) => void>());
+
 vi.mock("@tauri-apps/api/event", () => ({
-  listen: vi.fn(async () => vi.fn()),
+  listen: vi.fn(async (eventName: string, handler: (event: { payload: unknown }) => void) => {
+    eventHandlers.set(eventName, handler);
+    return vi.fn(() => eventHandlers.delete(eventName));
+  }),
 }));
 
 const invokeMock = vi.mocked(invoke);
@@ -49,6 +54,7 @@ const baseDependencies: DependencyStatus = {
 function mockDoctor(status: SystemStatus = baseStatus) {
   invokeMock.mockImplementation(async (command: string) => {
     if (command === "doctor") return JSON.stringify(status);
+    if (command === "quickDiagnose") return JSON.stringify(status);
     if (command === "checkSystemDependencies") return JSON.stringify(baseDependencies);
     if (command === "readLogs") return "app log";
     return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
@@ -60,14 +66,21 @@ async function renderReady(status: SystemStatus = baseStatus) {
   const user = userEvent.setup();
   render(<App />);
   await screen.findByRole("heading", { name: "Launcher" });
-  await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("doctor"));
+  await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("quickDiagnose"));
   invokeMock.mockClear();
   return user;
+}
+
+function emitLauncherEvent(eventName: string, payload: unknown) {
+  act(() => {
+    eventHandlers.get(eventName)?.({ payload });
+  });
 }
 
 describe("M&G Pocket Launcher", () => {
   beforeEach(() => {
     invokeMock.mockReset();
+    eventHandlers.clear();
   });
 
   it("renderiza a tela principal", async () => {
@@ -77,6 +90,23 @@ describe("M&G Pocket Launcher", () => {
     expect(await screen.findByRole("heading", { name: "Launcher" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Preparar ambiente/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Ambiente")).toBeInTheDocument();
+    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("quickDiagnose"));
+    expect(invokeMock).not.toHaveBeenCalledWith("doctor");
+  });
+
+  it("abre sem bloquear a UI mesmo se o diagnóstico rápido demorar", async () => {
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "quickDiagnose") return new Promise(() => undefined);
+      if (command === "checkSystemDependencies") return JSON.stringify(baseDependencies);
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Launcher" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Diagnosticar$/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Instalar\/Atualizar M&G Pocket/i })).toBeEnabled();
+    expect(invokeMock).not.toHaveBeenCalledWith("doctor");
   });
 
   it("StatusCard exibe estados", () => {
@@ -159,6 +189,7 @@ describe("M&G Pocket Launcher", () => {
 
     invokeMock.mockImplementation(async (command: string) => {
       if (command === "doctor") return JSON.stringify(baseStatus);
+      if (command === "quickDiagnose") return JSON.stringify(baseStatus);
       if (command === "checkSystemDependencies") return JSON.stringify(baseDependencies);
       if (command === "startApp") return startPromise;
       return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
@@ -176,6 +207,132 @@ describe("M&G Pocket Launcher", () => {
     await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
   });
 
+  it("botão Diagnosticar entra em loading e sai do loading", async () => {
+    let resolveDoctor!: (status: string) => void;
+    const doctorPromise = new Promise<string>((resolve) => {
+      resolveDoctor = resolve;
+    });
+
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "quickDiagnose") return JSON.stringify(baseStatus);
+      if (command === "doctor") return doctorPromise;
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText("Arch Linux");
+    const button = screen.getByRole("button", { name: /^Diagnosticar$/i });
+
+    await user.click(button);
+    expect(button).toBeDisabled();
+
+    resolveDoctor(JSON.stringify(baseStatus));
+    await waitFor(() => expect(button).toBeEnabled());
+  });
+
+  it("Instalar/Atualizar entra em loading e sai do loading", async () => {
+    let resolveInstall!: (output: CommandOutput) => void;
+    const installPromise = new Promise<CommandOutput>((resolve) => {
+      resolveInstall = resolve;
+    });
+
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "quickDiagnose") return JSON.stringify(baseStatus);
+      if (command === "checkSystemDependencies") return JSON.stringify(baseDependencies);
+      if (command === "installProject") return installPromise;
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText("Arch Linux");
+    const button = screen.getByRole("button", { name: /Instalar\/Atualizar M&G Pocket/i });
+
+    await user.click(button);
+    expect(button).toBeDisabled();
+
+    resolveInstall({ success: true, code: 0, stdout: "ok", stderr: "" });
+    await waitFor(() => expect(button).toBeEnabled());
+  });
+
+  it("erro de job finaliza barra, libera botões e não fica running", async () => {
+    mockDoctor();
+    render(<App />);
+    await screen.findByText("Arch Linux");
+
+    emitLauncherEvent("launcher://job-started", {
+      job_id: "job-1",
+      action: "Instalar/Atualizar M&G Pocket",
+      step: "Verificando Docker",
+      message: "Verificando Docker.",
+      progress: 20,
+      level: "info",
+    });
+
+    expect(screen.getByRole("button", { name: /^Diagnosticar$/i })).toBeDisabled();
+
+    emitLauncherEvent("launcher://job-finished", {
+      job_id: "job-1",
+      action: "Instalar/Atualizar M&G Pocket",
+      step: "Verificar Docker",
+      message: "Falhou na etapa: Verificar Docker",
+      progress: 100,
+      level: "error",
+    });
+
+    await waitFor(() => expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100"));
+    expect(screen.getByRole("status")).toHaveTextContent(/Falhou na etapa/i);
+    expect(screen.getByRole("button", { name: /^Diagnosticar$/i })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /^Cancelar$/i })).not.toBeInTheDocument();
+  });
+
+  it("botões ficam desabilitados durante job e voltam após cancelamento", async () => {
+    mockDoctor();
+    render(<App />);
+    await screen.findByText("Arch Linux");
+
+    emitLauncherEvent("launcher://job-started", {
+      job_id: "job-2",
+      action: "Diagnosticar",
+      step: "Docker",
+      message: "Verificando Docker.",
+      progress: 40,
+      level: "info",
+    });
+    expect(screen.getByRole("button", { name: /Instalar\/Atualizar M&G Pocket/i })).toBeDisabled();
+
+    emitLauncherEvent("launcher://job-finished", {
+      job_id: "job-2",
+      action: "Diagnosticar",
+      step: "Cancelado",
+      message: "Operação cancelada.",
+      progress: 100,
+      level: "cancelled",
+    });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Instalar\/Atualizar M&G Pocket/i })).toBeEnabled());
+    expect(screen.getByRole("status")).toHaveTextContent(/Operação cancelada/i);
+  });
+
+  it("Ver Logs mostra apenas as últimas 300 linhas", async () => {
+    const largeLog = Array.from({ length: 400 }, (_, index) => `linha ${index}`).join("\n");
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "quickDiagnose") return JSON.stringify(baseStatus);
+      if (command === "readLogs") return largeLog;
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /Ver Logs/i }));
+
+    expect(await screen.findByText(/linha 100/)).toBeInTheDocument();
+    expect(screen.queryByText(/linha 99/)).not.toBeInTheDocument();
+    expect(screen.getByText(/linha 399/)).toBeInTheDocument();
+  });
+
   it("Instalar/Atualizar valida dependências antes de instalar", async () => {
     const missingDependencies: DependencyStatus = {
       ...baseDependencies,
@@ -188,6 +345,7 @@ describe("M&G Pocket Launcher", () => {
 
     invokeMock.mockImplementation(async (command: string) => {
       if (command === "doctor") return JSON.stringify(baseStatus);
+      if (command === "quickDiagnose") return JSON.stringify(baseStatus);
       if (command === "checkSystemDependencies") return JSON.stringify(missingDependencies);
       return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
     });
@@ -219,6 +377,7 @@ describe("M&G Pocket Launcher", () => {
 
     invokeMock.mockImplementation(async (command: string) => {
       if (command === "doctor") return JSON.stringify(baseStatus);
+      if (command === "quickDiagnose") return JSON.stringify(baseStatus);
       if (command === "checkSystemDependencies") {
         dependencyChecks += 1;
         return JSON.stringify(dependencyChecks === 1 ? missingDependencies : baseDependencies);
@@ -245,6 +404,7 @@ describe("M&G Pocket Launcher", () => {
 
     invokeMock.mockImplementation(async (command: string) => {
       if (command === "doctor") return JSON.stringify(baseStatus);
+      if (command === "quickDiagnose") return JSON.stringify(baseStatus);
       if (command === "checkSystemDependencies") return JSON.stringify(baseDependencies);
       if (command === "installProject") throw rawError;
       return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };

@@ -13,9 +13,10 @@ import {
   Trash2,
   Wrench,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   backup,
+  cancelCurrentJob,
   checkSystemDependencies,
   doctor,
   ensureDockerPermission,
@@ -29,6 +30,7 @@ import {
   openAdminer,
   openDockerGuide,
   openSite,
+  quickDiagnose,
   readLogs,
   removeLocalProject,
   resetLocalData,
@@ -217,9 +219,26 @@ function dependencyCommandList(dependencies: DependencyStatus | null) {
   return dependencies.packages.map((name) => `Instalar ${name}`);
 }
 
+function hasDependency(dependencies: DependencyStatus, name: string) {
+  const needle = name.toLocaleLowerCase();
+  return dependencies.missing.some((dependency) => dependency.toLocaleLowerCase().includes(needle));
+}
+
+function localJobEvent(action: string, status: Exclude<JobStatus, "idle" | "running">, message: string): LauncherJobEvent {
+  return {
+    job_id: `local-${Date.now()}`,
+    action,
+    step: status === "success" ? "Finalizado" : status === "cancelled" ? "Cancelado" : "Erro",
+    message,
+    progress: 100,
+    level: status,
+  };
+}
+
 export default function App() {
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [logs, setLogs] = useState("");
+  const technicalLogBufferRef = useRef("");
   const logBufferRef = useRef("");
   const logFlushTimerRef = useRef<number | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -256,18 +275,19 @@ export default function App() {
     setSteps((current) => current.map((step) => (step.id === id ? { ...step, state } : step)));
   };
 
-  const flushLogBuffer = () => {
+  const flushLogBuffer = useCallback(() => {
     logFlushTimerRef.current = null;
     setLogs(limitLogText(logBufferRef.current));
-  };
+  }, []);
 
-  const scheduleLogFlush = () => {
+  const scheduleLogFlush = useCallback(() => {
     if (logFlushTimerRef.current !== null) return;
     logFlushTimerRef.current = window.setTimeout(flushLogBuffer, 250);
-  };
+  }, [flushLogBuffer]);
 
-  const updateLogBuffer = (updater: (current: string) => string, immediate = false) => {
-    logBufferRef.current = limitLogText(updater(logBufferRef.current), LOG_BUFFER_LINE_LIMIT);
+  const updateLogBuffer = useCallback((updater: (current: string) => string, immediate = false) => {
+    technicalLogBufferRef.current = updater(technicalLogBufferRef.current);
+    logBufferRef.current = limitLogText(technicalLogBufferRef.current, LOG_BUFFER_LINE_LIMIT);
     if (immediate) {
       if (logFlushTimerRef.current !== null) {
         window.clearTimeout(logFlushTimerRef.current);
@@ -277,10 +297,11 @@ export default function App() {
     } else {
       scheduleLogFlush();
     }
-  };
+  }, [flushLogBuffer, scheduleLogFlush]);
 
   const replaceLogs = (text: string) => {
-    logBufferRef.current = limitLogText(text, LOG_BUFFER_LINE_LIMIT);
+    technicalLogBufferRef.current = text;
+    logBufferRef.current = limitLogText(technicalLogBufferRef.current, LOG_BUFFER_LINE_LIMIT);
     setLogs(limitLogText(logBufferRef.current));
   };
 
@@ -305,7 +326,11 @@ export default function App() {
       if (eventName === "launcher://job-log") {
         updateLogBuffer((current) => appendLogLine(current, payload));
         if (payload.action !== "Ler logs" && payload.message.trim()) {
-          setRecentJobLogs((current) => [...current, payload.message.trim()].slice(-4));
+          const lines = payload.message
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter(Boolean);
+          setRecentJobLogs((current) => [...current, ...lines].slice(-4));
         }
         return;
       }
@@ -319,7 +344,7 @@ export default function App() {
 
       if (eventName === "launcher://job-finished") {
         setJobEvent(payload);
-        setJobStatus(payload.level === "error" ? "error" : "success");
+        setJobStatus(payload.level === "error" ? "error" : payload.level === "cancelled" ? "cancelled" : "success");
       }
     };
 
@@ -340,7 +365,17 @@ export default function App() {
       }
       unlisten.forEach((unsubscribe) => unsubscribe());
     };
-  }, []);
+  }, [updateLogBuffer]);
+
+  const refreshQuickStatus = async () => {
+    try {
+      const nextStatus = await quickDiagnose();
+      setStatus(nextStatus);
+      return nextStatus;
+    } catch {
+      return null;
+    }
+  };
 
   const diagnose = async () => {
     setBusy("diagnose");
@@ -351,7 +386,10 @@ export default function App() {
       setStatus(nextStatus);
       return nextStatus;
     } catch (err) {
-      setError(String(err));
+      const message = friendlyActionError("Diagnosticar", err);
+      setJobEvent(localJobEvent("Diagnosticar", "error", message));
+      setJobStatus("error");
+      setError(message);
       return null;
     } finally {
       setBusy(null);
@@ -359,7 +397,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    void diagnose();
+    void refreshQuickStatus();
   }, []);
 
   useEffect(() => {
@@ -378,10 +416,13 @@ export default function App() {
     try {
       const output = await action();
       if (typeof output === "string") updateLogBuffer((current) => appendOutput(current, label, output), true);
-      await diagnose();
+      await refreshQuickStatus();
     } catch (err) {
       updateLogBuffer((current) => appendOutput(current, `Erro em ${label}`, errorMessage(err)), true);
-      setError(friendlyActionError(label, err));
+      const message = friendlyActionError(label, err);
+      setJobEvent(localJobEvent(label, "error", message));
+      setJobStatus("error");
+      setError(message);
     } finally {
       setBusy(null);
     }
@@ -441,17 +482,20 @@ export default function App() {
     setNotice("");
     try {
       if (!(await checkDependenciesBefore("install"))) return;
-      const currentStatus = status ?? (await doctor());
+      const currentStatus = status ?? (await quickDiagnose());
       setStatus(currentStatus);
       if (requestDockerPermissionDecision("install", currentStatus)) return;
       await runProjectInstall();
-      await diagnose();
+      await refreshQuickStatus();
     } catch (err) {
       updateLogBuffer(
         (current) => appendOutput(current, "Erro ao instalar/atualizar M&G Pocket", errorMessage(err)),
         true,
       );
-      setError(friendlyActionError("Instalar/Atualizar M&G Pocket", err));
+      const message = friendlyActionError("Instalar/Atualizar M&G Pocket", err);
+      setJobEvent(localJobEvent("Instalar/Atualizar M&G Pocket", "error", message));
+      setJobStatus("error");
+      setError(message);
     } finally {
       setBusy(null);
     }
@@ -600,7 +644,7 @@ export default function App() {
       } else if (nextAction === "install") {
         await installOrUpdateProject();
       } else {
-        await diagnose();
+        await refreshQuickStatus();
       }
     } catch (err) {
       updateLogBuffer((current) => appendOutput(current, "Erro ao instalar dependências do sistema", String(err)), true);
@@ -684,8 +728,20 @@ export default function App() {
     setNotice("Fluxo cancelado. Nada foi executado com sudo.");
   };
 
+  const cancelRunningJob = async () => {
+    try {
+      const cancelled = await cancelCurrentJob();
+      if (cancelled) {
+        setJobEvent(localJobEvent(jobEvent?.action || "Operação", "cancelled", "Cancelamento solicitado."));
+        setJobStatus("cancelled");
+      }
+    } catch (err) {
+      setError(friendlyActionError("Cancelar operação", err));
+    }
+  };
+
   const statusItems = useMemo(() => {
-    const empty: StatusItem[] = [{ label: "Status", value: "carregando", tone: "idle" }];
+    const empty: StatusItem[] = [{ label: "Status", value: "pronto para diagnosticar", tone: "idle" }];
     if (!status) return { environment: empty, docker: empty, project: empty };
 
     const environment: StatusItem[] = [
@@ -725,7 +781,7 @@ export default function App() {
   const showLinuxInstallDocker = status?.os === "linux" && status.supported && !status.dockerInstalled;
   const showWindowsDockerGuide = status?.os === "windows" && !status.dockerInstalled;
   const activeProgress =
-    jobStatus === "running" && jobEvent
+    jobStatus !== "idle" && jobEvent
       ? {
           title: jobEvent.action,
           detail: jobEvent.message || "Operação em andamento.",
@@ -792,6 +848,11 @@ export default function App() {
                 <li key={`${index}-${line}`}>{line}</li>
               ))}
             </ul>
+          ) : null}
+          {jobStatus === "running" ? (
+            <button className="operation-progress__cancel" type="button" onClick={() => void cancelRunningJob()}>
+              Cancelar
+            </button>
           ) : null}
         </section>
       ) : null}
@@ -926,6 +987,19 @@ export default function App() {
                   <li key={dependency}>{dependency}</li>
                 ))}
               </ul>
+              {hasDependency(dependencyPrompt, "git") ? (
+                <p>
+                  O Git é a ferramenta usada para baixar e atualizar os arquivos do M&G Pocket a partir do repositório
+                  oficial. Ele não roda o jogo sozinho e não altera seus arquivos pessoais.
+                </p>
+              ) : null}
+              {hasDependency(dependencyPrompt, "docker") ? (
+                <p>
+                  O Docker cria uma caixa separada para o projeto, com site, banco de dados e serviços locais, sem
+                  instalar tudo manualmente no seu computador.
+                </p>
+              ) : null}
+              <p>Antes de instalar qualquer dependência, o launcher mostrará o que será feito e pedirá sua confirmação.</p>
               {dependencyPrompt.installable ? (
                 <>
                   {dependencyPrompt.os === "windows" ? (

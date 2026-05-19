@@ -44,7 +44,7 @@ export type CommandOutput = {
   stderr: string;
 };
 
-export type JobStatus = "idle" | "running" | "success" | "error";
+export type JobStatus = "idle" | "running" | "success" | "error" | "cancelled";
 
 export type LauncherJobEvent = {
   job_id: string;

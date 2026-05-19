@@ -79,7 +79,7 @@ pub fn run_or_error_with_env(
                 job.action(),
                 "Erro",
                 error.technical_message(),
-                progress.load(Ordering::Relaxed),
+                100,
             );
             jobs::emit_finished(
                 app,
@@ -87,7 +87,7 @@ pub fn run_or_error_with_env(
                 job.action(),
                 "Erro",
                 error.friendly_message(),
-                progress.load(Ordering::Relaxed),
+                100,
                 "error",
             );
             Err(error)
@@ -99,7 +99,7 @@ pub fn run_or_error_with_env(
                 job.action(),
                 "Erro",
                 error.technical_message(),
-                progress.load(Ordering::Relaxed),
+                100,
             );
             jobs::emit_finished(
                 app,
@@ -107,7 +107,7 @@ pub fn run_or_error_with_env(
                 job.action(),
                 "Erro",
                 error.friendly_message(),
-                progress.load(Ordering::Relaxed),
+                100,
                 "error",
             );
             Err(error)
@@ -152,7 +152,7 @@ pub fn run_admin_or_error(
                     job.action(),
                     "Erro",
                     error.technical_message(),
-                    progress.load(Ordering::Relaxed),
+                    100,
                 );
                 jobs::emit_finished(
                     app,
@@ -160,7 +160,7 @@ pub fn run_admin_or_error(
                     job.action(),
                     "Erro",
                     error.friendly_message(),
-                    progress.load(Ordering::Relaxed),
+                    100,
                     "error",
                 );
                 Err(error)
@@ -172,7 +172,7 @@ pub fn run_admin_or_error(
                     job.action(),
                     "Erro",
                     error.technical_message(),
-                    progress.load(Ordering::Relaxed),
+                    100,
                 );
                 jobs::emit_finished(
                     app,
@@ -180,7 +180,7 @@ pub fn run_admin_or_error(
                     job.action(),
                     "Erro",
                     error.friendly_message(),
-                    progress.load(Ordering::Relaxed),
+                    100,
                     "error",
                 );
                 Err(error)

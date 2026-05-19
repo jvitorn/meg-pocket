@@ -1,6 +1,7 @@
 mod errors;
 mod installers;
 mod jobs;
+mod native;
 mod paths;
 mod scripts;
 
@@ -54,8 +55,13 @@ fn run_script_command_with_docker_mode(
 
 #[tauri::command]
 fn doctor(app: AppHandle, jobs: State<'_, JobManager>) -> Result<String, String> {
-    let output = run_script_command(&app, &jobs, "doctor", "Diagnosticar", &[])?;
-    Ok(output.stdout)
+    command_result(native::doctor(&app, &jobs))
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+fn quickDiagnose() -> Result<String, String> {
+    command_result(native::quick_diagnose())
 }
 
 #[tauri::command]
@@ -83,14 +89,9 @@ fn installDockerLinux(app: AppHandle, jobs: State<'_, JobManager>) -> Result<Com
 #[tauri::command]
 #[allow(non_snake_case)]
 fn checkSystemDependencies(app: AppHandle, jobs: State<'_, JobManager>) -> Result<String, String> {
-    let output = run_script_command(
-        &app,
-        &jobs,
-        "check-dependencies",
-        "Verificar dependências",
-        &[],
-    )?;
-    Ok(output.stdout)
+    let _ = app;
+    let _ = jobs;
+    command_result(native::check_system_dependencies())
 }
 
 #[tauri::command]
@@ -132,34 +133,7 @@ fn installSystemDependencies(
 #[tauri::command]
 #[allow(non_snake_case)]
 fn ensureDockerRunning(app: AppHandle, jobs: State<'_, JobManager>) -> Result<CommandOutput, String> {
-    #[cfg(target_os = "linux")]
-    {
-        run_script_command(
-            &app,
-            &jobs,
-            "ensure-docker-running",
-            "Verificar Docker",
-            &[],
-        )
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        run_script_command(
-            &app,
-            &jobs,
-            "ensure-docker-running",
-            "Verificar Docker",
-            &[],
-        )
-    }
-
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
-    {
-        let _ = app;
-        let _ = jobs;
-        Err("Sistema não suportado.".to_string())
-    }
+    command_result(native::ensure_docker_running(&app, &jobs))
 }
 
 #[tauri::command]
@@ -168,28 +142,7 @@ fn ensureDockerPermission(
     app: AppHandle,
     jobs: State<'_, JobManager>,
 ) -> Result<CommandOutput, String> {
-    #[cfg(target_os = "linux")]
-    {
-        run_script_command(
-            &app,
-            &jobs,
-            "ensure-docker-permission",
-            "Verificar permissões Docker",
-            &[],
-        )
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        run_script_command(&app, &jobs, "doctor", "Verificar permissões Docker", &[])
-    }
-
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
-    {
-        let _ = app;
-        let _ = jobs;
-        Err("Sistema não suportado.".to_string())
-    }
+    command_result(native::ensure_docker_permission(&app, &jobs))
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -199,24 +152,11 @@ fn installProject(
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
 ) -> Result<CommandOutput, String> {
-    #[cfg(any(target_os = "linux", target_os = "windows"))]
-    {
-        run_script_command_with_docker_mode(
-            &app,
-            &jobs,
-            "install-project",
-            "Instalar/Atualizar M&G Pocket",
-            &[],
-            use_sudo_docker.unwrap_or(false),
-        )
-    }
-
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
-    {
-        let _ = app;
-        let _ = jobs;
-        Err("Sistema não suportado.".to_string())
-    }
+    command_result(native::install_project(
+        &app,
+        &jobs,
+        use_sudo_docker.unwrap_or(false),
+    ))
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -226,14 +166,11 @@ fn startApp(
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
 ) -> Result<CommandOutput, String> {
-    run_script_command_with_docker_mode(
+    command_result(native::start_app(
         &app,
         &jobs,
-        "start",
-        "Iniciar M&G Pocket",
-        &[],
         use_sudo_docker.unwrap_or(false),
-    )
+    ))
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -243,14 +180,11 @@ fn stopApp(
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
 ) -> Result<CommandOutput, String> {
-    run_script_command_with_docker_mode(
+    command_result(native::stop_app(
         &app,
         &jobs,
-        "stop",
-        "Parar M&G Pocket",
-        &[],
         use_sudo_docker.unwrap_or(false),
-    )
+    ))
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -260,14 +194,11 @@ fn restartApp(
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
 ) -> Result<CommandOutput, String> {
-    run_script_command_with_docker_mode(
+    command_result(native::restart_app(
         &app,
         &jobs,
-        "restart",
-        "Reiniciar M&G Pocket",
-        &[],
         use_sudo_docker.unwrap_or(false),
-    )
+    ))
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -277,15 +208,17 @@ fn readLogs(
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
 ) -> Result<String, String> {
-    let output = run_script_command_with_docker_mode(
+    command_result(native::read_logs(
         &app,
         &jobs,
-        "logs",
-        "Ler logs",
-        &[],
         use_sudo_docker.unwrap_or(false),
-    )?;
-    Ok(output.stdout)
+    ))
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+fn cancelCurrentJob(jobs: State<'_, JobManager>) -> Result<bool, String> {
+    command_result(native::cancel_current_job(&jobs))
 }
 
 #[tauri::command(rename_all = "camelCase")]
@@ -452,6 +385,7 @@ pub fn run() {
         .manage(JobManager::default())
         .invoke_handler(tauri::generate_handler![
             doctor,
+            quickDiagnose,
             installDockerLinux,
             checkSystemDependencies,
             installSystemDependencies,
@@ -468,7 +402,8 @@ pub fn run() {
             backup,
             restoreBackup,
             resetLocalData,
-            removeLocalProject
+            removeLocalProject,
+            cancelCurrentJob
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar M&G Pocket Launcher");

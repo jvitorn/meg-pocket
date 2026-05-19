@@ -24,6 +24,11 @@ export async function doctor(): Promise<SystemStatus> {
   return JSON.parse(raw) as SystemStatus;
 }
 
+export async function quickDiagnose(): Promise<SystemStatus> {
+  const raw = await invoke<string>("quickDiagnose");
+  return JSON.parse(raw) as SystemStatus;
+}
+
 export function installDockerLinux(): Promise<CommandOutput> {
   return invoke<CommandOutput>("installDockerLinux");
 }
@@ -98,4 +103,8 @@ export function removeLocalProject(
   options: DockerCommandOptions = {},
 ): Promise<CommandOutput> {
   return invoke<CommandOutput>("removeLocalProject", { mode, confirmed: true, ...options });
+}
+
+export function cancelCurrentJob(): Promise<boolean> {
+  return invoke<boolean>("cancelCurrentJob");
 }
