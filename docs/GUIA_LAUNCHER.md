@@ -2,7 +2,7 @@
 
 O M&G Pocket Launcher é a forma recomendada de instalar e operar o M&G Pocket localmente.
 
-Ele fica em `launcher/` no mesmo repositório do projeto web e usa os scripts em `installers/` para diagnosticar, preparar Docker, baixar o projeto, subir containers, ver logs, criar backups e resetar dados locais.
+Ele fica em `launcher/` no mesmo repositório do projeto web e usa fluxos nativos para diagnosticar, preparar Docker, baixar o projeto, subir containers, ver logs, criar backups e resetar dados locais. Os scripts em `installers/` continuam no repositório apenas como fallback manual, debug e documentação técnica.
 
 ## O Que O Launcher Faz
 
@@ -144,11 +144,13 @@ Docker, Git, winget e dependências globais nunca são removidos pelo launcher.
 
 ## Desenvolvimento Do Launcher
 
+Rust e Cargo são necessários apenas para desenvolver ou compilar o launcher. Usuários finais não precisam instalar Rust/Cargo para usar o M&G Pocket pelo launcher.
+
 Pré-requisitos:
 
 - Node.js 22;
 - npm 10;
-- Rust estável;
+- Rust estável com Cargo, somente para desenvolvimento/build do launcher;
 - dependências Linux do Tauri/WebKitGTK, quando rodar no Linux.
 
 Modo dev:
@@ -175,7 +177,9 @@ cd launcher
 npm test
 ```
 
-## Scripts Principais
+## Scripts De Fallback Manual
+
+Os scripts abaixo ficam disponíveis para instalação manual, fallback técnico, debug e usuários avançados. Eles não fazem parte do fluxo principal do launcher.
 
 Linux:
 

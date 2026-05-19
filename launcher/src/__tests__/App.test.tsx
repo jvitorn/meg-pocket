@@ -109,6 +109,19 @@ describe("M&G Pocket Launcher", () => {
     expect(invokeMock).not.toHaveBeenCalledWith("doctor");
   });
 
+  it("abre mesmo se o diagnóstico rápido falhar", async () => {
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "quickDiagnose") throw new Error("timeout");
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Launcher" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Diagnosticar$/i })).toBeEnabled();
+    expect(invokeMock).not.toHaveBeenCalledWith("doctor");
+  });
+
   it("StatusCard exibe estados", () => {
     render(
       <StatusCard
@@ -256,6 +269,107 @@ describe("M&G Pocket Launcher", () => {
     await waitFor(() => expect(button).toBeEnabled());
   });
 
+  it.each([
+    [/^Reiniciar$/i, "restartApp"],
+    [/^Backup$/i, "backup"],
+  ])("%s entra em loading e sai do loading", async (buttonName, commandName) => {
+    let resolveAction!: (output: CommandOutput) => void;
+    const actionPromise = new Promise<CommandOutput>((resolve) => {
+      resolveAction = resolve;
+    });
+
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "quickDiagnose") return JSON.stringify(baseStatus);
+      if (command === commandName) return actionPromise;
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText("Arch Linux");
+    const button = screen.getByRole("button", { name: buttonName });
+
+    await user.click(button);
+    expect(button).toBeDisabled();
+
+    resolveAction({ success: true, code: 0, stdout: "ok", stderr: "" });
+    await waitFor(() => expect(button).toBeEnabled());
+  });
+
+  it("restore entra em loading e sai do loading", async () => {
+    let resolveRestore!: (output: CommandOutput) => void;
+    const restorePromise = new Promise<CommandOutput>((resolve) => {
+      resolveRestore = resolve;
+    });
+
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "quickDiagnose") return JSON.stringify(baseStatus);
+      if (command === "restoreBackup") return restorePromise;
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    vi.spyOn(window, "prompt").mockReturnValue("/tmp/mg-pocket-backup.tar.gz");
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /Restaurar Backup/i }));
+    await user.type(screen.getByLabelText(/Digite RESTAURAR/i), "RESTAURAR");
+    const confirm = screen.getByRole("button", { name: "Restaurar" });
+
+    await user.click(confirm);
+    expect(screen.getByRole("button", { name: /Restaurar Backup/i })).toBeDisabled();
+
+    resolveRestore({ success: true, code: 0, stdout: "ok", stderr: "" });
+    await waitFor(() => expect(screen.getByRole("button", { name: /Restaurar Backup/i })).toBeEnabled());
+  });
+
+  it("reset entra em loading e sai do loading", async () => {
+    let resolveReset!: (output: CommandOutput) => void;
+    const resetPromise = new Promise<CommandOutput>((resolve) => {
+      resolveReset = resolve;
+    });
+
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "quickDiagnose") return JSON.stringify(baseStatus);
+      if (command === "resetLocalData") return resetPromise;
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /Resetar Dados Locais/i }));
+    await user.type(screen.getByLabelText(/Digite RESETAR/i), "RESETAR");
+    await user.click(screen.getByRole("button", { name: "Resetar" }));
+    expect(screen.getByRole("button", { name: /Resetar Dados Locais/i })).toBeDisabled();
+
+    resolveReset({ success: true, code: 0, stdout: "ok", stderr: "" });
+    await waitFor(() => expect(screen.getByRole("button", { name: /Resetar Dados Locais/i })).toBeEnabled());
+  });
+
+  it("remover projeto entra em loading e sai do loading", async () => {
+    let resolveRemove!: (output: CommandOutput) => void;
+    const removePromise = new Promise<CommandOutput>((resolve) => {
+      resolveRemove = resolve;
+    });
+
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "quickDiagnose") return JSON.stringify(baseStatus);
+      if (command === "removeLocalProject") return removePromise;
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByText("Arch Linux");
+    await user.click(screen.getByRole("button", { name: /^Remover Projeto Local$/i }));
+    await user.click(screen.getByRole("button", { name: "Remover" }));
+    expect(screen.getByRole("button", { name: /^Remover Projeto Local$/i })).toBeDisabled();
+
+    resolveRemove({ success: true, code: 0, stdout: "ok", stderr: "" });
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Remover Projeto Local$/i })).toBeEnabled());
+  });
+
   it("erro de job finaliza barra, libera botões e não fica running", async () => {
     mockDoctor();
     render(<App />);
@@ -315,8 +429,8 @@ describe("M&G Pocket Launcher", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/Operação cancelada/i);
   });
 
-  it("Ver Logs mostra apenas as últimas 300 linhas", async () => {
-    const largeLog = Array.from({ length: 400 }, (_, index) => `linha ${index}`).join("\n");
+  it("Ver Logs mostra apenas as últimas 50 linhas", async () => {
+    const largeLog = Array.from({ length: 80 }, (_, index) => `linha ${index}`).join("\n");
     invokeMock.mockImplementation(async (command: string) => {
       if (command === "quickDiagnose") return JSON.stringify(baseStatus);
       if (command === "readLogs") return largeLog;
@@ -328,9 +442,9 @@ describe("M&G Pocket Launcher", () => {
     await screen.findByText("Arch Linux");
     await user.click(screen.getByRole("button", { name: /Ver Logs/i }));
 
-    expect(await screen.findByText(/linha 100/)).toBeInTheDocument();
-    expect(screen.queryByText(/linha 99/)).not.toBeInTheDocument();
-    expect(screen.getByText(/linha 399/)).toBeInTheDocument();
+    expect(await screen.findByText(/linha 30/)).toBeInTheDocument();
+    expect(screen.queryByText(/linha 29/)).not.toBeInTheDocument();
+    expect(screen.getByText(/linha 79/)).toBeInTheDocument();
   });
 
   it("Instalar/Atualizar valida dependências antes de instalar", async () => {
@@ -361,6 +475,7 @@ describe("M&G Pocket Launcher", () => {
     expect(screen.getByText("curl")).toBeInTheDocument();
     expect(screen.getByText("docker compose")).toBeInTheDocument();
     expect(screen.getByText(/mecanismo do sistema/i)).toBeInTheDocument();
+    expect(screen.queryByText(/rust|cargo/i)).not.toBeInTheDocument();
     expect(invokeMock).not.toHaveBeenCalledWith("installProject");
   });
 

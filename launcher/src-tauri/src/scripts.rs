@@ -1,3 +1,4 @@
+// Fallback manual only. Do not use in the main launcher flow.
 use std::{
     env,
     ffi::OsString,

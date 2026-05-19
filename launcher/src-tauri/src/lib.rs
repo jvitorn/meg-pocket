@@ -16,44 +16,7 @@ fn command_result<T>(result: LauncherResult<T>) -> Result<T, String> {
     result.map_err(|error| error.friendly_message().to_string())
 }
 
-fn run_script_command(
-    app: &AppHandle,
-    jobs: &JobManager,
-    script_name: &str,
-    action: &str,
-    args: &[&str],
-) -> Result<CommandOutput, String> {
-    command_result(scripts::run_or_error(app, jobs, script_name, action, args))
-}
-
-const SUDO_DOCKER_ENV: [(&str, &str); 1] = [("MG_POCKET_DOCKER_USE_SUDO", "1")];
-
-fn run_script_command_with_docker_mode(
-    app: &AppHandle,
-    jobs: &JobManager,
-    script_name: &str,
-    action: &str,
-    args: &[&str],
-    use_sudo_docker: bool,
-) -> Result<CommandOutput, String> {
-    let empty_env: &[(&str, &str)] = &[];
-    let extra_env = if use_sudo_docker {
-        &SUDO_DOCKER_ENV[..]
-    } else {
-        empty_env
-    };
-
-    command_result(scripts::run_or_error_with_env(
-        app,
-        jobs,
-        script_name,
-        action,
-        args,
-        extra_env,
-    ))
-}
-
-#[tauri::command]
+#[tauri::command(async)]
 fn doctor(app: AppHandle, jobs: State<'_, JobManager>) -> Result<String, String> {
     command_result(native::doctor(&app, &jobs))
 }
@@ -64,26 +27,10 @@ fn quickDiagnose() -> Result<String, String> {
     command_result(native::quick_diagnose())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 #[allow(non_snake_case)]
 fn installDockerLinux(app: AppHandle, jobs: State<'_, JobManager>) -> Result<CommandOutput, String> {
-    #[cfg(target_os = "linux")]
-    {
-        command_result(scripts::run_admin_or_error(
-            &app,
-            &jobs,
-            "install-docker",
-            "Instalar Docker",
-            &[],
-        ))
-    }
-
-    #[cfg(not(target_os = "linux"))]
-    {
-        let _ = app;
-        let _ = jobs;
-        Err("Use o fluxo de dependências do Windows para instalar Docker Desktop via winget.".to_string())
-    }
+    command_result(native::install_docker_linux(&app, &jobs))
 }
 
 #[tauri::command]
@@ -94,49 +41,22 @@ fn checkSystemDependencies(app: AppHandle, jobs: State<'_, JobManager>) -> Resul
     command_result(native::check_system_dependencies())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 #[allow(non_snake_case)]
 fn installSystemDependencies(
     app: AppHandle,
     jobs: State<'_, JobManager>,
 ) -> Result<CommandOutput, String> {
-    #[cfg(target_os = "linux")]
-    {
-        command_result(scripts::run_admin_or_error(
-            &app,
-            &jobs,
-            "install-system-dependencies",
-            "Instalar dependências",
-            &[],
-        ))
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        run_script_command(
-            &app,
-            &jobs,
-            "install-system-dependencies",
-            "Instalar dependências",
-            &[],
-        )
-    }
-
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
-    {
-        let _ = app;
-        let _ = jobs;
-        Err("A instalação automática de dependências do sistema é suportada apenas no Linux e Windows.".to_string())
-    }
+    command_result(native::install_system_dependencies(&app, &jobs))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 #[allow(non_snake_case)]
 fn ensureDockerRunning(app: AppHandle, jobs: State<'_, JobManager>) -> Result<CommandOutput, String> {
     command_result(native::ensure_docker_running(&app, &jobs))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 #[allow(non_snake_case)]
 fn ensureDockerPermission(
     app: AppHandle,
@@ -145,7 +65,7 @@ fn ensureDockerPermission(
     command_result(native::ensure_docker_permission(&app, &jobs))
 }
 
-#[tauri::command(rename_all = "camelCase")]
+#[tauri::command(rename_all = "camelCase", async)]
 #[allow(non_snake_case)]
 fn installProject(
     app: AppHandle,
@@ -159,7 +79,7 @@ fn installProject(
     ))
 }
 
-#[tauri::command(rename_all = "camelCase")]
+#[tauri::command(rename_all = "camelCase", async)]
 #[allow(non_snake_case)]
 fn startApp(
     app: AppHandle,
@@ -173,7 +93,7 @@ fn startApp(
     ))
 }
 
-#[tauri::command(rename_all = "camelCase")]
+#[tauri::command(rename_all = "camelCase", async)]
 #[allow(non_snake_case)]
 fn stopApp(
     app: AppHandle,
@@ -187,7 +107,7 @@ fn stopApp(
     ))
 }
 
-#[tauri::command(rename_all = "camelCase")]
+#[tauri::command(rename_all = "camelCase", async)]
 #[allow(non_snake_case)]
 fn restartApp(
     app: AppHandle,
@@ -201,7 +121,7 @@ fn restartApp(
     ))
 }
 
-#[tauri::command(rename_all = "camelCase")]
+#[tauri::command(rename_all = "camelCase", async)]
 #[allow(non_snake_case)]
 fn readLogs(
     app: AppHandle,
@@ -221,23 +141,20 @@ fn cancelCurrentJob(jobs: State<'_, JobManager>) -> Result<bool, String> {
     command_result(native::cancel_current_job(&jobs))
 }
 
-#[tauri::command(rename_all = "camelCase")]
+#[tauri::command(rename_all = "camelCase", async)]
 fn backup(
     app: AppHandle,
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
 ) -> Result<CommandOutput, String> {
-    run_script_command_with_docker_mode(
+    command_result(native::backup(
         &app,
         &jobs,
-        "backup",
-        "Backup",
-        &[],
         use_sudo_docker.unwrap_or(false),
-    )
+    ))
 }
 
-#[tauri::command(rename_all = "camelCase")]
+#[tauri::command(rename_all = "camelCase", async)]
 #[allow(non_snake_case)]
 fn restoreBackup(
     app: AppHandle,
@@ -250,17 +167,16 @@ fn restoreBackup(
         return Err("Restore exige confirmação explícita.".to_string());
     }
 
-    run_script_command_with_docker_mode(
+    command_result(native::restore_backup(
         &app,
         &jobs,
-        "restore",
-        "Restaurar backup",
-        &[backupPath.as_str(), "--yes"],
+        backupPath,
+        confirmed,
         use_sudo_docker.unwrap_or(false),
-    )
+    ))
 }
 
-#[tauri::command(rename_all = "camelCase")]
+#[tauri::command(rename_all = "camelCase", async)]
 #[allow(non_snake_case)]
 fn resetLocalData(
     app: AppHandle,
@@ -272,17 +188,15 @@ fn resetLocalData(
         return Err("Reset local exige confirmação explícita.".to_string());
     }
 
-    run_script_command_with_docker_mode(
+    command_result(native::reset_local_data(
         &app,
         &jobs,
-        "reset",
-        "Resetar dados locais",
-        &["--yes"],
+        confirmed,
         use_sudo_docker.unwrap_or(false),
-    )
+    ))
 }
 
-#[tauri::command(rename_all = "camelCase")]
+#[tauri::command(rename_all = "camelCase", async)]
 #[allow(non_snake_case)]
 fn removeLocalProject(
     app: AppHandle,
@@ -299,14 +213,13 @@ fn removeLocalProject(
         return Err("Modo de remoção inválido.".to_string());
     }
 
-    run_script_command_with_docker_mode(
+    command_result(native::remove_local_project(
         &app,
         &jobs,
-        "remove-local-project",
-        "Remover projeto local",
-        &[mode.as_str()],
+        mode,
+        confirmed,
         use_sudo_docker.unwrap_or(false),
-    )
+    ))
 }
 
 fn open_allowed_url(url: &str) -> LauncherResult<()> {

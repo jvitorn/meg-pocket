@@ -2,11 +2,13 @@
 
 Este guia descreve a validação local e o empacotamento do launcher Tauri.
 
+Rust e Cargo são necessários apenas para desenvolver ou compilar o launcher. Usuários finais não precisam instalar Rust/Cargo para usar o M&G Pocket pelo launcher.
+
 ## Requisitos
 
 - Node.js 22 ou superior.
 - npm.
-- Rust estável com Cargo.
+- Rust estável com Cargo, somente para desenvolvimento/build do launcher.
 - Dependências Linux do Tauri quando estiver gerando AppImage, `.deb` ou `.rpm`.
 
 No Ubuntu 22.04, use:

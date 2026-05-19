@@ -14,12 +14,15 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
+#[cfg(target_os = "linux")]
+use std::os::unix::fs::PermissionsExt;
 use serde::Serialize;
 use tauri::AppHandle;
 
 use crate::{
     errors::{LauncherError, LauncherResult},
     jobs::{self, JobManager},
+    paths::launcher_data_dir,
     scripts::{self, CommandOutput},
 };
 
@@ -31,10 +34,12 @@ const LONG_TIMEOUT: Duration = Duration::from_secs(20 * 60);
 const LOG_BATCH_INTERVAL: Duration = Duration::from_millis(180);
 const LOG_BATCH_LINES: usize = 25;
 const CAPTURE_LIMIT_BYTES: usize = 512 * 1024;
-const UI_LOG_LINES: usize = 300;
+const UI_LOG_LINES: usize = 50;
 
 const REPO_URL: &str = "https://github.com/jvitorn/meg-pocket.git";
 const COMPOSE_PROJECT: &str = "meg-pocket";
+const BACKUP_SQL_FILE: &str = "postgres.sql";
+const BACKUP_ENV_FILE: &str = "env.docker-local";
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -312,6 +317,39 @@ impl<'app, 'manager> NativeJob<'app, 'manager> {
         }
     }
 
+    fn run_required_with_files(
+        &mut self,
+        step: &str,
+        message: &str,
+        progress: u8,
+        command: NativeCommand,
+        timeout: Duration,
+        stdin_file: Option<&Path>,
+        stdout_file: Option<&Path>,
+    ) -> LauncherResult<CommandOutput> {
+        self.progress(step, message, progress);
+        let output = run_streaming_command_with_files(
+            self.app,
+            self.job.job_id(),
+            self.job.action(),
+            step,
+            self.progress,
+            command,
+            timeout,
+            self.job.cancel_flag(),
+            stdin_file,
+            stdout_file,
+        )
+        .map_err(|error| process_error_to_launcher(step, error))?;
+
+        self.append_output(&output);
+        if output.success {
+            Ok(output)
+        } else {
+            Err(command_failure_error(step, &output))
+        }
+    }
+
     fn run_optional(
         &mut self,
         step: &str,
@@ -446,6 +484,53 @@ pub fn check_system_dependencies() -> LauncherResult<String> {
         .map_err(|error| LauncherError::technical("Não foi possível serializar dependências", error))
 }
 
+pub fn install_docker_linux(app: &AppHandle, job_manager: &JobManager) -> LauncherResult<CommandOutput> {
+    #[cfg(target_os = "linux")]
+    {
+        install_system_dependencies_with_action(app, job_manager, "Instalar Docker")
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = app;
+        let _ = job_manager;
+        Err(LauncherError::friendly(
+            "Use o fluxo de dependências do Windows para instalar Docker Desktop via winget.",
+        ))
+    }
+}
+
+pub fn install_system_dependencies(app: &AppHandle, job_manager: &JobManager) -> LauncherResult<CommandOutput> {
+    install_system_dependencies_with_action(app, job_manager, "Instalar dependências")
+}
+
+fn install_system_dependencies_with_action(
+    app: &AppHandle,
+    job_manager: &JobManager,
+    action: &str,
+) -> LauncherResult<CommandOutput> {
+    let job = job_manager.start(action)?;
+    let mut ctx = NativeJob::new(app, job);
+    ctx.started(
+        "Validando dependências",
+        "Verificando dependências ausentes antes de instalar.",
+        0,
+    );
+
+    let result = install_system_dependencies_steps(&mut ctx);
+    match result {
+        Ok(()) => Ok(ctx.finish_success("Dependências verificadas", "Dependências verificadas.")),
+        Err(error) if ctx.job.is_cancelled() => {
+            ctx.finish_cancelled();
+            Err(error)
+        }
+        Err(error) => {
+            ctx.finish_error(&error);
+            Err(error)
+        }
+    }
+}
+
 pub fn ensure_docker_running(app: &AppHandle, job_manager: &JobManager) -> LauncherResult<CommandOutput> {
     let job = job_manager.start("Verificar Docker")?;
     let mut ctx = NativeJob::new(app, job);
@@ -565,7 +650,7 @@ pub fn restart_app(
     let mut ctx = NativeJob::new(app, job);
     ctx.started("Reiniciando", "Reiniciando containers do M&G Pocket.", 0);
 
-    let result = stop_app_steps(&mut ctx, use_sudo_docker).and_then(|_| start_app_steps(&mut ctx, use_sudo_docker));
+    let result = restart_app_steps(&mut ctx, use_sudo_docker);
     match result {
         Ok(()) => Ok(ctx.finish_success("Finalizado", "M&G Pocket reiniciado.")),
         Err(error) if ctx.job.is_cancelled() => {
@@ -573,6 +658,7 @@ pub fn restart_app(
             Err(error)
         }
         Err(error) => {
+            ctx.current_step = "Reiniciar".to_string();
             ctx.finish_error(&error);
             Err(error)
         }
@@ -605,8 +691,144 @@ pub fn read_logs(
     }
 }
 
+pub fn backup(
+    app: &AppHandle,
+    job_manager: &JobManager,
+    use_sudo_docker: bool,
+) -> LauncherResult<CommandOutput> {
+    let job = job_manager.start("Backup")?;
+    let mut ctx = NativeJob::new(app, job);
+    ctx.started("Iniciando backup", "Preparando backup local.", 0);
+
+    let result = backup_steps(&mut ctx, use_sudo_docker);
+    match result {
+        Ok(path) => {
+            append_limited_line(&mut ctx.stdout, &path_string(&path), CAPTURE_LIMIT_BYTES);
+            Ok(ctx.finish_success("Backup concluído", "Backup concluído."))
+        }
+        Err(error) if ctx.job.is_cancelled() => {
+            ctx.finish_cancelled();
+            Err(error)
+        }
+        Err(error) => {
+            ctx.finish_error(&error);
+            Err(error)
+        }
+    }
+}
+
+pub fn restore_backup(
+    app: &AppHandle,
+    job_manager: &JobManager,
+    backup_path: String,
+    confirmed: bool,
+    use_sudo_docker: bool,
+) -> LauncherResult<CommandOutput> {
+    if !confirmed {
+        return Err(LauncherError::friendly("Restore exige confirmação explícita."));
+    }
+
+    let job = job_manager.start("Restaurar backup")?;
+    let mut ctx = NativeJob::new(app, job);
+    ctx.started("Iniciando restauração", "Validando backup antes de alterar dados locais.", 0);
+
+    let result = restore_backup_steps(&mut ctx, PathBuf::from(backup_path), use_sudo_docker);
+    match result {
+        Ok(()) => Ok(ctx.finish_success("Restauração concluída", "Backup restaurado.")),
+        Err(error) if ctx.job.is_cancelled() => {
+            ctx.finish_cancelled();
+            Err(error)
+        }
+        Err(error) => {
+            ctx.finish_error(&error);
+            Err(error)
+        }
+    }
+}
+
+pub fn reset_local_data(
+    app: &AppHandle,
+    job_manager: &JobManager,
+    confirmed: bool,
+    use_sudo_docker: bool,
+) -> LauncherResult<CommandOutput> {
+    if !confirmed {
+        return Err(LauncherError::friendly("Reset local exige confirmação explícita."));
+    }
+
+    let job = job_manager.start("Resetar dados locais")?;
+    let mut ctx = NativeJob::new(app, job);
+    ctx.started("Iniciando reset", "Preparando reset dos dados locais.", 0);
+
+    let result = reset_local_data_steps(&mut ctx, use_sudo_docker);
+    match result {
+        Ok(()) => Ok(ctx.finish_success("Reset concluído", "Dados locais resetados.")),
+        Err(error) if ctx.job.is_cancelled() => {
+            ctx.finish_cancelled();
+            Err(error)
+        }
+        Err(error) => {
+            ctx.finish_error(&error);
+            Err(error)
+        }
+    }
+}
+
+pub fn remove_local_project(
+    app: &AppHandle,
+    job_manager: &JobManager,
+    mode: String,
+    confirmed: bool,
+    use_sudo_docker: bool,
+) -> LauncherResult<CommandOutput> {
+    if !confirmed {
+        return Err(LauncherError::friendly("Remoção local exige confirmação explícita."));
+    }
+    if mode != "safe" && mode != "complete" {
+        return Err(LauncherError::friendly("Modo de remoção inválido."));
+    }
+
+    let job = job_manager.start("Remover projeto local")?;
+    let mut ctx = NativeJob::new(app, job);
+    ctx.started("Iniciando remoção", "Validando escopo da remoção local.", 0);
+
+    let result = remove_local_project_steps(&mut ctx, &mode, use_sudo_docker);
+    match result {
+        Ok(()) => Ok(ctx.finish_success("Remoção concluída", "Projeto local removido.")),
+        Err(error) if ctx.job.is_cancelled() => {
+            ctx.finish_cancelled();
+            Err(error)
+        }
+        Err(error) => {
+            ctx.finish_error(&error);
+            Err(error)
+        }
+    }
+}
+
 pub fn cancel_current_job(job_manager: &JobManager) -> LauncherResult<bool> {
     Ok(job_manager.cancel_active()?.is_some())
+}
+
+fn install_system_dependencies_steps(ctx: &mut NativeJob<'_, '_>) -> LauncherResult<()> {
+    ctx.progress("Verificando dependências", "Mapeando dependências ausentes.", 10);
+    let dependencies = build_dependency_status()?;
+    if dependencies.missing.is_empty() {
+        ctx.log(
+            "Dependências",
+            "Git, Docker e Docker Compose já estão disponíveis.",
+            "info",
+        );
+        return Ok(());
+    }
+
+    match current_os() {
+        "windows" => install_windows_system_dependencies(ctx, &dependencies),
+        "linux" => install_linux_system_dependencies(ctx, &dependencies),
+        _ => Err(LauncherError::friendly(
+            "A instalação automática de dependências é suportada apenas no Linux e Windows.",
+        )),
+    }
 }
 
 fn ensure_docker_running_steps(ctx: &mut NativeJob<'_, '_>) -> LauncherResult<()> {
@@ -820,6 +1042,53 @@ fn stop_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Launche
     Ok(())
 }
 
+fn restart_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> LauncherResult<()> {
+    let project_dir = project_dir();
+    ctx.progress("Verificando projeto local", "Validando projeto local.", 20);
+    require_project(&project_dir)?;
+    validate_project_path(&project_dir)?;
+    prepare_project_files(&project_dir)?;
+    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+
+    ctx.run_required(
+        "Parando containers",
+        "Parando containers antes do reinício.",
+        35,
+        compose_down_command(&compose, &project_dir, false),
+        LONG_TIMEOUT,
+    )?;
+
+    ctx.run_required(
+        "Subindo containers",
+        "Subindo containers principais.",
+        60,
+        compose.command(
+            &project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "up",
+                "-d",
+                "postgres",
+                "storage",
+                "app",
+            ],
+        ),
+        LONG_TIMEOUT,
+    )?;
+    ctx.run_optional(
+        "Subindo Adminer",
+        "Tentando iniciar Adminer.",
+        75,
+        compose.command(&project_dir, ["up", "-d", "adminer"]),
+        MEDIUM_TIMEOUT,
+    );
+    ctx.progress("Aguardando serviços", "Aguardando serviços locais.", 85);
+    wait_for_app_database(ctx, &compose, &project_dir)?;
+    validate_site(ctx)?;
+    Ok(())
+}
+
 fn read_logs_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> LauncherResult<String> {
     let project_dir = project_dir();
     require_project(&project_dir)?;
@@ -835,6 +1104,802 @@ fn read_logs_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Launch
         MEDIUM_TIMEOUT,
     )?;
     Ok(limit_lines(&output.stdout, UI_LOG_LINES))
+}
+
+fn backup_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> LauncherResult<PathBuf> {
+    let project_dir = project_dir();
+    ctx.progress("Verificando projeto local", "Validando pasta local do projeto.", 15);
+    require_project(&project_dir)?;
+    validate_project_path(&project_dir)?;
+    prepare_project_files(&project_dir)?;
+
+    ctx.progress("Verificando containers", "Validando Docker e Docker Compose.", 30);
+    ctx.run_required(
+        "Verificar Docker",
+        "Executando docker info.",
+        30,
+        docker_command(vec!["info"], use_sudo_docker),
+        SHORT_TIMEOUT,
+    )?;
+    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+    ensure_postgres_for_maintenance(ctx, &compose, &project_dir, 40)?;
+
+    create_backup_archive(ctx, &compose, &project_dir, 45, 65, 85)
+}
+
+fn restore_backup_steps(
+    ctx: &mut NativeJob<'_, '_>,
+    backup_file: PathBuf,
+    use_sudo_docker: bool,
+) -> LauncherResult<()> {
+    ctx.progress("Validando backup", "Validando arquivo de backup.", 10);
+    validate_backup_file(&backup_file)?;
+
+    let mut temp_dir = TempDirGuard::new("mg-pocket-restore")?;
+    ctx.progress("Extraindo backup", "Extraindo backup em pasta temporária.", 25);
+    extract_backup_archive(ctx, &backup_file, temp_dir.path())?;
+    let dump_file = temp_dir.path().join(BACKUP_SQL_FILE);
+    if !dump_file.is_file() {
+        return Err(LauncherError::friendly(
+            "Backup inválido: postgres.sql não foi encontrado.",
+        ));
+    }
+
+    let project_dir = project_dir();
+    ctx.progress("Validando projeto local", "Validando pasta local do projeto.", 35);
+    require_project(&project_dir)?;
+    validate_project_path(&project_dir)?;
+
+    ctx.progress("Parando containers", "Parando app, Adminer e storage antes do restore.", 40);
+    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+    restore_env_file(temp_dir.path(), &project_dir)?;
+    ctx.run_optional(
+        "Parando containers",
+        "Parando serviços que usam o banco.",
+        45,
+        compose.command(
+            &project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "stop",
+                "app",
+                "adminer",
+                "storage",
+            ],
+        ),
+        MEDIUM_TIMEOUT,
+    );
+
+    ensure_postgres_for_maintenance(ctx, &compose, &project_dir, 55)?;
+    ctx.run_required(
+        "Restaurando dados",
+        "Limpando schema público antes de restaurar o dump.",
+        70,
+        compose.command(
+            &project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "exec",
+                "-T",
+                "postgres",
+                "psql",
+                "-U",
+                "meg",
+                "-d",
+                "meg_pocket",
+                "-c",
+                "DROP SCHEMA public CASCADE; CREATE SCHEMA public;",
+            ],
+        ),
+        MEDIUM_TIMEOUT,
+    )?;
+    ctx.run_required_with_files(
+        "Restaurando dados",
+        "Restaurando dump do banco a partir do backup.",
+        75,
+        compose.command(
+            &project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "exec",
+                "-T",
+                "postgres",
+                "psql",
+                "-U",
+                "meg",
+                "-d",
+                "meg_pocket",
+            ],
+        ),
+        LONG_TIMEOUT,
+        Some(&dump_file),
+        None,
+    )?;
+
+    ctx.progress("Aplicando arquivos", "Aplicando arquivos locais do backup.", 82);
+    restore_storage_with_rollback(temp_dir.path(), &project_dir)?;
+
+    ctx.progress("Subindo containers", "Subindo containers depois da restauração.", 90);
+    start_app_steps(ctx, use_sudo_docker)?;
+    temp_dir.cleanup();
+    Ok(())
+}
+
+fn reset_local_data_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> LauncherResult<()> {
+    let project_dir = project_dir();
+    ctx.progress("Validando segurança", "Validando escopo do reset.", 20);
+    require_project(&project_dir)?;
+    validate_project_path(&project_dir)?;
+    prepare_project_files(&project_dir)?;
+    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+
+    ctx.log("Backup automático", "Tentando criar backup antes do reset.", "info");
+    match ensure_postgres_for_maintenance(ctx, &compose, &project_dir, 25)
+        .and_then(|_| create_backup_archive(ctx, &compose, &project_dir, 28, 32, 36))
+    {
+        Ok(path) => ctx.log(
+            "Backup automático",
+            &format!("Backup criado antes do reset: {}", path.display()),
+            "info",
+        ),
+        Err(error) => ctx.log(
+            "Backup automático",
+            &format!(
+                "Backup automático falhou. Continuando porque o reset foi confirmado: {}",
+                error.friendly_message()
+            ),
+            "error",
+        ),
+    }
+
+    ctx.run_required(
+        "Parando containers",
+        "Parando containers e removendo volumes do projeto.",
+        60,
+        compose.command(
+            &project_dir,
+            ["--env-file", ".env.docker-local", "down", "-v"],
+        ),
+        LONG_TIMEOUT,
+    )?;
+
+    ctx.progress("Limpando estado local", "Limpando storage e marcador de seed.", 80);
+    remove_dir_retry(&project_dir.join("storage").join("local").join("public"))?;
+    fs::create_dir_all(project_dir.join("storage").join("local").join("public"))
+        .map_err(|error| LauncherError::technical("Não foi possível recriar storage local", error))?;
+    remove_file_if_exists(&project_dir.join("installers").join(".seed-inicial-concluido"))?;
+
+    install_project_steps(ctx, use_sudo_docker)?;
+    Ok(())
+}
+
+fn remove_local_project_steps(
+    ctx: &mut NativeJob<'_, '_>,
+    mode: &str,
+    use_sudo_docker: bool,
+) -> LauncherResult<()> {
+    let project_dir = project_dir();
+    if !project_dir.exists() {
+        ctx.log(
+            "Validando projeto local",
+            &format!("Projeto local não encontrado em {}.", project_dir.display()),
+            "info",
+        );
+        return Ok(());
+    }
+
+    ctx.progress("Validando projeto local", "Validando caminho local antes de apagar.", 20);
+    let safe_project_dir = validate_project_delete_path(&project_dir)?;
+
+    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()));
+    match (mode, compose) {
+        ("complete", Ok(compose)) => {
+            ctx.run_required(
+                "Parando containers",
+                "Remoção completa: removendo containers, volumes e redes do projeto.",
+                55,
+                compose_down_command(&compose, &safe_project_dir, true),
+                LONG_TIMEOUT,
+            )?;
+        }
+        ("complete", Err(error)) => return Err(error),
+        (_, Ok(compose)) => {
+            ctx.run_optional(
+                "Parando containers",
+                "Remoção segura: parando containers e preservando volumes Docker.",
+                55,
+                compose_down_command(&compose, &safe_project_dir, false),
+                MEDIUM_TIMEOUT,
+            );
+        }
+        (_, Err(error)) => {
+            ctx.log(
+                "Parando containers",
+                &format!(
+                    "Não foi possível validar Docker Compose. Removendo apenas a pasta local: {}",
+                    error.friendly_message()
+                ),
+                "error",
+            );
+        }
+    }
+
+    ctx.progress("Removendo pasta local", "Removendo pasta local do projeto.", 85);
+    remove_dir_retry(&safe_project_dir)?;
+    Ok(())
+}
+
+fn ensure_postgres_for_maintenance(
+    ctx: &mut NativeJob<'_, '_>,
+    compose: &ComposeCommand,
+    project_dir: &Path,
+    progress: u8,
+) -> LauncherResult<()> {
+    ctx.run_required(
+        "Verificando containers",
+        "Subindo Postgres para operação local.",
+        progress,
+        compose.command(
+            project_dir,
+            ["--env-file", ".env.docker-local", "up", "-d", "postgres"],
+        ),
+        LONG_TIMEOUT,
+    )?;
+    wait_for_postgres(ctx, compose, project_dir)
+}
+
+fn create_backup_archive(
+    ctx: &mut NativeJob<'_, '_>,
+    compose: &ComposeCommand,
+    project_dir: &Path,
+    export_progress: u8,
+    files_progress: u8,
+    archive_progress: u8,
+) -> LauncherResult<PathBuf> {
+    let mut temp_dir = TempDirGuard::new("mg-pocket-backup")?;
+    let dump_file = temp_dir.path().join(BACKUP_SQL_FILE);
+
+    ctx.run_required_with_files(
+        "Exportando dados",
+        "Exportando banco de dados local.",
+        export_progress,
+        compose.command(
+            project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "exec",
+                "-T",
+                "postgres",
+                "pg_dump",
+                "-U",
+                "meg",
+                "-d",
+                "meg_pocket",
+            ],
+        ),
+        LONG_TIMEOUT,
+        None,
+        Some(&dump_file),
+    )?;
+
+    ctx.progress("Preparando arquivos", "Copiando arquivos locais para pasta temporária.", files_progress);
+    let env_file = project_dir.join(".env.docker-local");
+    if env_file.is_file() {
+        copy_file_retry(&env_file, &temp_dir.path().join(BACKUP_ENV_FILE))?;
+    }
+
+    let storage_public = project_dir.join("storage").join("local").join("public");
+    if storage_public.is_dir() {
+        let storage_target = temp_dir.path().join("storage").join("local").join("public");
+        copy_dir_retry(&storage_public, &storage_target)?;
+    }
+
+    let destination_dir = backup_dir()?;
+    fs::create_dir_all(&destination_dir)
+        .map_err(|error| LauncherError::technical("Não foi possível criar pasta de backups", error))?;
+    let backup_file = destination_dir.join(default_backup_file_name());
+    archive_temp_dir(ctx, temp_dir.path(), &backup_file, archive_progress)?;
+    temp_dir.cleanup();
+    ctx.log(
+        "Backup concluído",
+        &format!("Backup salvo em {}", backup_file.display()),
+        "info",
+    );
+    Ok(backup_file)
+}
+
+fn archive_temp_dir(
+    ctx: &mut NativeJob<'_, '_>,
+    temp_dir: &Path,
+    backup_file: &Path,
+    progress: u8,
+) -> LauncherResult<()> {
+    #[cfg(target_os = "windows")]
+    {
+        ctx.run_required(
+            "Salvando backup",
+            "Compactando backup em arquivo .zip.",
+            progress,
+            NativeCommand::new("powershell.exe").args(vec![
+                "-NoProfile".to_string(),
+                "-Command".to_string(),
+                format!(
+                    "Compress-Archive -Path '{}' -DestinationPath '{}' -Force",
+                    powershell_escape(&temp_dir.join("*")),
+                    powershell_escape(backup_file)
+                ),
+            ]),
+            LONG_TIMEOUT,
+        )?;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        ctx.run_required(
+            "Salvando backup",
+            "Compactando backup em arquivo .tar.gz.",
+            progress,
+            NativeCommand::new("tar").args(vec![
+                "-czf".to_string(),
+                path_string(backup_file),
+                "-C".to_string(),
+                path_string(temp_dir),
+                ".".to_string(),
+            ]),
+            LONG_TIMEOUT,
+        )?;
+    }
+
+    Ok(())
+}
+
+fn extract_backup_archive(
+    ctx: &mut NativeJob<'_, '_>,
+    backup_file: &Path,
+    temp_dir: &Path,
+) -> LauncherResult<()> {
+    #[cfg(target_os = "windows")]
+    {
+        ctx.run_required(
+            "Extraindo backup",
+            "Extraindo arquivo .zip.",
+            25,
+            NativeCommand::new("powershell.exe").args(vec![
+                "-NoProfile".to_string(),
+                "-Command".to_string(),
+                format!(
+                    "Expand-Archive -Path '{}' -DestinationPath '{}' -Force",
+                    powershell_escape(backup_file),
+                    powershell_escape(temp_dir)
+                ),
+            ]),
+            LONG_TIMEOUT,
+        )?;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        ctx.run_required(
+            "Extraindo backup",
+            "Extraindo arquivo .tar.gz.",
+            25,
+            NativeCommand::new("tar").args(vec![
+                "-xzf".to_string(),
+                path_string(backup_file),
+                "-C".to_string(),
+                path_string(temp_dir),
+            ]),
+            LONG_TIMEOUT,
+        )?;
+    }
+
+    Ok(())
+}
+
+fn restore_env_file(temp_dir: &Path, project_dir: &Path) -> LauncherResult<()> {
+    let backup_env = temp_dir.join(BACKUP_ENV_FILE);
+    if backup_env.is_file() {
+        copy_file_retry(&backup_env, &project_dir.join(".env.docker-local"))?;
+    } else {
+        prepare_project_files(project_dir)?;
+    }
+    Ok(())
+}
+
+fn restore_storage_with_rollback(temp_dir: &Path, project_dir: &Path) -> LauncherResult<()> {
+    let backup_storage = temp_dir.join("storage").join("local").join("public");
+    if !backup_storage.is_dir() {
+        return Ok(());
+    }
+
+    let current_storage = project_dir.join("storage").join("local").join("public");
+    let rollback_storage = temp_dir.join("storage-rollback-public");
+    if current_storage.exists() {
+        rename_retry(&current_storage, &rollback_storage)?;
+    }
+
+    let result = copy_dir_retry(&backup_storage, &current_storage);
+    if let Err(error) = result {
+        let _ = remove_dir_retry(&current_storage);
+        if rollback_storage.exists() {
+            let _ = rename_retry(&rollback_storage, &current_storage);
+        }
+        return Err(error);
+    }
+
+    let _ = remove_dir_retry(&rollback_storage);
+    Ok(())
+}
+
+fn compose_down_command(compose: &ComposeCommand, project_dir: &Path, remove_volumes: bool) -> NativeCommand {
+    let mut args = Vec::new();
+    if project_dir.join(".env.docker-local").is_file() {
+        args.extend(["--env-file".to_string(), ".env.docker-local".to_string()]);
+    }
+    args.push("down".to_string());
+    if remove_volumes {
+        args.push("-v".to_string());
+    }
+    args.push("--remove-orphans".to_string());
+    compose.command(project_dir, args)
+}
+
+#[cfg(target_os = "linux")]
+fn install_linux_system_dependencies(
+    ctx: &mut NativeJob<'_, '_>,
+    dependencies: &DependencyStatus,
+) -> LauncherResult<()> {
+    if !command_success("sudo", ["-V"], QUICK_TIMEOUT) {
+        return Err(LauncherError::friendly(
+            "sudo não foi encontrado. Instale Git, Docker e Docker Compose manualmente e volte ao launcher.",
+        ));
+    }
+
+    let distro = linux_distro().ok_or_else(|| {
+        LauncherError::friendly(
+            "Não consegui detectar a distribuição Linux para instalar dependências automaticamente.",
+        )
+    })?;
+    let commands = linux_dependency_admin_commands(&distro.family).ok_or_else(|| {
+        LauncherError::friendly(
+            "Esta distribuição ainda não é suportada pelo instalador automático. Instale Git, Docker e Docker Compose manualmente.",
+        )
+    })?;
+
+    ctx.progress(
+        "Permissão administrativa",
+        "Abrindo terminal do sistema para instalar dependências.",
+        25,
+    );
+    ctx.log(
+        "Dependências",
+        &format!("Dependências ausentes: {}", dependencies.missing.join(", ")),
+        "info",
+    );
+
+    let log_path = run_linux_admin_commands(
+        ctx,
+        "Instalação de dependências Linux",
+        &[
+            "instalar Git, Docker e Docker Compose, se necessário",
+            "iniciar o serviço docker",
+            "ajustar o grupo docker para seu usuário, quando necessário",
+        ],
+        &commands,
+    )?;
+    append_admin_log(ctx, &log_path);
+    Ok(())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn install_linux_system_dependencies(
+    _ctx: &mut NativeJob<'_, '_>,
+    _dependencies: &DependencyStatus,
+) -> LauncherResult<()> {
+    Err(LauncherError::friendly(
+        "A instalação automática de dependências Linux só roda no Linux.",
+    ))
+}
+
+#[cfg(target_os = "linux")]
+fn linux_dependency_admin_commands(family: &str) -> Option<Vec<String>> {
+    let install = match family {
+        "arch_like" => "sudo pacman -S --needed --noconfirm git curl docker docker-compose bash coreutils",
+        "ubuntu_like" | "debian_like" => {
+            "sudo apt update\nsudo apt install -y git curl docker.io docker-compose-plugin bash coreutils"
+        }
+        "fedora_like" => "sudo dnf install -y git curl docker docker-compose-plugin bash coreutils",
+        _ => return None,
+    };
+
+    Some(vec![
+        "sudo -v".to_string(),
+        install.to_string(),
+        "if command -v systemctl >/dev/null 2>&1 && command -v docker >/dev/null 2>&1; then sudo systemctl enable --now docker || true; fi".to_string(),
+        "if command -v docker >/dev/null 2>&1 && [ -n \"${USER:-}\" ]; then sudo groupadd -f docker || true; sudo usermod -aG docker \"$USER\" || true; fi".to_string(),
+        "docker --version || sudo docker --version".to_string(),
+        "docker compose version || docker-compose --version || sudo docker compose version || sudo docker-compose --version".to_string(),
+    ])
+}
+
+#[cfg(target_os = "linux")]
+fn run_linux_admin_commands(
+    ctx: &mut NativeJob<'_, '_>,
+    title: &str,
+    summary: &[&str],
+    commands: &[String],
+) -> LauncherResult<PathBuf> {
+    let (log_path, wrapper_path) = admin_temp_paths("linux-dependencies", "sh")?;
+    let summary = summary.join("\\n- ");
+    let command_text = commands.join("\n");
+
+    let wrapper = format!(
+        r#"#!/usr/bin/env bash
+set -uo pipefail
+LOG_FILE={log_file}
+echo "M&G Pocket Launcher" | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Etapa: {title}" | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Esta etapa precisa de permissão administrativa." | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Comandos que serão executados:" | tee -a "$LOG_FILE"
+printf -- "- {summary}\n" | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Se o sistema pedir senha, use a senha do seu usuário." | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+(
+set -euo pipefail
+{commands}
+) 2>&1 | tee -a "$LOG_FILE"
+code=${{PIPESTATUS[0]}}
+echo "" | tee -a "$LOG_FILE"
+if [ "$code" -eq 0 ]; then
+  echo "Sucesso: dependências verificadas." | tee -a "$LOG_FILE"
+else
+  echo "Falha: veja o log técnico em $LOG_FILE" | tee -a "$LOG_FILE"
+fi
+echo ""
+read -r -p "Pressione Enter para fechar este terminal."
+exit "$code"
+"#,
+        log_file = shell_quote(log_path.to_string_lossy().as_ref()),
+        title = title,
+        summary = summary,
+        commands = command_text,
+    );
+
+    fs::write(&wrapper_path, wrapper)
+        .map_err(|error| LauncherError::technical("Não foi possível preparar terminal administrativo", error))?;
+    let mut permissions = fs::metadata(&wrapper_path)
+        .map_err(|error| LauncherError::technical("Não foi possível ler terminal administrativo", error))?
+        .permissions();
+    permissions.set_mode(0o700);
+    fs::set_permissions(&wrapper_path, permissions)
+        .map_err(|error| LauncherError::technical("Não foi possível proteger terminal administrativo", error))?;
+
+    ctx.progress(
+        "Terminal administrativo",
+        "Aguardando conclusão no terminal externo.",
+        40,
+    );
+    let status = run_terminal_and_wait(&wrapper_path)?;
+    let _ = fs::remove_file(&wrapper_path);
+    if status.success() {
+        ctx.progress("Dependências instaladas", "Dependências verificadas pelo sistema.", 90);
+        Ok(log_path)
+    } else {
+        append_admin_log(ctx, &log_path);
+        Err(LauncherError::friendly(
+            "A instalação de dependências falhou ou foi cancelada no terminal administrativo.",
+        ))
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn run_terminal_and_wait(wrapper_path: &Path) -> LauncherResult<std::process::ExitStatus> {
+    let wrapper = wrapper_path.to_string_lossy().to_string();
+    let candidates: Vec<(&str, Vec<String>)> = vec![
+        (
+            "gnome-terminal",
+            vec!["--wait".into(), "--".into(), "bash".into(), wrapper.clone()],
+        ),
+        ("konsole", vec!["--nofork".into(), "-e".into(), "bash".into(), wrapper.clone()]),
+        ("x-terminal-emulator", vec!["-e".into(), "bash".into(), wrapper.clone()]),
+        ("xterm", vec!["-e".into(), "bash".into(), wrapper]),
+    ];
+
+    let mut last_error = None;
+    for (program, args) in candidates {
+        let mut command = Command::new(program);
+        command.args(args);
+        scripts::sanitize_child_environment(&mut command);
+        match command.status() {
+            Ok(status) => return Ok(status),
+            Err(error) => last_error = Some(error),
+        }
+    }
+
+    Err(LauncherError::new(
+        "Não encontrei um terminal gráfico para pedir permissão administrativa.",
+        format!(
+            "Falha ao abrir terminal externo: {}",
+            last_error
+                .map(|error| error.to_string())
+                .unwrap_or_else(|| "nenhum terminal encontrado".to_string())
+        ),
+    ))
+}
+
+#[cfg(target_os = "windows")]
+fn install_windows_system_dependencies(
+    ctx: &mut NativeJob<'_, '_>,
+    dependencies: &DependencyStatus,
+) -> LauncherResult<()> {
+    if !command_success("winget", ["--version"], QUICK_TIMEOUT) {
+        return Err(LauncherError::friendly(
+            "winget não foi encontrado. Instale ou atualize o App Installer pela Microsoft Store e tente novamente.",
+        ));
+    }
+
+    let packages = windows_dependency_packages(&dependencies.missing);
+    if packages.is_empty() {
+        ctx.log(
+            "Dependências",
+            "Nenhuma dependência instalável pelo winget está ausente.",
+            "info",
+        );
+        return Ok(());
+    }
+
+    ctx.progress(
+        "Permissão administrativa",
+        "Abrindo PowerShell elevado para instalar dependências.",
+        25,
+    );
+    let (script_path, log_path) = write_windows_dependency_script(&packages)?;
+    let elevated_command = format!(
+        "try {{ $p = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','{}') -Verb RunAs -Wait -PassThru; if ($null -eq $p) {{ exit 1 }}; exit $p.ExitCode }} catch {{ Write-Error $_; exit 1 }}",
+        powershell_escape(&script_path)
+    );
+
+    let result = ctx.run_required(
+        "Instalando dependências",
+        "Aguardando instalador elevado do Windows.",
+        40,
+        NativeCommand::new("powershell.exe").args(vec![
+            "-NoProfile".to_string(),
+            "-Command".to_string(),
+            elevated_command,
+        ]),
+        LONG_TIMEOUT,
+    );
+    let _ = fs::remove_file(&script_path);
+    append_admin_log(ctx, &log_path);
+    result?;
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn install_windows_system_dependencies(
+    _ctx: &mut NativeJob<'_, '_>,
+    _dependencies: &DependencyStatus,
+) -> LauncherResult<()> {
+    Err(LauncherError::friendly(
+        "A instalação automática de dependências Windows só roda no Windows.",
+    ))
+}
+
+#[cfg(target_os = "windows")]
+fn windows_dependency_packages(missing: &[String]) -> Vec<(&'static str, &'static str)> {
+    let mut packages = Vec::new();
+    if missing.iter().any(|item| item.eq_ignore_ascii_case("git")) {
+        packages.push(("Git for Windows", "Git.Git"));
+    }
+    if missing
+        .iter()
+        .any(|item| item.eq_ignore_ascii_case("docker desktop") || item.eq_ignore_ascii_case("docker"))
+    {
+        packages.push(("Docker Desktop", "Docker.DockerDesktop"));
+    }
+    packages
+}
+
+#[cfg(target_os = "windows")]
+fn write_windows_dependency_script(packages: &[(&str, &str)]) -> LauncherResult<(PathBuf, PathBuf)> {
+    let (log_path, script_path) = admin_temp_paths("windows-dependencies", "ps1")?;
+    let friendly_list = packages
+        .iter()
+        .map(|(name, _)| format!("- {name}"))
+        .collect::<Vec<_>>()
+        .join("`r`n");
+    let install_blocks = packages
+        .iter()
+        .map(|(name, id)| {
+            format!(
+                r#"
+Write-Host "Verificando pacote: {name}"
+winget show --id {id} --exact --source winget
+if ($LASTEXITCODE -ne 0) {{
+  Write-Host "Pacote {name} não foi encontrado no winget. Pulando."
+  $failed = $true
+}} else {{
+  Write-Host "Executando: winget install -e --id {id}"
+  winget install -e --id {id}
+  if ($LASTEXITCODE -ne 0) {{
+    Write-Host "Primeira tentativa falhou. Tentando fallback com --exact --source winget..."
+    winget install --id {id} --exact --source winget
+  }}
+  if ($LASTEXITCODE -ne 0) {{
+    Write-Host "Falha ao instalar {name} pelo winget."
+    $failed = $true
+  }}
+}}
+"#
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let script = format!(
+        r#"$ErrorActionPreference = "Continue"
+$failed = $false
+Start-Transcript -Path '{log_path}' -Append
+Write-Host "M&G Pocket Launcher"
+Write-Host ""
+Write-Host "Etapa: Instalação de dependências do Windows"
+Write-Host ""
+Write-Host "Dependências que serão instaladas:"
+Write-Host @'
+{friendly_list}
+'@
+Write-Host ""
+Write-Host "Antes de instalar qualquer dependência, o launcher mostrará o que será feito e pedirá sua confirmação."
+Write-Host "Se o Windows pedir permissão, confirme pela janela do sistema."
+Write-Host ""
+{install_blocks}
+Write-Host ""
+if ($failed) {{
+  Write-Host "Falha ao instalar uma ou mais dependências. Veja o log técnico em: {log_path}"
+  Stop-Transcript
+  Read-Host "Pressione Enter para fechar"
+  exit 1
+}}
+Write-Host "Dependências instaladas ou já disponíveis."
+Write-Host "Se o Docker Desktop foi instalado agora, abra o Docker Desktop e aguarde o Docker Engine iniciar."
+Write-Host "Se o Windows solicitar reinicialização, reinicie antes de voltar ao launcher."
+Stop-Transcript
+Read-Host "Pressione Enter para fechar"
+exit 0
+"#,
+        log_path = powershell_escape(&log_path),
+        friendly_list = friendly_list,
+        install_blocks = install_blocks,
+    );
+    fs::write(&script_path, script)
+        .map_err(|error| LauncherError::technical("Não foi possível preparar instalador Windows", error))?;
+    Ok((script_path, log_path))
+}
+
+fn admin_temp_paths(prefix: &str, extension: &str) -> LauncherResult<(PathBuf, PathBuf)> {
+    let log_dir = launcher_data_dir()?.join("logs");
+    fs::create_dir_all(&log_dir)
+        .map_err(|error| LauncherError::technical("Não foi possível criar pasta de logs", error))?;
+    let suffix = timestamp_nanos();
+    Ok((
+        log_dir.join(format!("admin-{prefix}-{suffix}.log")),
+        log_dir.join(format!("admin-{prefix}-{suffix}.{extension}")),
+    ))
+}
+
+fn append_admin_log(ctx: &mut NativeJob<'_, '_>, log_path: &Path) {
+    if let Ok(text) = fs::read_to_string(log_path) {
+        append_limited(&mut ctx.stdout, &limit_lines(&text, UI_LOG_LINES), CAPTURE_LIMIT_BYTES);
+    }
 }
 
 fn prepare_project_source(ctx: &mut NativeJob<'_, '_>, project_dir: &Path) -> LauncherResult<()> {
@@ -1419,16 +2484,54 @@ fn run_streaming_command(
     timeout: Duration,
     cancel: Arc<AtomicBool>,
 ) -> Result<CommandOutput, ProcessError> {
+    run_streaming_command_with_files(
+        app, job_id, action, step, progress, command, timeout, cancel, None, None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_streaming_command_with_files(
+    app: &AppHandle,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    progress: u8,
+    command: NativeCommand,
+    timeout: Duration,
+    cancel: Arc<AtomicBool>,
+    stdin_file: Option<&Path>,
+    stdout_file: Option<&Path>,
+) -> Result<CommandOutput, ProcessError> {
     let display = command.display();
     jobs::emit_log(app, job_id, action, step, &format!("Executando: {display}"), progress, "info");
 
     let mut process = command.into_command();
-    process.stdout(Stdio::piped()).stderr(Stdio::piped());
+    if let Some(stdin_file) = stdin_file {
+        let file = fs::File::open(stdin_file)
+            .map_err(|error| ProcessError::spawn(display.clone(), error))?;
+        process.stdin(Stdio::from(file));
+    }
+    if let Some(stdout_file) = stdout_file {
+        if let Some(parent) = stdout_file.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|error| ProcessError::spawn(display.clone(), error))?;
+        }
+        let file = fs::File::create(stdout_file)
+            .map_err(|error| ProcessError::spawn(display.clone(), error))?;
+        process.stdout(Stdio::from(file));
+    } else {
+        process.stdout(Stdio::piped());
+    }
+    process.stderr(Stdio::piped());
     let mut child = process
         .spawn()
         .map_err(|error| ProcessError::spawn(display.clone(), error))?;
 
-    let stdout = child.stdout.take();
+    let stdout = if stdout_file.is_some() {
+        None
+    } else {
+        child.stdout.take()
+    };
     let stderr = child.stderr.take();
     let (sender, receiver) = mpsc::channel::<StreamLine>();
 
@@ -2010,6 +3113,248 @@ fn project_dir() -> PathBuf {
         .join("app")
 }
 
+fn default_project_dir() -> PathBuf {
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
+            return PathBuf::from(local_app_data).join("mg-pocket").join("app");
+        }
+    }
+
+    let home = env::var("HOME")
+        .or_else(|_| env::var("USERPROFILE"))
+        .unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home)
+        .join(".local")
+        .join("share")
+        .join("mg-pocket")
+        .join("app")
+}
+
+fn backup_dir() -> LauncherResult<PathBuf> {
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(user_profile) = env::var("USERPROFILE") {
+            return Ok(PathBuf::from(user_profile)
+                .join("Documents")
+                .join("MG Pocket")
+                .join("backups"));
+        }
+        if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
+            return Ok(PathBuf::from(local_app_data).join("mg-pocket").join("backups"));
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(home) = env::var("HOME") {
+            let home = PathBuf::from(home);
+            let documentos = home.join("Documentos");
+            if documentos.is_dir() {
+                return Ok(documentos.join("MG Pocket").join("backups"));
+            }
+            let documents = home.join("Documents");
+            if documents.is_dir() {
+                return Ok(documents.join("MG Pocket").join("backups"));
+            }
+            return Ok(home.join(".local").join("share").join("mg-pocket").join("backups"));
+        }
+    }
+
+    Err(LauncherError::friendly(
+        "Não consegui resolver a pasta de backups.",
+    ))
+}
+
+struct TempDirGuard {
+    path: PathBuf,
+    cleanup: bool,
+}
+
+impl TempDirGuard {
+    fn new(prefix: &str) -> LauncherResult<Self> {
+        let path = env::temp_dir().join(format!("{prefix}-{}", timestamp_nanos()));
+        fs::create_dir_all(&path)
+            .map_err(|error| LauncherError::technical("Não foi possível criar pasta temporária", error))?;
+        Ok(Self {
+            path,
+            cleanup: true,
+        })
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+
+    fn cleanup(&mut self) {
+        if self.cleanup {
+            let _ = remove_dir_retry(&self.path);
+            self.cleanup = false;
+        }
+    }
+}
+
+impl Drop for TempDirGuard {
+    fn drop(&mut self) {
+        self.cleanup();
+    }
+}
+
+fn default_backup_file_name() -> String {
+    let suffix = timestamp_nanos();
+    if cfg!(target_os = "windows") {
+        format!("mg-pocket-backup-{suffix}.zip")
+    } else {
+        format!("mg-pocket-backup-{suffix}.tar.gz")
+    }
+}
+
+fn validate_backup_file(path: &Path) -> LauncherResult<()> {
+    if !path.is_file() {
+        return Err(LauncherError::friendly(format!(
+            "Backup não encontrado: {}",
+            path.display()
+        )));
+    }
+    if !backup_extension_valid(path) {
+        return Err(LauncherError::friendly(
+            "Formato de backup inválido para este sistema.",
+        ));
+    }
+    Ok(())
+}
+
+fn backup_extension_valid(path: &Path) -> bool {
+    let text = path.to_string_lossy().to_ascii_lowercase();
+    if cfg!(target_os = "windows") {
+        text.ends_with(".zip")
+    } else {
+        text.ends_with(".tar.gz") || text.ends_with(".tgz")
+    }
+}
+
+fn validate_project_delete_path(path: &Path) -> LauncherResult<PathBuf> {
+    let resolved = fs::canonicalize(path)
+        .map_err(|error| LauncherError::technical("Não foi possível resolver pasta do projeto", error))?;
+    let home = env::var("HOME")
+        .or_else(|_| env::var("USERPROFILE"))
+        .ok()
+        .map(PathBuf::from);
+    let root = resolved.parent().is_none();
+    if root || home.as_ref().is_some_and(|home| fs::canonicalize(home).ok().as_ref() == Some(&resolved)) {
+        return Err(LauncherError::friendly("Caminho de remoção inválido."));
+    }
+    if !resolved.join("docker-compose.yml").is_file() || !resolved.join("package.json").is_file() {
+        return Err(LauncherError::friendly(
+            "Não encontrei os arquivos esperados do M&G Pocket. Remoção cancelada por segurança.",
+        ));
+    }
+
+    let default = default_project_dir();
+    let default_parent = default.parent().ok_or_else(|| {
+        LauncherError::friendly("Caminho padrão do projeto local é inválido.")
+    })?;
+    let _ = fs::create_dir_all(default_parent);
+    let resolved_default = fs::canonicalize(default_parent)
+        .map(|parent| parent.join("app"))
+        .unwrap_or(default);
+    let allow_custom = env::var("MG_POCKET_ALLOW_CUSTOM_PROJECT_DELETE").ok().as_deref() == Some("1");
+    if resolved != resolved_default && !allow_custom {
+        return Err(LauncherError::friendly(format!(
+            "O caminho do projeto não é o diretório local esperado do launcher. Remoção cancelada por segurança: {}",
+            resolved.display()
+        )));
+    }
+
+    Ok(resolved)
+}
+
+fn copy_file_retry(source: &Path, destination: &Path) -> LauncherResult<()> {
+    retry_io("copiar arquivo", || {
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::copy(source, destination).map(|_| ())
+    })
+}
+
+fn copy_dir_retry(source: &Path, destination: &Path) -> LauncherResult<()> {
+    if !source.is_dir() {
+        return Ok(());
+    }
+    retry_io("copiar pasta", || copy_dir_recursive(source, destination))
+}
+
+fn copy_dir_recursive(source: &Path, destination: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(destination)?;
+    for entry in fs::read_dir(source)? {
+        let entry = entry?;
+        let source_path = entry.path();
+        let destination_path = destination.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_dir_recursive(&source_path, &destination_path)?;
+        } else {
+            if let Some(parent) = destination_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::copy(&source_path, &destination_path)?;
+        }
+    }
+    Ok(())
+}
+
+fn remove_dir_retry(path: &Path) -> LauncherResult<()> {
+    if !path.exists() {
+        return Ok(());
+    }
+    retry_io("remover pasta", || fs::remove_dir_all(path))
+}
+
+fn rename_retry(source: &Path, destination: &Path) -> LauncherResult<()> {
+    if let Some(parent) = destination.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| LauncherError::technical("Não foi possível preparar destino", error))?;
+    }
+    if destination.exists() {
+        remove_dir_retry(destination)?;
+    }
+    retry_io("mover pasta", || fs::rename(source, destination))
+}
+
+fn remove_file_if_exists(path: &Path) -> LauncherResult<()> {
+    if path.is_file() {
+        retry_io("remover arquivo", || fs::remove_file(path))?;
+    }
+    Ok(())
+}
+
+fn retry_io<F>(action: &str, mut operation: F) -> LauncherResult<()>
+where
+    F: FnMut() -> std::io::Result<()>,
+{
+    let mut last_error = None;
+    for attempt in 0..5 {
+        match operation() {
+            Ok(()) => return Ok(()),
+            Err(error) => {
+                last_error = Some(error);
+                thread::sleep(Duration::from_millis(80 * (attempt + 1)));
+            }
+        }
+    }
+    Err(LauncherError::technical(
+        format!("Não foi possível {action}"),
+        last_error
+            .map(|error| error.to_string())
+            .unwrap_or_else(|| "erro desconhecido".to_string()),
+    ))
+}
+
+#[cfg(target_os = "windows")]
+fn powershell_escape(path: &Path) -> String {
+    path.to_string_lossy().replace('\'', "''")
+}
+
 fn compose_project_name() -> String {
     env::var("MG_POCKET_COMPOSE_PROJECT_NAME").unwrap_or_else(|_| COMPOSE_PROJECT.to_string())
 }
@@ -2186,6 +3531,11 @@ fn shellish_quote(value: &str) -> String {
     }
 }
 
+#[cfg(target_os = "linux")]
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
 fn path_string(path: &Path) -> String {
     path.to_string_lossy().to_string()
 }
@@ -2245,7 +3595,18 @@ PRETTY_NAME="Ubuntu 24.04 LTS"
     fn fast_diagnostic_commands_do_not_include_heavy_operations() {
         let commands = planned_fast_diagnostic_commands_for_test();
         let text = commands.join("\n");
-        for forbidden in ["pull", "clone", "up -d", "db:setup", "db:seed", "logs -f"] {
+        for forbidden in [
+            "pull",
+            "clone",
+            "up -d",
+            "db:setup",
+            "db:seed",
+            "logs -f",
+            "backup",
+            "restore",
+            "reset",
+            "remove-local-project",
+        ] {
             assert!(
                 !text.contains(forbidden),
                 "diagnóstico rápido não deve executar {forbidden}"
@@ -2287,11 +3648,42 @@ PRETTY_NAME="Ubuntu 24.04 LTS"
 
     #[test]
     fn limit_lines_keeps_only_tail() {
-        let text = (0..400).map(|line| format!("linha {line}")).collect::<Vec<_>>().join("\n");
-        let limited = limit_lines(&text, 300);
-        assert_eq!(limited.lines().count(), 300);
-        assert!(limited.starts_with("linha 100"));
-        assert!(limited.ends_with("linha 399"));
+        let text = (0..80).map(|line| format!("linha {line}")).collect::<Vec<_>>().join("\n");
+        let limited = limit_lines(&text, UI_LOG_LINES);
+        assert_eq!(limited.lines().count(), UI_LOG_LINES);
+        assert!(limited.starts_with("linha 30"));
+        assert!(limited.ends_with("linha 79"));
+    }
+
+    #[test]
+    fn backup_extension_matches_current_platform() {
+        if cfg!(target_os = "windows") {
+            assert!(backup_extension_valid(Path::new("backup.zip")));
+            assert!(!backup_extension_valid(Path::new("backup.tar.gz")));
+        } else {
+            assert!(backup_extension_valid(Path::new("backup.tar.gz")));
+            assert!(backup_extension_valid(Path::new("backup.tgz")));
+            assert!(!backup_extension_valid(Path::new("backup.zip")));
+        }
+    }
+
+    #[test]
+    fn compose_down_command_only_removes_volumes_in_complete_mode() {
+        let compose = ComposeCommand {
+            program: "docker".to_string(),
+            prefix: vec!["compose".to_string()],
+        };
+        let project = Path::new("/tmp/mg-pocket/app");
+
+        let safe = compose_down_command(&compose, project, false);
+        assert!(safe.args.iter().any(|arg| arg == "down"));
+        assert!(safe.args.iter().any(|arg| arg == "--remove-orphans"));
+        assert!(!safe.args.iter().any(|arg| arg == "-v"));
+
+        let complete = compose_down_command(&compose, project, true);
+        assert!(complete.args.iter().any(|arg| arg == "down"));
+        assert!(complete.args.iter().any(|arg| arg == "--remove-orphans"));
+        assert!(complete.args.iter().any(|arg| arg == "-v"));
     }
 
     fn planned_fast_diagnostic_commands_for_test() -> Vec<String> {

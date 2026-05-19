@@ -165,7 +165,7 @@ type PendingDependencyAction = "install" | "prepare";
 type AdminAction = "prepare" | "install-docker" | "dependency-install";
 type DockerPermissionResumeAction = PendingDependencyAction | null;
 
-const LOG_UI_LINE_LIMIT = 300;
+const LOG_UI_LINE_LIMIT = 50;
 const LOG_BUFFER_LINE_LIMIT = 1600;
 
 function limitLogText(text: string, maxLines = LOG_UI_LINE_LIMIT) {
