@@ -72,22 +72,21 @@ prepare_project_source "$project_path"
 cd "$project_path"
 [ -f docker-compose.yml ] || fail "docker-compose.yml não foi encontrado em $project_path."
 
-mkdir -p storage/local/public installers
+mkdir -p storage/local/public public/uploads installers
 ensure_env_file "$project_path"
 cleanup_legacy_app_compose_project
 
-info "Subindo containers do M&G Pocket. A primeira execução pode levar alguns minutos..."
-run_compose --env-file .env.docker-local up -d --build postgres storage app
-start_optional_adminer
+info "Construindo imagens do M&G Pocket. A primeira execução pode levar alguns minutos..."
+run_compose --env-file .env.docker-local build app maintenance
+
+info "Subindo Postgres..."
+run_compose --env-file .env.docker-local up -d postgres
 
 info "Aguardando Postgres ficar pronto..."
 wait_for_postgres 60 || fail "o banco de dados não ficou pronto a tempo."
 
-info "Validando conexão do app com o banco de dados..."
-wait_for_app_database 60 || fail "o app iniciou, mas ainda não consegue acessar o Postgres pelo Docker. Reinicie a instalação pelo launcher."
-
 info "Aplicando migrations e preparando Prisma..."
-run_compose --env-file .env.docker-local exec -T app npm run db:setup
+run_compose --env-file .env.docker-local run --rm maintenance npm run db:setup
 
 seed_status="$(seed_ready || true)"
 seed_marker="installers/.seed-inicial-concluido"
@@ -98,10 +97,17 @@ if [ -f "$seed_marker" ] || [ "$seed_status" = "1" ]; then
   touch "$seed_marker"
 else
   info "Executando seed inicial com os dados essenciais do RPG..."
-  run_compose --env-file .env.docker-local exec -T app npm run db:seed
+  run_compose --env-file .env.docker-local run --rm maintenance npm run db:seed
   touch "$seed_marker"
   run_install_tests=true
 fi
+
+info "Subindo app e Nginx..."
+run_compose --env-file .env.docker-local up -d app nginx
+start_optional_adminer
+
+info "Validando conexão do app com o banco de dados..."
+wait_for_app_database 60 || fail "o app iniciou, mas ainda não consegue acessar o Postgres pelo Docker. Reinicie a instalação pelo launcher."
 
 info "Validando http://localhost:3000..."
 if wait_for_url "http://localhost:3000" 60 2; then

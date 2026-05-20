@@ -2,7 +2,7 @@ use std::{
     collections::{HashMap, VecDeque},
     env,
     fs,
-    io::{BufRead, BufReader, Read},
+    io::{BufRead, BufReader, Read, Write},
     net::{SocketAddr, TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -40,6 +40,8 @@ const REPO_URL: &str = "https://github.com/jvitorn/meg-pocket.git";
 const COMPOSE_PROJECT: &str = "meg-pocket";
 const BACKUP_SQL_FILE: &str = "postgres.sql";
 const BACKUP_ENV_FILE: &str = "env.docker-local";
+const BACKUP_UPLOADS_FILE: &str = "uploads.tar";
+const UPLOADS_HEALTH_FILE: &str = ".meg-pocket-health";
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -75,8 +77,26 @@ pub struct SystemStatus {
     project_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     project_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    app_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    adminer_url: Option<String>,
     app_online: bool,
     adminer_online: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    podman_installed: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    container_runtime: Option<String>,
+    port_3000_available: bool,
+    port_80_available: bool,
+    port_443_available: bool,
+    port_5432_available: bool,
+    database_connected: bool,
+    containers_active: bool,
+    nginx_online: bool,
+    uploads_directory_ok: bool,
+    uploads_served: bool,
+    next_assets_online: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -832,15 +852,111 @@ fn install_system_dependencies_steps(ctx: &mut NativeJob<'_, '_>) -> LauncherRes
 }
 
 fn ensure_docker_running_steps(ctx: &mut NativeJob<'_, '_>) -> LauncherResult<()> {
-    ctx.run_required(
-        "Verificar Docker",
-        "Executando docker info com timeout.",
-        60,
-        docker_command(vec!["info"], false),
-        SHORT_TIMEOUT,
-    )?;
+    ensure_docker_daemon(ctx, false, 60)?;
     resolve_compose_command(false, QUICK_TIMEOUT, None)?;
     Ok(())
+}
+
+fn ensure_docker_daemon(
+    ctx: &mut NativeJob<'_, '_>,
+    use_sudo_docker: bool,
+    progress: u8,
+) -> LauncherResult<()> {
+    ctx.progress(
+        "Verificar Docker",
+        "Executando docker info para validar o daemon.",
+        progress,
+    );
+    if docker_info_success(use_sudo_docker, Some(ctx.job.cancel_flag())) {
+        return Ok(());
+    }
+
+    ctx.log(
+        "Iniciando Docker",
+        "Docker foi encontrado, mas o daemon ainda não respondeu. Tentando iniciar automaticamente.",
+        "info",
+    );
+    start_docker_daemon(ctx, use_sudo_docker, progress.saturating_add(5).min(85));
+
+    ctx.progress(
+        "Aguardando Docker",
+        "Aguardando Docker Engine ficar disponível.",
+        progress.saturating_add(10).min(90),
+    );
+    retry_step(ctx, Duration::from_secs(180), Duration::from_secs(2), || {
+        docker_info_success(use_sudo_docker, Some(ctx.job.cancel_flag()))
+    })
+    .map_err(|_| {
+        LauncherError::friendly(
+            "Docker foi encontrado, mas o daemon não ficou pronto a tempo. Abra o Docker Desktop ou inicie o serviço Docker e tente novamente.",
+        )
+    })
+}
+
+fn docker_info_success(use_sudo_docker: bool, cancel: Option<Arc<AtomicBool>>) -> bool {
+    run_capture(
+        docker_command(vec!["info"], use_sudo_docker),
+        SHORT_TIMEOUT,
+        cancel,
+    )
+    .map(|output| output.success)
+    .unwrap_or(false)
+}
+
+fn start_docker_daemon(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool, progress: u8) {
+    #[cfg(target_os = "linux")]
+    {
+        if command_success("systemctl", ["--version"], QUICK_TIMEOUT) {
+            let command = if use_sudo_docker {
+                NativeCommand::new("sudo").args(["-n", "systemctl", "start", "docker"])
+            } else {
+                NativeCommand::new("sudo").args(["-n", "systemctl", "start", "docker"])
+            };
+            ctx.run_optional(
+                "Iniciando Docker",
+                "Tentando iniciar o serviço docker via systemctl.",
+                progress,
+                command,
+                MEDIUM_TIMEOUT,
+            );
+
+            if !docker_info_success(use_sudo_docker, Some(ctx.job.cancel_flag()))
+                && command_success("pkexec", ["--version"], QUICK_TIMEOUT)
+            {
+                ctx.run_optional(
+                    "Iniciando Docker",
+                    "Abrindo autorização do sistema para iniciar Docker.",
+                    progress.saturating_add(2).min(90),
+                    NativeCommand::new("pkexec").args(["systemctl", "start", "docker"]),
+                    MEDIUM_TIMEOUT,
+                );
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(path) = docker_desktop_path() {
+            ctx.run_optional(
+                "Iniciando Docker Desktop",
+                "Abrindo Docker Desktop.",
+                progress,
+                NativeCommand::new("powershell.exe").args(vec![
+                    "-NoProfile".to_string(),
+                    "-Command".to_string(),
+                    format!("Start-Process -FilePath '{}'", powershell_escape(&path)),
+                ]),
+                SHORT_TIMEOUT,
+            );
+        }
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    {
+        let _ = ctx;
+        let _ = use_sudo_docker;
+        let _ = progress;
+    }
 }
 
 fn ensure_docker_permission_steps(ctx: &mut NativeJob<'_, '_>) -> LauncherResult<()> {
@@ -902,13 +1018,7 @@ fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> 
     require_command("git", ["--version"], "Git não foi encontrado. Instale o Git antes de continuar.")?;
 
     ctx.progress("Verificando Docker", "Verificando Docker Engine.", 20);
-    ctx.run_required(
-        "Verificar Docker",
-        "Executando docker info.",
-        20,
-        docker_command(vec!["info"], use_sudo_docker),
-        SHORT_TIMEOUT,
-    )?;
+    ensure_docker_daemon(ctx, use_sudo_docker, 20)?;
 
     ctx.progress("Verificando Docker Compose", "Verificando Docker Compose.", 30);
     let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
@@ -926,35 +1036,22 @@ fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> 
     cleanup_legacy_app_compose_project(ctx, &compose, &project_dir);
 
     ctx.run_required(
-        "Subindo containers",
-        "Subindo containers principais com Docker Compose.",
+        "Construindo imagens",
+        "Construindo runtime standalone e imagem de manutenção.",
         80,
-        compose.command(
-            &project_dir,
-            [
-                "--env-file",
-                ".env.docker-local",
-                "up",
-                "-d",
-                "--build",
-                "postgres",
-                "storage",
-                "app",
-            ],
-        ),
+        compose.command(&project_dir, ["--env-file", ".env.docker-local", "build", "app", "maintenance"]),
         LONG_TIMEOUT,
     )?;
 
-    ctx.run_optional(
-        "Subindo Adminer",
-        "Tentando iniciar Adminer.",
+    ctx.run_required(
+        "Subindo banco",
+        "Subindo Postgres para setup local.",
         84,
-        compose.command(&project_dir, ["up", "-d", "adminer"]),
-        MEDIUM_TIMEOUT,
-    );
+        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "postgres"]),
+        LONG_TIMEOUT,
+    )?;
 
     wait_for_postgres(ctx, &compose, &project_dir)?;
-    wait_for_app_database(ctx, &compose, &project_dir)?;
 
     ctx.run_required(
         "Rodando setup",
@@ -965,9 +1062,9 @@ fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> 
             [
                 "--env-file",
                 ".env.docker-local",
-                "exec",
-                "-T",
-                "app",
+                "run",
+                "--rm",
+                "maintenance",
                 "npm",
                 "run",
                 "db:setup",
@@ -977,6 +1074,21 @@ fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> 
     )?;
 
     run_seed_if_needed(ctx, &compose, &project_dir)?;
+    ctx.run_required(
+        "Subindo containers",
+        "Subindo aplicação standalone e Nginx.",
+        95,
+        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "app", "nginx"]),
+        LONG_TIMEOUT,
+    )?;
+    ctx.run_optional(
+        "Subindo Adminer",
+        "Tentando iniciar Adminer.",
+        96,
+        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "adminer"]),
+        MEDIUM_TIMEOUT,
+    );
+    wait_for_app_database(ctx, &compose, &project_dir)?;
     validate_site(ctx)?;
     Ok(())
 }
@@ -988,39 +1100,30 @@ fn start_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Launch
     prepare_project_files(&project_dir)?;
 
     ctx.progress("Verificando Docker", "Validando Docker Engine.", 15);
-    ctx.run_required(
-        "Verificar Docker",
-        "Executando docker info.",
-        15,
-        docker_command(vec!["info"], use_sudo_docker),
-        SHORT_TIMEOUT,
-    )?;
+    ensure_docker_daemon(ctx, use_sudo_docker, 15)?;
     let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
     cleanup_legacy_app_compose_project(ctx, &compose, &project_dir);
 
     ctx.run_required(
-        "Subindo containers",
-        "Subindo containers principais.",
+        "Subindo banco",
+        "Subindo Postgres.",
         65,
-        compose.command(
-            &project_dir,
-            [
-                "--env-file",
-                ".env.docker-local",
-                "up",
-                "-d",
-                "postgres",
-                "storage",
-                "app",
-            ],
-        ),
+        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "postgres"]),
+        LONG_TIMEOUT,
+    )?;
+    wait_for_postgres(ctx, &compose, &project_dir)?;
+    ctx.run_required(
+        "Subindo containers",
+        "Subindo aplicação standalone e Nginx.",
+        70,
+        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "app", "nginx"]),
         LONG_TIMEOUT,
     )?;
     ctx.run_optional(
         "Subindo Adminer",
         "Tentando iniciar Adminer.",
         75,
-        compose.command(&project_dir, ["up", "-d", "adminer"]),
+        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "adminer"]),
         MEDIUM_TIMEOUT,
     );
     wait_for_app_database(ctx, &compose, &project_dir)?;
@@ -1048,6 +1151,7 @@ fn restart_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Laun
     require_project(&project_dir)?;
     validate_project_path(&project_dir)?;
     prepare_project_files(&project_dir)?;
+    ensure_docker_daemon(ctx, use_sudo_docker, 28)?;
     let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
 
     ctx.run_required(
@@ -1060,27 +1164,16 @@ fn restart_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Laun
 
     ctx.run_required(
         "Subindo containers",
-        "Subindo containers principais.",
+        "Subindo aplicação standalone e Nginx.",
         60,
-        compose.command(
-            &project_dir,
-            [
-                "--env-file",
-                ".env.docker-local",
-                "up",
-                "-d",
-                "postgres",
-                "storage",
-                "app",
-            ],
-        ),
+        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "postgres", "app", "nginx"]),
         LONG_TIMEOUT,
     )?;
     ctx.run_optional(
         "Subindo Adminer",
         "Tentando iniciar Adminer.",
         75,
-        compose.command(&project_dir, ["up", "-d", "adminer"]),
+        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "adminer"]),
         MEDIUM_TIMEOUT,
     );
     ctx.progress("Aguardando serviços", "Aguardando serviços locais.", 85);
@@ -1114,13 +1207,7 @@ fn backup_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> LauncherR
     prepare_project_files(&project_dir)?;
 
     ctx.progress("Verificando containers", "Validando Docker e Docker Compose.", 30);
-    ctx.run_required(
-        "Verificar Docker",
-        "Executando docker info.",
-        30,
-        docker_command(vec!["info"], use_sudo_docker),
-        SHORT_TIMEOUT,
-    )?;
+    ensure_docker_daemon(ctx, use_sudo_docker, 30)?;
     let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
     ensure_postgres_for_maintenance(ctx, &compose, &project_dir, 40)?;
 
@@ -1150,7 +1237,7 @@ fn restore_backup_steps(
     require_project(&project_dir)?;
     validate_project_path(&project_dir)?;
 
-    ctx.progress("Parando containers", "Parando app, Adminer e storage antes do restore.", 40);
+    ctx.progress("Parando containers", "Parando app, Adminer e Nginx antes do restore.", 40);
     let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
     restore_env_file(temp_dir.path(), &project_dir)?;
     ctx.run_optional(
@@ -1165,7 +1252,7 @@ fn restore_backup_steps(
                 "stop",
                 "app",
                 "adminer",
-                "storage",
+                "nginx",
             ],
         ),
         MEDIUM_TIMEOUT,
@@ -1220,7 +1307,7 @@ fn restore_backup_steps(
     )?;
 
     ctx.progress("Aplicando arquivos", "Aplicando arquivos locais do backup.", 82);
-    restore_storage_with_rollback(temp_dir.path(), &project_dir)?;
+    restore_storage_with_rollback(&mut ctx, &compose, temp_dir.path(), &project_dir)?;
 
     ctx.progress("Subindo containers", "Subindo containers depois da restauração.", 90);
     start_app_steps(ctx, use_sudo_docker)?;
@@ -1270,6 +1357,9 @@ fn reset_local_data_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) ->
     remove_dir_retry(&project_dir.join("storage").join("local").join("public"))?;
     fs::create_dir_all(project_dir.join("storage").join("local").join("public"))
         .map_err(|error| LauncherError::technical("Não foi possível recriar storage local", error))?;
+    remove_dir_retry(&project_dir.join("public").join("uploads"))?;
+    fs::create_dir_all(project_dir.join("public").join("uploads"))
+        .map_err(|error| LauncherError::technical("Não foi possível recriar uploads públicos locais", error))?;
     remove_file_if_exists(&project_dir.join("installers").join(".seed-inicial-concluido"))?;
 
     install_project_steps(ctx, use_sudo_docker)?;
@@ -1392,6 +1482,46 @@ fn create_backup_archive(
         copy_file_retry(&env_file, &temp_dir.path().join(BACKUP_ENV_FILE))?;
     }
 
+    let uploads_archive = temp_dir.path().join(BACKUP_UPLOADS_FILE);
+    let output = run_streaming_command_with_files(
+        ctx.app,
+        ctx.job.job_id(),
+        ctx.job.action(),
+        "Preparando arquivos",
+        files_progress,
+        compose.command(
+            project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "run",
+                "--rm",
+                "--no-deps",
+                "maintenance",
+                "tar",
+                "-C",
+                "/app/uploads",
+                "-cf",
+                "-",
+                ".",
+            ],
+        ),
+        LONG_TIMEOUT,
+        ctx.job.cancel_flag(),
+        None,
+        Some(&uploads_archive),
+    )
+    .map_err(|error| process_error_to_launcher("Preparando arquivos", error))?;
+    ctx.append_output(&output);
+    if !output.success {
+        ctx.log(
+            "Preparando arquivos",
+            "Não foi possível exportar uploads pelo volume Docker. Tentando fallback legado.",
+            "error",
+        );
+        let _ = remove_file_if_exists(&uploads_archive);
+    }
+
     let storage_public = project_dir.join("storage").join("local").join("public");
     if storage_public.is_dir() {
         let storage_target = temp_dir.path().join("storage").join("local").join("public");
@@ -1510,7 +1640,39 @@ fn restore_env_file(temp_dir: &Path, project_dir: &Path) -> LauncherResult<()> {
     Ok(())
 }
 
-fn restore_storage_with_rollback(temp_dir: &Path, project_dir: &Path) -> LauncherResult<()> {
+fn restore_storage_with_rollback(
+    ctx: &mut NativeJob<'_, '_>,
+    compose: &ComposeCommand,
+    temp_dir: &Path,
+    project_dir: &Path,
+) -> LauncherResult<()> {
+    let uploads_archive = temp_dir.join(BACKUP_UPLOADS_FILE);
+    if uploads_archive.is_file() {
+        ctx.run_required_with_files(
+            "Aplicando arquivos",
+            "Restaurando volume persistente de uploads.",
+            84,
+            compose.command(
+                project_dir,
+                [
+                    "--env-file",
+                    ".env.docker-local",
+                    "run",
+                    "--rm",
+                    "--no-deps",
+                    "maintenance",
+                    "sh",
+                    "-lc",
+                    "rm -rf /app/uploads/* /app/uploads/.[!.]* /app/uploads/..?* 2>/dev/null || true; mkdir -p /app/uploads; tar -C /app/uploads -xf -",
+                ],
+            ),
+            LONG_TIMEOUT,
+            Some(&uploads_archive),
+            None,
+        )?;
+        return Ok(());
+    }
+
     let backup_storage = temp_dir.join("storage").join("local").join("public");
     if !backup_storage.is_dir() {
         return Ok(());
@@ -1923,6 +2085,7 @@ fn prepare_project_source(ctx: &mut NativeJob<'_, '_>, project_dir: &Path) -> La
             ]),
             LONG_TIMEOUT,
         )?;
+        trim_installed_project_source(ctx, project_dir);
         return Ok(());
     }
 
@@ -1932,6 +2095,7 @@ fn prepare_project_source(ctx: &mut NativeJob<'_, '_>, project_dir: &Path) -> La
             "Projeto já existe sem .git. Mantendo arquivos locais.",
             "info",
         );
+        trim_installed_project_source(ctx, project_dir);
         return Ok(());
     }
 
@@ -1957,17 +2121,73 @@ fn prepare_project_source(ctx: &mut NativeJob<'_, '_>, project_dir: &Path) -> La
         ]),
         LONG_TIMEOUT,
     )?;
+    trim_installed_project_source(ctx, project_dir);
     Ok(())
+}
+
+fn trim_installed_project_source(ctx: &mut NativeJob<'_, '_>, project_dir: &Path) {
+    let launcher_dir = project_dir.join("launcher");
+    if !launcher_dir.exists() {
+        return;
+    }
+
+    if project_dir.join(".git").is_dir() {
+        let sparse = run_capture(
+            NativeCommand::new("git").args(vec![
+                "-C".to_string(),
+                path_string(project_dir),
+                "sparse-checkout".to_string(),
+                "set".to_string(),
+                "--no-cone".to_string(),
+                "/*".to_string(),
+                "!/launcher/".to_string(),
+            ]),
+            MEDIUM_TIMEOUT,
+            Some(ctx.job.cancel_flag()),
+        );
+
+        if sparse.as_ref().map(|output| output.success).unwrap_or(false) {
+            ctx.log(
+                "Organizando instalação",
+                "Pasta launcher removida da cópia local via sparse checkout.",
+                "info",
+            );
+            return;
+        }
+
+        ctx.log(
+            "Organizando instalação",
+            "Não foi possível ativar sparse checkout para remover launcher sem sujar o Git. Mantendo a pasta nesta instalação.",
+            "error",
+        );
+        return;
+    }
+
+    match remove_dir_retry(&launcher_dir) {
+        Ok(()) => ctx.log(
+            "Organizando instalação",
+            "Pasta launcher removida da instalação local.",
+            "info",
+        ),
+        Err(error) => ctx.log(
+            "Organizando instalação",
+            &format!("Não foi possível remover launcher local: {}", error.friendly_message()),
+            "error",
+        ),
+    }
 }
 
 fn prepare_project_files(project_dir: &Path) -> LauncherResult<()> {
     fs::create_dir_all(project_dir.join("storage").join("local").join("public"))
         .map_err(|error| LauncherError::technical("Não foi possível criar storage local", error))?;
+    fs::create_dir_all(project_dir.join("public").join("uploads"))
+        .map_err(|error| LauncherError::technical("Não foi possível criar pasta pública de uploads", error))?;
     fs::create_dir_all(project_dir.join("installers"))
         .map_err(|error| LauncherError::technical("Não foi possível criar pasta técnica do projeto", error))?;
 
     let env_file = project_dir.join(".env.docker-local");
     if env_file.is_file() {
+        normalize_existing_env_file(&env_file)?;
         return Ok(());
     }
 
@@ -1977,6 +2197,17 @@ fn prepare_project_files(project_dir: &Path) -> LauncherResult<()> {
     } else {
         default_env_file()
     };
+
+    let app_port = suggest_available_port(3000);
+    let adminer_port = suggest_available_port(8081);
+    let app_url = format!("http://localhost:{app_port}");
+    let adminer_url = format!("http://localhost:{adminer_port}");
+    content = upsert_env_var(&content, "APP_PORT", &app_port.to_string());
+    content = upsert_env_var(&content, "ADMINER_PORT", &adminer_port.to_string());
+    content = upsert_env_var(&content, "NEXTAUTH_URL", &app_url);
+    content = upsert_env_var(&content, "NEXT_PUBLIC_BASE_URL", &app_url);
+    content = upsert_env_var(&content, "ADMINER_URL", &adminer_url);
+    content = upsert_env_var(&content, "STORAGE_LOCAL_PUBLIC_URL", "/uploads");
 
     let secret = format!("mg-pocket-local-{}", timestamp_nanos());
     if content.lines().any(|line| line.starts_with("NEXTAUTH_SECRET=")) {
@@ -2099,24 +2330,21 @@ fn wait_for_app_database(
     compose: &ComposeCommand,
     project_dir: &Path,
 ) -> LauncherResult<()> {
-    ctx.progress("Aguardando app", "Validando conexão do app com o banco.", 88);
+    ctx.progress("Aguardando app", "Validando healthcheck do app com o banco.", 88);
     retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
         run_capture(
             compose.command(
                 project_dir,
                 [
+                    "--env-file",
+                    ".env.docker-local",
                     "exec",
                     "-T",
                     "app",
-                    "pg_isready",
-                    "-h",
-                    "postgres",
-                    "-p",
-                    "5432",
-                    "-U",
-                    "meg",
-                    "-d",
-                    "meg_pocket",
+                    "wget",
+                    "--spider",
+                    "-q",
+                    "http://localhost:3000/api/health",
                 ],
             ),
             SHORT_TIMEOUT,
@@ -2158,9 +2386,9 @@ fn run_seed_if_needed(
             [
                 "--env-file",
                 ".env.docker-local",
-                "exec",
-                "-T",
-                "app",
+                "run",
+                "--rm",
+                "maintenance",
                 "npm",
                 "run",
                 "db:seed",
@@ -2201,18 +2429,23 @@ fn seed_ready(compose: &ComposeCommand, project_dir: &Path, cancel: Arc<AtomicBo
 }
 
 fn validate_site(ctx: &mut NativeJob<'_, '_>) -> LauncherResult<()> {
-    ctx.progress("Validando site/Adminer", "Validando http://localhost:3000.", 95);
+    let project_dir = project_dir();
+    let app_port = local_service_port("APP_PORT", 3000, &project_dir);
+    let adminer_port = local_service_port("ADMINER_PORT", 8081, &project_dir);
+    let app_url = format!("http://localhost:{app_port}");
+    let adminer_url = format!("http://localhost:{adminer_port}");
+    ctx.progress("Validando site/Adminer", &format!("Validando {app_url}."), 95);
     retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
-        check_local_port(3000, PORT_TIMEOUT)
+        check_local_port(app_port, PORT_TIMEOUT)
     })
     .map_err(|_| {
         LauncherError::friendly(
-            "Os containers subiram, mas http://localhost:3000 não respondeu a tempo. Veja os logs pelo launcher.",
+            format!("Os containers subiram, mas {app_url} não respondeu a tempo. Veja os logs pelo launcher."),
         )
     })?;
 
-    if check_local_port(8081, PORT_TIMEOUT) {
-        ctx.log("Validando site/Adminer", "Adminer respondeu em http://localhost:8081.", "info");
+    if check_local_port(adminer_port, PORT_TIMEOUT) {
+        ctx.log("Validando site/Adminer", &format!("Adminer respondeu em {adminer_url}."), "info");
     } else {
         ctx.log(
             "Validando site/Adminer",
@@ -2292,6 +2525,10 @@ fn build_system_status(quick: bool, cancel: Option<Arc<AtomicBool>>) -> Launcher
         .and_then(|compose| command_version(compose.command(Path::new("."), ["version"]), QUICK_TIMEOUT, cancel.clone()));
 
     let project_dir = project_dir();
+    let app_port = local_service_port("APP_PORT", 3000, &project_dir);
+    let adminer_port = local_service_port("ADMINER_PORT", 8081, &project_dir);
+    let app_url = format!("http://localhost:{app_port}");
+    let adminer_url = format!("http://localhost:{adminer_port}");
     let project_installed = project_dir.join("docker-compose.yml").is_file();
     let project_version = if project_installed && !quick {
         project_version(&project_dir, cancel.clone())
@@ -2305,6 +2542,12 @@ fn build_system_status(quick: bool, cancel: Option<Arc<AtomicBool>>) -> Launcher
         || sudo_docker.as_ref().map(|output| output.success).unwrap_or(false);
     let docker_permission_ok = docker_ps.as_ref().map(|output| output.success).unwrap_or(false);
     let sudo_docker_works = sudo_docker.as_ref().map(|output| output.success).unwrap_or(false);
+    let project_diagnostics = if !quick && project_installed && docker_running {
+        collect_project_diagnostics(&project_dir, cancel.clone())
+    } else {
+        ProjectDiagnostics::default()
+    };
+    let podman_installed = command_success("podman", ["--version"], QUICK_TIMEOUT);
 
     Ok(SystemStatus {
         os: os.to_string(),
@@ -2312,7 +2555,7 @@ fn build_system_status(quick: bool, cancel: Option<Arc<AtomicBool>>) -> Launcher
         distro_name,
         supported,
         winget_installed: (os == "windows").then(|| command_success("winget", ["--version"], QUICK_TIMEOUT)),
-        git_installed: (os == "windows").then_some(git.is_some()),
+        git_installed: Some(git.is_some()),
         power_shell_installed: (os == "windows").then(|| command_success("powershell.exe", ["-NoProfile", "-Command", "$PSVersionTable.PSVersion"], QUICK_TIMEOUT)),
         wsl2_installed: (os == "windows").then(|| command_success("wsl.exe", ["--status"], QUICK_TIMEOUT)),
         docker_desktop_installed: (os == "windows").then(|| docker_desktop_installed()),
@@ -2327,9 +2570,124 @@ fn build_system_status(quick: bool, cancel: Option<Arc<AtomicBool>>) -> Launcher
         project_installed,
         project_path: Some(path_string(&project_dir)),
         project_version,
-        app_online: check_local_port(3000, PORT_TIMEOUT),
-        adminer_online: check_local_port(8081, PORT_TIMEOUT),
+        app_url: Some(app_url.clone()),
+        adminer_url: Some(adminer_url),
+        app_online: check_local_port(app_port, PORT_TIMEOUT),
+        adminer_online: check_local_port(adminer_port, PORT_TIMEOUT),
+        podman_installed: Some(podman_installed),
+        container_runtime: Some(if docker_installed {
+            "docker".to_string()
+        } else if podman_installed {
+            "podman-ready".to_string()
+        } else {
+            "docker".to_string()
+        }),
+        port_3000_available: !check_local_port(3000, PORT_TIMEOUT),
+        port_80_available: !check_local_port(80, PORT_TIMEOUT),
+        port_443_available: !check_local_port(443, PORT_TIMEOUT),
+        port_5432_available: !check_local_port(5432, PORT_TIMEOUT),
+        database_connected: project_diagnostics.database_connected,
+        containers_active: project_diagnostics.containers_active,
+        nginx_online: project_diagnostics.nginx_online || check_local_port(app_port, PORT_TIMEOUT),
+        uploads_directory_ok: project_diagnostics.uploads_directory_ok,
+        uploads_served: project_diagnostics.uploads_served,
+        next_assets_online: project_diagnostics.next_assets_online,
     })
+}
+
+#[derive(Default)]
+struct ProjectDiagnostics {
+    database_connected: bool,
+    containers_active: bool,
+    nginx_online: bool,
+    uploads_directory_ok: bool,
+    uploads_served: bool,
+    next_assets_online: bool,
+}
+
+fn collect_project_diagnostics(
+    project_dir: &Path,
+    cancel: Option<Arc<AtomicBool>>,
+) -> ProjectDiagnostics {
+    let Ok(compose) = resolve_compose_command(false, QUICK_TIMEOUT, cancel.clone()) else {
+        return ProjectDiagnostics::default();
+    };
+    let app_port = local_service_port("APP_PORT", 3000, project_dir);
+    let database_connected = run_capture(
+        compose.command(
+            project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "exec",
+                "-T",
+                "postgres",
+                "pg_isready",
+                "-U",
+                "meg",
+                "-d",
+                "meg_pocket",
+            ],
+        ),
+        QUICK_TIMEOUT,
+        cancel.clone(),
+    )
+    .map(|output| output.success)
+    .unwrap_or(false);
+
+    let running_services = run_capture(
+        compose.command(
+            project_dir,
+            ["--env-file", ".env.docker-local", "ps", "--services", "--filter", "status=running"],
+        ),
+        QUICK_TIMEOUT,
+        cancel.clone(),
+    )
+    .ok()
+    .filter(|output| output.success)
+    .map(|output| output.stdout)
+    .unwrap_or_default();
+    let containers_active = ["postgres", "app", "nginx"]
+        .iter()
+        .all(|service| running_services.lines().any(|line| line.trim() == *service));
+
+    let uploads_directory_ok = run_capture(
+        compose.command(
+            project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "exec",
+                "-T",
+                "app",
+                "sh",
+                "-lc",
+                "test -d /app/uploads && test -w /app/uploads && printf ok > /app/uploads/.meg-pocket-health",
+            ],
+        ),
+        SHORT_TIMEOUT,
+        cancel,
+    )
+    .map(|output| output.success)
+    .unwrap_or(false);
+
+    ProjectDiagnostics {
+        database_connected,
+        containers_active,
+        nginx_online: check_http_path(app_port, "/healthz", PORT_TIMEOUT),
+        uploads_directory_ok,
+        uploads_served: uploads_directory_ok
+            && check_http_path(
+                app_port,
+                &format!("/uploads/{UPLOADS_HEALTH_FILE}"),
+                PORT_TIMEOUT,
+            ),
+        next_assets_online: check_http_path(
+            app_port,
+            "/imgs/icons/logo_guerreiro.svg",
+            PORT_TIMEOUT,
+        ),
+    }
 }
 
 fn build_dependency_status() -> LauncherResult<DependencyStatus> {
@@ -3089,6 +3447,33 @@ fn check_local_port(port: u16, timeout: Duration) -> bool {
     })
 }
 
+fn check_http_path(port: u16, path: &str, timeout: Duration) -> bool {
+    let addr = ("127.0.0.1", port)
+        .to_socket_addrs()
+        .ok()
+        .and_then(|mut addrs| addrs.next());
+    let Some(addr) = addr else {
+        return false;
+    };
+    let Ok(mut stream) = TcpStream::connect_timeout(&addr, timeout) else {
+        return false;
+    };
+    let _ = stream.set_read_timeout(Some(timeout));
+    let _ = stream.set_write_timeout(Some(timeout));
+    let request = format!(
+        "GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+    );
+    if stream.write_all(request.as_bytes()).is_err() {
+        return false;
+    }
+    let mut buffer = [0_u8; 64];
+    let Ok(bytes) = stream.read(&mut buffer) else {
+        return false;
+    };
+    let response = String::from_utf8_lossy(&buffer[..bytes]);
+    response.starts_with("HTTP/1.1 2") || response.starts_with("HTTP/1.0 2")
+}
+
 fn project_dir() -> PathBuf {
     if let Ok(path) = env::var("MG_POCKET_PROJECT_DIR") {
         if !path.trim().is_empty() {
@@ -3111,6 +3496,70 @@ fn project_dir() -> PathBuf {
         .join("share")
         .join("mg-pocket")
         .join("app")
+}
+
+pub fn local_site_url() -> String {
+    local_service_url("APP_PORT", 3000)
+}
+
+pub fn local_adminer_url() -> String {
+    local_service_url("ADMINER_PORT", 8081)
+}
+
+fn local_service_url(port_key: &str, fallback_port: u16) -> String {
+    let project_dir = project_dir();
+    let env = read_env_file(&project_dir.join(".env.docker-local"));
+    let port = env
+        .get(port_key)
+        .and_then(|value| value.parse::<u16>().ok())
+        .unwrap_or(fallback_port);
+    format!("http://localhost:{port}")
+}
+
+fn local_service_port(port_key: &str, fallback_port: u16, project_dir: &Path) -> u16 {
+    let env = read_env_file(&project_dir.join(".env.docker-local"));
+    env.get(port_key)
+        .and_then(|value| value.parse::<u16>().ok())
+        .unwrap_or(fallback_port)
+}
+
+fn read_env_file(path: &Path) -> HashMap<String, String> {
+    let Ok(text) = fs::read_to_string(path) else {
+        return HashMap::new();
+    };
+
+    parse_env_text(&text)
+}
+
+fn parse_env_text(text: &str) -> HashMap<String, String> {
+    let mut values = HashMap::new();
+    for raw_line in text.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let line = line.strip_prefix("export ").unwrap_or(line).trim();
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        let key = key.trim();
+        if key.is_empty() {
+            continue;
+        }
+        values.insert(key.to_string(), parse_env_value(value.trim()));
+    }
+    values
+}
+
+fn parse_env_value(value: &str) -> String {
+    if value.len() >= 2 {
+        let first = value.as_bytes()[0] as char;
+        let last = value.as_bytes()[value.len() - 1] as char;
+        if (first == '"' || first == '\'') && first == last {
+            return value[1..value.len() - 1].to_string();
+        }
+    }
+    value.split(" #").next().unwrap_or(value).trim().to_string()
 }
 
 fn default_project_dir() -> PathBuf {
@@ -3431,18 +3880,93 @@ fn docker_desktop_installed() -> bool {
     }
 }
 
+#[cfg(target_os = "windows")]
+fn docker_desktop_path() -> Option<PathBuf> {
+    let mut candidates = Vec::new();
+    if let Ok(program_files) = env::var("ProgramFiles") {
+        candidates.push(PathBuf::from(program_files).join("Docker").join("Docker").join("Docker Desktop.exe"));
+    }
+    if let Ok(program_files_x86) = env::var("ProgramFiles(x86)") {
+        candidates.push(PathBuf::from(program_files_x86).join("Docker").join("Docker").join("Docker Desktop.exe"));
+    }
+    if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
+        candidates.push(
+            PathBuf::from(local_app_data)
+                .join("Programs")
+                .join("Docker")
+                .join("Docker")
+                .join("Docker Desktop.exe"),
+        );
+    }
+    candidates.into_iter().find(|path| path.is_file())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn docker_desktop_path() -> Option<PathBuf> {
+    None
+}
+
+fn normalize_existing_env_file(env_file: &Path) -> LauncherResult<()> {
+    let content = fs::read_to_string(env_file)
+        .map_err(|error| LauncherError::technical("Não foi possível ler .env.docker-local", error))?;
+    let next = upsert_env_var(&content, "STORAGE_LOCAL_PUBLIC_URL", "/uploads");
+
+    if next != content {
+        fs::write(env_file, next)
+            .map_err(|error| LauncherError::technical("Não foi possível atualizar .env.docker-local", error))?;
+    }
+
+    Ok(())
+}
+
+fn suggest_available_port(preferred: u16) -> u16 {
+    for port in preferred..preferred.saturating_add(50) {
+        if !check_local_port(port, PORT_TIMEOUT) {
+            return port;
+        }
+    }
+
+    preferred
+}
+
+fn upsert_env_var(content: &str, key: &str, value: &str) -> String {
+    let replacement = format!("{key}=\"{}\"", value.replace('"', "\\\""));
+    let mut found = false;
+    let mut lines = content
+        .lines()
+        .map(|line| {
+            if line.trim_start().starts_with(&format!("{key}=")) {
+                found = true;
+                replacement.clone()
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if !found {
+        lines.push(replacement);
+    }
+
+    let mut next = lines.join("\n");
+    next.push('\n');
+    next
+}
+
 fn default_env_file() -> String {
     r#"DATABASE_URL="postgresql://meg:meg@localhost:5433/meg_pocket?schema=public"
 DIRECT_URL="postgresql://meg:meg@localhost:5433/meg_pocket?schema=public"
 NEXTAUTH_SECRET="meg-pocket-local-secret-change-me"
 NEXTAUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_BASE_URL="http://localhost:3000"
+APP_PORT="3000"
+ADMINER_PORT="8081"
 GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
 STORAGE_DRIVER="local"
 STORAGE_BUCKET="personagens"
-STORAGE_LOCAL_DIR="./storage/local/public"
-STORAGE_LOCAL_PUBLIC_URL="http://localhost:9323"
+STORAGE_LOCAL_DIR="./public/uploads"
+STORAGE_LOCAL_PUBLIC_URL="/uploads"
 NEXT_PUBLIC_STORAGE_MAX_FILE_SIZE_MB="40"
 ADMINER_URL="http://localhost:8081"
 "#

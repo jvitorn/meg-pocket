@@ -39,15 +39,15 @@ if (Test-Path (Join-Path $projectDir ".git")) {
 
 Set-Location $projectDir
 New-Item -ItemType Directory -Force -Path "storage\local\public" | Out-Null
+New-Item -ItemType Directory -Force -Path "public\uploads" | Out-Null
 New-Item -ItemType Directory -Force -Path "installers" | Out-Null
 Ensure-EnvFile $projectDir
 Stop-LegacyAppComposeProject
 
-Invoke-Compose @("--env-file", ".env.docker-local", "up", "-d", "--build", "postgres", "storage", "app")
-Start-OptionalAdminer
+Invoke-Compose @("--env-file", ".env.docker-local", "build", "app", "maintenance")
+Invoke-Compose @("--env-file", ".env.docker-local", "up", "-d", "postgres")
 Wait-Postgres
-Wait-AppDatabase
-Invoke-Compose @("--env-file", ".env.docker-local", "exec", "-T", "app", "npm", "run", "db:setup")
+Invoke-Compose @("--env-file", ".env.docker-local", "run", "--rm", "maintenance", "npm", "run", "db:setup")
 
 $seedMarker = "installers\.seed-inicial-concluido"
 $runInstallTests = $false
@@ -62,11 +62,14 @@ if ((Test-Path $seedMarker) -or $seedReady -eq "1") {
   Write-Host "Seed inicial já executado ou dados essenciais já existem. Pulando seed."
   New-Item -ItemType File -Force -Path $seedMarker | Out-Null
 } else {
-  Invoke-Compose @("--env-file", ".env.docker-local", "exec", "-T", "app", "npm", "run", "db:seed")
+  Invoke-Compose @("--env-file", ".env.docker-local", "run", "--rm", "maintenance", "npm", "run", "db:seed")
   New-Item -ItemType File -Force -Path $seedMarker | Out-Null
   $runInstallTests = $true
 }
 
+Invoke-Compose @("--env-file", ".env.docker-local", "up", "-d", "app", "nginx")
+Start-OptionalAdminer
+Wait-AppDatabase
 Wait-App
 Write-Host "M&G Pocket instalado e online em http://localhost:3000"
 if ($runInstallTests) {

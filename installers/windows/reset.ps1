@@ -28,6 +28,8 @@ Set-Location $projectDir
 Invoke-Compose @("--env-file", ".env.docker-local", "down", "-v")
 Remove-Item -Recurse -Force "storage\local\public" -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path "storage\local\public" | Out-Null
+Remove-Item -Recurse -Force "public\uploads" -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path "public\uploads" | Out-Null
 Remove-Item "installers\.seed-inicial-concluido" -Force -ErrorAction SilentlyContinue
 
 & "$PSScriptRoot\install-project.ps1"

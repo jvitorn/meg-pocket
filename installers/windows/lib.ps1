@@ -185,12 +185,14 @@ DIRECT_URL="postgresql://meg:meg@localhost:5433/meg_pocket?schema=public"
 NEXTAUTH_SECRET="meg-pocket-local-secret-change-me"
 NEXTAUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_BASE_URL="http://localhost:3000"
+APP_PORT="3000"
+ADMINER_PORT="8081"
 GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
 STORAGE_DRIVER="local"
 STORAGE_BUCKET="personagens"
-STORAGE_LOCAL_DIR="./storage/local/public"
-STORAGE_LOCAL_PUBLIC_URL="http://localhost:9323"
+STORAGE_LOCAL_DIR="./public/uploads"
+STORAGE_LOCAL_PUBLIC_URL="/uploads"
 NEXT_PUBLIC_STORAGE_MAX_FILE_SIZE_MB="40"
 ADMINER_URL="http://localhost:8081"
 "@ | Set-Content -Path $envFile -Encoding UTF8
@@ -222,7 +224,7 @@ function Wait-AppDatabase {
 
   for ($i = 0; $i -lt $Attempts; $i++) {
     try {
-      Invoke-Compose @("exec", "-T", "app", "pg_isready", "-h", "postgres", "-p", "5432", "-U", "meg", "-d", "meg_pocket") *> $null
+      Invoke-Compose @("--env-file", ".env.docker-local", "exec", "-T", "app", "wget", "--spider", "-q", "http://localhost:3000/api/health") *> $null
       return
     } catch {
       Start-Sleep -Seconds 2

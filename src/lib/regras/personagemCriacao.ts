@@ -35,6 +35,10 @@ export function calcularQuantidadeObrigatoriaPericias(
 }
 
 export function isValidExternalUrl(value: string) {
+  if (/^\/uploads\/[A-Za-z0-9][A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/.test(value)) {
+    return !value.includes("..") && !value.includes("\\");
+  }
+
   try {
     const url = new URL(value);
     return url.protocol === "http:" || url.protocol === "https:";

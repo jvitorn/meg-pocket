@@ -19,8 +19,22 @@ export type SystemStatus = {
   projectInstalled: boolean;
   projectPath?: string;
   projectVersion?: string;
+  appUrl?: string;
+  adminerUrl?: string;
   appOnline: boolean;
   adminerOnline: boolean;
+  podmanInstalled?: boolean;
+  containerRuntime?: "docker" | "podman-ready" | string;
+  port3000Available?: boolean;
+  port80Available?: boolean;
+  port443Available?: boolean;
+  port5432Available?: boolean;
+  databaseConnected?: boolean;
+  containersActive?: boolean;
+  nginxOnline?: boolean;
+  uploadsDirectoryOk?: boolean;
+  uploadsServed?: boolean;
+  nextAssetsOnline?: boolean;
 };
 
 export type DependencyStatus = {

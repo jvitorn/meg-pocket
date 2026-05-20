@@ -1,4 +1,5 @@
 import {
+  Activity,
   Archive,
   BookOpen,
   Database,
@@ -742,7 +743,7 @@ export default function App() {
 
   const statusItems = useMemo(() => {
     const empty: StatusItem[] = [{ label: "Status", value: "pronto para diagnosticar", tone: "idle" }];
-    if (!status) return { environment: empty, docker: empty, project: empty };
+    if (!status) return { environment: empty, docker: empty, project: empty, diagnostics: empty };
 
     const environment: StatusItem[] = [
       { label: "Sistema", value: friendlyOs(status.os), tone: status.os === "unknown" ? "warn" : "ok" },
@@ -775,7 +776,18 @@ export default function App() {
       { label: "Adminer", value: status.adminerOnline ? "online" : "offline", tone: status.adminerOnline ? "ok" : "warn" },
     ];
 
-    return { environment, docker, project };
+    const diagnostics: StatusItem[] = [
+      { label: "Git instalado", value: boolLabel(Boolean(status.gitInstalled)), tone: status.gitInstalled ? "ok" : "warn" },
+      { label: "Banco conectado", value: boolLabel(Boolean(status.databaseConnected)), tone: status.databaseConnected ? "ok" : "warn" },
+      { label: "Containers ativos", value: boolLabel(Boolean(status.containersActive)), tone: status.containersActive ? "ok" : "warn" },
+      { label: "Nginx", value: status.nginxOnline ? "ok" : "offline", tone: status.nginxOnline ? "ok" : "warn" },
+      { label: "Uploads", value: status.uploadsServed ? "ok" : status.uploadsDirectoryOk ? "pasta ok" : "verificar", tone: status.uploadsServed ? "ok" : "warn" },
+      { label: "Assets Next", value: status.nextAssetsOnline ? "ok" : "verificar", tone: status.nextAssetsOnline ? "ok" : "warn" },
+      { label: "Porta 3000", value: status.port3000Available ? "livre" : "em uso", tone: status.port3000Available || status.appOnline ? "ok" : "warn" },
+      { label: "Portas 80/443/5432", value: [status.port80Available, status.port443Available, status.port5432Available].every(Boolean) ? "livres" : "em uso", tone: [status.port80Available, status.port443Available, status.port5432Available].every(Boolean) ? "ok" : "warn" },
+    ];
+
+    return { environment, docker, project, diagnostics };
   }, [status, sudoDockerThisSession]);
 
   const showLinuxInstallDocker = status?.os === "linux" && status.supported && !status.dockerInstalled;
@@ -861,6 +873,7 @@ export default function App() {
         <StatusCard title="Ambiente" icon={<ShieldCheck size={20} />} items={statusItems.environment} />
         <StatusCard title="Docker" icon={<HardDrive size={20} />} items={statusItems.docker} />
         <StatusCard title="Projeto" icon={<BookOpen size={20} />} items={statusItems.project} />
+        <StatusCard title="Diagnóstico" icon={<Activity size={20} />} items={statusItems.diagnostics} />
       </div>
 
       <StepProgress steps={steps} />

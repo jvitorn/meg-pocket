@@ -223,11 +223,8 @@ fn removeLocalProject(
 }
 
 fn open_allowed_url(url: &str) -> LauncherResult<()> {
-    match url {
-        "http://localhost:3000"
-        | "http://localhost:8081"
-        | "https://www.docker.com/products/docker-desktop/" => {}
-        _ => return Err(LauncherError::friendly("URL não permitida pelo launcher.")),
+    if url != "https://www.docker.com/products/docker-desktop/" && !is_allowed_localhost_url(url) {
+        return Err(LauncherError::friendly("URL não permitida pelo launcher."));
     }
 
     #[cfg(target_os = "linux")]
@@ -273,16 +270,26 @@ fn open_allowed_url(url: &str) -> LauncherResult<()> {
     }
 }
 
+fn is_allowed_localhost_url(url: &str) -> bool {
+    let Some(rest) = url.strip_prefix("http://localhost:") else {
+        return false;
+    };
+    let port_text = rest.trim_end_matches('/');
+    !port_text.is_empty()
+        && port_text.chars().all(|ch| ch.is_ascii_digit())
+        && port_text.parse::<u16>().is_ok()
+}
+
 #[tauri::command]
 #[allow(non_snake_case)]
 fn openSite() -> Result<(), String> {
-    command_result(open_allowed_url("http://localhost:3000"))
+    command_result(open_allowed_url(&native::local_site_url()))
 }
 
 #[tauri::command]
 #[allow(non_snake_case)]
 fn openAdminer() -> Result<(), String> {
-    command_result(open_allowed_url("http://localhost:8081"))
+    command_result(open_allowed_url(&native::local_adminer_url()))
 }
 
 #[tauri::command]

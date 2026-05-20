@@ -219,12 +219,14 @@ DIRECT_URL="postgresql://meg:meg@localhost:5433/meg_pocket?schema=public"
 NEXTAUTH_SECRET="meg-pocket-local-secret-change-me"
 NEXTAUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_BASE_URL="http://localhost:3000"
+APP_PORT="3000"
+ADMINER_PORT="8081"
 GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
 STORAGE_DRIVER="local"
 STORAGE_BUCKET="personagens"
-STORAGE_LOCAL_DIR="./storage/local/public"
-STORAGE_LOCAL_PUBLIC_URL="http://localhost:9323"
+STORAGE_LOCAL_DIR="./public/uploads"
+STORAGE_LOCAL_PUBLIC_URL="/uploads"
 NEXT_PUBLIC_STORAGE_MAX_FILE_SIZE_MB="40"
 ADMINER_URL="http://localhost:8081"
 ENV
@@ -258,7 +260,7 @@ wait_for_app_database() {
   local i
 
   for i in $(seq 1 "$attempts"); do
-    if run_compose exec -T app pg_isready -h postgres -p 5432 -U meg -d meg_pocket >/dev/null 2>&1; then
+    if run_compose --env-file .env.docker-local exec -T app wget --spider -q http://localhost:3000/api/health >/dev/null 2>&1; then
       return 0
     fi
     sleep 2

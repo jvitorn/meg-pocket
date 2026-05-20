@@ -75,7 +75,7 @@ export function getStorageConfig(): StorageConfig {
     bucket: process.env.STORAGE_BUCKET?.trim() || "personagens",
     localDir: process.env.STORAGE_LOCAL_DIR?.trim() || "./storage/local/public",
     localPublicUrl: trimTrailingSlash(
-      process.env.STORAGE_LOCAL_PUBLIC_URL?.trim() || "http://localhost:9323"
+      process.env.STORAGE_LOCAL_PUBLIC_URL?.trim() || "/uploads"
     ),
     s3Endpoint: process.env.STORAGE_ENDPOINT?.trim()
       ? trimTrailingSlash(process.env.STORAGE_ENDPOINT.trim())

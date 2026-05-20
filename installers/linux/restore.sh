@@ -33,7 +33,7 @@ else
   ensure_env_file "$project_path"
 fi
 
-run_compose --env-file .env.docker-local stop app adminer storage >/dev/null 2>&1 || true
+run_compose --env-file .env.docker-local stop app adminer nginx >/dev/null 2>&1 || true
 run_compose --env-file .env.docker-local up -d postgres
 wait_for_postgres 60 || fail "Postgres não ficou pronto para restore."
 
