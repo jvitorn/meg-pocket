@@ -68,10 +68,11 @@ O botão **Preparar ambiente** executa o fluxo:
 4. Verificação de Docker Compose.
 5. Ajuste de permissão do usuário no grupo `docker`.
 6. Download ou atualização do projeto.
-7. `docker compose --env-file .env.docker-local up -d --build`.
+7. `docker compose --env-file .env.docker-local build app`.
 8. Espera do Postgres.
 9. Migrations e seed.
-10. Validação de `http://localhost:3000`.
+10. Subida de `postgres`, `app` e `nginx`.
+11. Validação de `/api/health`, `/api/health/db` e `/healthz`.
 
 Se o usuário for adicionado ao grupo `docker`, é necessário sair e entrar novamente na sessão do Linux. O launcher mostra uma decisão explícita: sair/entrar depois ou continuar temporariamente usando `sudo` nesta sessão. Ele não reinicia sua sessão automaticamente.
 

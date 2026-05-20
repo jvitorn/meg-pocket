@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "build:docker": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",

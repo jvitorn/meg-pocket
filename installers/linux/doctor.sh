@@ -69,7 +69,7 @@ if [ -f "$project_path/docker-compose.yml" ]; then
   project_version_value="$(project_version "$project_path")"
 fi
 
-app_online="$(bool http_ok "http://localhost:3000")"
+app_online="$(bool http_ok "http://localhost:3000/api/health")"
 adminer_online="$(bool http_ok "http://localhost:8081")"
 
 cat <<JSON

@@ -34,6 +34,7 @@ import {
   quickDiagnose,
   readLogs,
   removeLocalProject,
+  repairInstallation,
   resetLocalData,
   restoreBackup,
   restartApp,
@@ -253,6 +254,8 @@ export default function App() {
   const [removeOpen, setRemoveOpen] = useState<"safe" | "complete" | null>(null);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [restorePath, setRestorePath] = useState("");
+  const [repairOpen, setRepairOpen] = useState(false);
+  const [lightBuild, setLightBuild] = useState(false);
   const [dependencyPrompt, setDependencyPrompt] = useState<DependencyStatus | null>(null);
   const [pendingDependencyAction, setPendingDependencyAction] = useState<PendingDependencyAction | null>(null);
   const [dependencyShowCommands, setDependencyShowCommands] = useState(false);
@@ -271,6 +274,10 @@ export default function App() {
 
   const isBusy = busy !== null || jobStatus === "running";
   const dockerOptions = useMemo(() => ({ useSudoDocker: sudoDockerThisSession }), [sudoDockerThisSession]);
+  const buildOptions = useMemo(
+    () => ({ useSudoDocker: sudoDockerThisSession, lightBuild }),
+    [lightBuild, sudoDockerThisSession],
+  );
 
   const setStep = (id: string, state: ProgressStep["state"]) => {
     setSteps((current) => current.map((step) => (step.id === id ? { ...step, state } : step)));
@@ -472,7 +479,7 @@ export default function App() {
   };
 
   const runProjectInstall = async () => {
-    await installProject(dockerOptions);
+    await installProject(buildOptions);
   };
 
   const installOrUpdateProject = async () => {
@@ -582,6 +589,11 @@ export default function App() {
   const resetData = async () => {
     setResetOpen(false);
     await runAction("Resetar dados locais", () => resetLocalData(dockerOptions));
+  };
+
+  const repairProject = async () => {
+    setRepairOpen(false);
+    await runAction("Reparar instalação", () => repairInstallation(buildOptions));
   };
 
   const removeProject = async () => {
@@ -830,6 +842,16 @@ export default function App() {
           Salve seus arquivos, saia da sessão do Linux e entre novamente. Depois abra o launcher e clique em Instalar/Atualizar M&G Pocket.
         </div>
       ) : null}
+      {status?.appOnline && status.databaseConnected === false ? (
+        <div className="message message--warn">
+          O aplicativo iniciou, mas ainda não conseguiu conectar ao banco. Aguarde alguns segundos ou teste /api/health/db.
+        </div>
+      ) : null}
+      {status?.projectInstalled && status.nginxOnline === false ? (
+        <div className="message message--warn">
+          O proxy local não iniciou. Verifique se a porta já está em uso.
+        </div>
+      ) : null}
       {showWindowsDockerGuide ? (
         <div className="message message--warn">
           No Windows, o launcher pode instalar Docker Desktop via winget quando disponível, ou você pode abrir a página oficial.
@@ -878,6 +900,21 @@ export default function App() {
 
       <StepProgress steps={steps} />
 
+      <section className="advanced-panel" aria-label="Opções avançadas">
+        <label className="advanced-toggle">
+          <input
+            type="checkbox"
+            checked={lightBuild}
+            disabled={isBusy}
+            onChange={(event) => setLightBuild(event.target.checked)}
+          />
+          <span>
+            <strong>Modo de build leve</strong>
+            <small>Desativa o React Compiler nos builds Docker locais.</small>
+          </span>
+        </label>
+      </section>
+
       <section className="actions-panel" aria-label="Ações principais">
         {showLinuxInstallDocker ? (
           <ActionButton
@@ -905,6 +942,9 @@ export default function App() {
           onClick={installOrUpdateProject}
         >
           Instalar/Atualizar M&G Pocket
+        </ActionButton>
+        <ActionButton icon={<Wrench size={18} />} disabled={isBusy} onClick={() => setRepairOpen(true)} variant="ghost">
+          Reparar instalação
         </ActionButton>
         <ActionButton icon={<Play size={18} />} disabled={isBusy} onClick={() => runAction("Iniciar", () => startApp(dockerOptions))}>
           Iniciar M&G Pocket
@@ -960,6 +1000,21 @@ export default function App() {
         confirmLabel="Restaurar"
         onCancel={() => setRestoreOpen(false)}
         onConfirm={confirmRestore}
+      />
+      <ConfirmDialog
+        open={repairOpen}
+        title="Reparar instalação"
+        description={
+          <>
+            <p>Essa opção reconstrói a imagem do aplicativo do zero.</p>
+            <p>Ela é mais lenta e deve ser usada apenas se a instalação normal falhar.</p>
+          </>
+        }
+        confirmLabel="Reconstruir do zero"
+        cancelLabel="Cancelar"
+        confirmVariant="primary"
+        onCancel={() => setRepairOpen(false)}
+        onConfirm={repairProject}
       />
       <ConfirmDialog
         open={removeOpen !== null}

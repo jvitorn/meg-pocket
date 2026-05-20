@@ -1,46 +1,41 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { dataBestiario, getAmeacaById } from "@/data/dataBestiario";
+const repoRoot = process.cwd();
 
-describe("dataBestiario", () => {
-  it("mantem o bestiario expandido com ids unicos", () => {
-    const ids = dataBestiario.map((ameaca) => ameaca.id);
+function readAmeacasSeed() {
+  return fs.readFileSync(
+    path.join(repoRoot, "prisma/seeds/generated/015_ameaca.sql"),
+    "utf8"
+  );
+}
 
-    expect(dataBestiario).toHaveLength(44);
-    expect(new Set(ids).size).toBe(ids.length);
+function seedRows() {
+  return readAmeacasSeed()
+    .split(/\r?\n/)
+    .filter((line) => line.trim() && !line.startsWith("--"))
+    .filter((line) => !line.startsWith("COPY "))
+    .filter((line) => !line.startsWith("id,"))
+    .filter((line) => !line.startsWith("\\."))
+    .filter((line) => !line.startsWith("SELECT "));
+}
+
+describe("seed de ameacas", () => {
+  it("mantem o bestiario inicial no seed SQL com slugs unicos", () => {
+    const rows = seedRows();
+    const slugs = rows.map((line) => line.split(",")[1]);
+
+    expect(rows).toHaveLength(44);
+    expect(new Set(slugs).size).toBe(slugs.length);
   });
 
-  it("mantem os campos essenciais preenchidos para a listagem e detalhe", () => {
-    for (const ameaca of dataBestiario) {
-      expect(ameaca.id).toBeTruthy();
-      expect(ameaca.nome).toBeTruthy();
-      expect(ameaca.tipo).toBeTruthy();
-      expect(ameaca.elemento).toBeTruthy();
-      expect(ameaca.descricao).toBeTruthy();
-      expect(ameaca.narrativa).toBeTruthy();
-      expect(ameaca.golpes.length).toBeGreaterThan(0);
-      expect(ameaca.va).toBeGreaterThan(0);
-      expect(ameaca.pv).toBeGreaterThan(0);
-      expect(ameaca.defesa).toBeGreaterThan(0);
-      expect(ameaca.reacoes).toEqual(
-        expect.objectContaining({
-          bloqueio: expect.any(Number),
-          esquiva: expect.any(Number),
-          contraAtaque: expect.any(Number),
-        })
-      );
-    }
-  });
+  it("inclui ameacas usadas pelas paginas publicas e combates", () => {
+    const text = readAmeacasSeed();
 
-  it("busca uma ameaca pelo id", () => {
-    expect(getAmeacaById("dragao-glacial")).toEqual(
-      expect.objectContaining({
-        nome: "Dragão Glacial",
-        tipo: "Dragão",
-        elemento: "Água",
-      })
-    );
-
-    expect(getAmeacaById("rota-inexistente")).toBeNull();
+    expect(text).toContain("dragao-glacial");
+    expect(text).toContain("Dragão Glacial");
+    expect(text).toContain("Sopro Congelante");
   });
 });

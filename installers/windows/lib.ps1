@@ -222,7 +222,7 @@ function Wait-AppDatabase {
 
   for ($i = 0; $i -lt $Attempts; $i++) {
     try {
-      Invoke-Compose @("--env-file", ".env.docker-local", "exec", "-T", "app", "wget", "--spider", "-q", "http://localhost:3000/api/health") *> $null
+      Invoke-Compose @("--env-file", ".env.docker-local", "exec", "-T", "app", "wget", "--spider", "-q", "http://localhost:3000/api/health/db") *> $null
       return
     } catch {
       Start-Sleep -Seconds 2
@@ -230,6 +230,37 @@ function Wait-AppDatabase {
   }
 
   throw "O app iniciou, mas ainda não consegue acessar o Postgres pelo Docker."
+}
+
+function Wait-AppAlive {
+  param([int]$Attempts = 60)
+
+  for ($i = 0; $i -lt $Attempts; $i++) {
+    try {
+      Invoke-Compose @("--env-file", ".env.docker-local", "exec", "-T", "app", "wget", "--spider", "-q", "http://localhost:3000/api/health") *> $null
+      return
+    } catch {
+      Start-Sleep -Seconds 2
+    }
+  }
+
+  try {
+    Invoke-Compose @("--env-file", ".env.docker-local", "logs", "--tail=100", "app")
+  } catch {}
+
+  throw "O aplicativo não respondeu ao healthcheck. Veja os logs do app."
+}
+
+function Write-DatabaseWarningIfUnavailable {
+  try {
+    Wait-AppDatabase 15
+    Write-Host "Banco conectado via /api/health/db."
+  } catch {
+    Write-Host "O aplicativo iniciou, mas ainda não conseguiu conectar ao banco. Aguarde alguns segundos ou teste /api/health/db."
+    try {
+      Invoke-Compose @("--env-file", ".env.docker-local", "ps", "postgres")
+    } catch {}
+  }
 }
 
 function Start-OptionalAdminer {
@@ -294,7 +325,7 @@ function Invoke-ProjectTestSuite {
 }
 
 function Wait-App {
-  param([string]$Url = "http://localhost:3000", [int]$Attempts = 60)
+  param([string]$Url = "http://localhost:3000/api/health", [int]$Attempts = 60)
 
   for ($i = 0; $i -lt $Attempts; $i++) {
     if (Test-Url $Url) {

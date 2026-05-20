@@ -109,9 +109,11 @@ Para desenvolvedores:
 git clone https://github.com/jvitorn/meg-pocket.git
 cd meg-pocket
 cp .env.example .env.docker-local
-docker compose --env-file .env.docker-local up -d --build
-docker compose --env-file .env.docker-local exec -T app npm run db:setup
-docker compose --env-file .env.docker-local exec -T app npm run db:seed
+docker compose --env-file .env.docker-local build app
+docker compose --env-file .env.docker-local up -d postgres
+docker compose --env-file .env.docker-local run --rm --build maintenance npm run db:setup
+docker compose --env-file .env.docker-local run --rm --build maintenance npm run db:seed
+docker compose --env-file .env.docker-local up -d app nginx
 ```
 
 Acesse:

@@ -58,20 +58,22 @@ vi.mock("@/components/footer", () => ({
 }));
 
 vi.mock("@/lib/ameacas", async () => {
-  const data = await vi.importActual<typeof import("@/data/dataBestiario")>(
-    "@/data/dataBestiario"
+  const fixture = await vi.importActual<typeof import("../../fixtures/ameacas")>(
+    "../../fixtures/ameacas"
   );
 
   return {
-    listarAmeacas: vi.fn(async () => data.dataBestiario),
-    buscarAmeacaPorSlug: vi.fn(async (slug: string) => data.getAmeacaById(slug)),
+    listarAmeacas: vi.fn(async () => fixture.ameacasFixture),
+    buscarAmeacaPorSlug: vi.fn(async (slug: string) =>
+      fixture.getAmeacaFixtureById(slug)
+    ),
   };
 });
 
-import AmeacasPage from "@/app/ameacas/page";
+import AmeacasPage, { dynamic as ameacasDynamic } from "@/app/ameacas/page";
 import AmeacaDetailPage, {
+  dynamic as ameacaDetailDynamic,
   generateMetadata,
-  generateStaticParams,
 } from "@/app/ameacas/[id]/page";
 
 describe("rotas de ameacas", () => {
@@ -81,7 +83,7 @@ describe("rotas de ameacas", () => {
 
     expect(screen.getByRole("heading", { name: "Ameaças" })).toBeInTheDocument();
     expect(screen.getByText("Bestiário público")).toBeInTheDocument();
-    expect(screen.getAllByText("44").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("4").length).toBeGreaterThan(0);
   });
 
   it("renderiza a pagina de detalhe da ameaca", async () => {
@@ -99,7 +101,10 @@ describe("rotas de ameacas", () => {
     );
   });
 
-  it("gera metadata e params estaticos para as ameacas", async () => {
+  it("gera metadata dinamica para as ameacas", async () => {
+    expect(ameacasDynamic).toBe("force-dynamic");
+    expect(ameacaDetailDynamic).toBe("force-dynamic");
+
     await expect(
       generateMetadata({ params: Promise.resolve({ id: "dragao-glacial" }) })
     ).resolves.toEqual(
@@ -107,10 +112,6 @@ describe("rotas de ameacas", () => {
         title: "Dragão Glacial — Ameaças | M&G Pocket",
       })
     );
-
-    await expect(generateStaticParams()).resolves.toContainEqual({
-      id: "dragao-glacial",
-    });
   });
 
   it("aciona notFound quando o id nao existe", async () => {

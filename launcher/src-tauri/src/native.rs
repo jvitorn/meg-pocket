@@ -605,14 +605,43 @@ pub fn install_project(
     app: &AppHandle,
     job_manager: &JobManager,
     use_sudo_docker: bool,
+    light_build: bool,
 ) -> LauncherResult<CommandOutput> {
     let job = job_manager.start("Instalar/Atualizar M&G Pocket")?;
     let mut ctx = NativeJob::new(app, job);
     ctx.started("Iniciando", "Iniciando instalação nativa do launcher.", 0);
 
-    let result = install_project_steps(&mut ctx, use_sudo_docker);
+    let result = install_project_steps(&mut ctx, use_sudo_docker, light_build);
     match result {
         Ok(()) => Ok(ctx.finish_success("Finalizado", "M&G Pocket instalado e validado.")),
+        Err(error) if ctx.job.is_cancelled() => {
+            ctx.finish_cancelled();
+            Err(error)
+        }
+        Err(error) => {
+            ctx.finish_error(&error);
+            Err(error)
+        }
+    }
+}
+
+pub fn repair_installation(
+    app: &AppHandle,
+    job_manager: &JobManager,
+    use_sudo_docker: bool,
+    light_build: bool,
+) -> LauncherResult<CommandOutput> {
+    let job = job_manager.start("Reparar instalação")?;
+    let mut ctx = NativeJob::new(app, job);
+    ctx.started(
+        "Iniciando reparo",
+        "Reconstruindo a imagem do aplicativo sem cache.",
+        0,
+    );
+
+    let result = repair_installation_steps(&mut ctx, use_sudo_docker, light_build);
+    match result {
+        Ok(()) => Ok(ctx.finish_success("Finalizado", "Reparo concluído.")),
         Err(error) if ctx.job.is_cancelled() => {
             ctx.finish_cancelled();
             Err(error)
@@ -1042,7 +1071,11 @@ fn ensure_docker_permission_steps(ctx: &mut NativeJob<'_, '_>) -> LauncherResult
     ))
 }
 
-fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> LauncherResult<()> {
+fn install_project_steps(
+    ctx: &mut NativeJob<'_, '_>,
+    use_sudo_docker: bool,
+    light_build: bool,
+) -> LauncherResult<()> {
     ctx.progress("Verificando Git", "Verificando Git.", 10);
     require_command(
         "git",
@@ -1078,19 +1111,14 @@ fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> 
     cleanup_legacy_app_compose_project(ctx, &compose, &project_dir);
 
     ctx.run_required(
-        "Construindo imagens",
-        "Construindo runtime standalone e imagem de manutenção.",
+        "Construindo imagem",
+        if light_build {
+            "Construindo app com React Compiler desativado."
+        } else {
+            "Construindo app standalone."
+        },
         80,
-        compose.command(
-            &project_dir,
-            [
-                "--env-file",
-                ".env.docker-local",
-                "build",
-                "app",
-                "maintenance",
-            ],
-        ),
+        compose_build_app_command(&compose, &project_dir, light_build, false),
         LONG_TIMEOUT,
     )?;
 
@@ -1118,6 +1146,7 @@ fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> 
                 ".env.docker-local",
                 "run",
                 "--rm",
+                "--build",
                 "maintenance",
                 "npm",
                 "run",
@@ -1155,7 +1184,70 @@ fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> 
         ),
         MEDIUM_TIMEOUT,
     );
-    wait_for_app_database(ctx, &compose, &project_dir)?;
+    wait_for_app_alive(ctx, &compose, &project_dir)?;
+    warn_if_database_unavailable(ctx, &compose, &project_dir);
+    validate_site(ctx)?;
+    Ok(())
+}
+
+fn repair_installation_steps(
+    ctx: &mut NativeJob<'_, '_>,
+    use_sudo_docker: bool,
+    light_build: bool,
+) -> LauncherResult<()> {
+    let project_dir = project_dir();
+    require_project(&project_dir)?;
+    validate_project_path(&project_dir)?;
+    prepare_project_files(&project_dir)?;
+
+    ctx.progress("Verificando Docker", "Validando Docker Engine.", 15);
+    ensure_docker_daemon(ctx, use_sudo_docker, 15)?;
+    let compose =
+        resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+    cleanup_legacy_app_compose_project(ctx, &compose, &project_dir);
+
+    ctx.run_required(
+        "Reconstruindo imagem",
+        if light_build {
+            "Reconstruindo app sem cache e com React Compiler desativado."
+        } else {
+            "Reconstruindo app sem cache."
+        },
+        55,
+        compose_build_app_command(&compose, &project_dir, light_build, true),
+        LONG_TIMEOUT,
+    )?;
+
+    ctx.run_required(
+        "Subindo containers",
+        "Subindo Postgres, aplicação standalone e Nginx.",
+        80,
+        compose.command(
+            &project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "up",
+                "-d",
+                "postgres",
+                "app",
+                "nginx",
+            ],
+        ),
+        LONG_TIMEOUT,
+    )?;
+    ctx.run_optional(
+        "Subindo Adminer",
+        "Tentando iniciar Adminer.",
+        86,
+        compose.command(
+            &project_dir,
+            ["--env-file", ".env.docker-local", "up", "-d", "adminer"],
+        ),
+        MEDIUM_TIMEOUT,
+    );
+    wait_for_app_alive(ctx, &compose, &project_dir)?;
+    warn_if_database_unavailable(ctx, &compose, &project_dir);
     validate_site(ctx)?;
     Ok(())
 }
@@ -1210,7 +1302,8 @@ fn start_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Launch
         ),
         MEDIUM_TIMEOUT,
     );
-    wait_for_app_database(ctx, &compose, &project_dir)?;
+    wait_for_app_alive(ctx, &compose, &project_dir)?;
+    warn_if_database_unavailable(ctx, &compose, &project_dir);
     validate_site(ctx)?;
     Ok(())
 }
@@ -1277,7 +1370,8 @@ fn restart_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Laun
         MEDIUM_TIMEOUT,
     );
     ctx.progress("Aguardando serviços", "Aguardando serviços locais.", 85);
-    wait_for_app_database(ctx, &compose, &project_dir)?;
+    wait_for_app_alive(ctx, &compose, &project_dir)?;
+    warn_if_database_unavailable(ctx, &compose, &project_dir);
     validate_site(ctx)?;
     Ok(())
 }
@@ -1511,7 +1605,7 @@ fn reset_local_data_steps(
             .join(".seed-inicial-concluido"),
     )?;
 
-    install_project_steps(ctx, use_sudo_docker)?;
+    install_project_steps(ctx, use_sudo_docker, false)?;
     Ok(())
 }
 
@@ -1875,6 +1969,30 @@ fn compose_down_command(
     }
     args.push("--remove-orphans".to_string());
     compose.command(project_dir, args)
+}
+
+fn compose_build_app_command(
+    compose: &ComposeCommand,
+    project_dir: &Path,
+    light_build: bool,
+    no_cache: bool,
+) -> NativeCommand {
+    let mut args = vec![
+        "--env-file".to_string(),
+        ".env.docker-local".to_string(),
+        "build".to_string(),
+    ];
+    if no_cache {
+        args.push("--no-cache".to_string());
+    }
+    args.push("app".to_string());
+
+    let command = compose.command(project_dir, args);
+    if light_build {
+        command.env("NEXT_REACT_COMPILER", "false")
+    } else {
+        command
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -2545,43 +2663,144 @@ fn wait_for_postgres(
     })
 }
 
-fn wait_for_app_database(
+fn wait_for_app_alive(
     ctx: &mut NativeJob<'_, '_>,
     compose: &ComposeCommand,
     project_dir: &Path,
 ) -> LauncherResult<()> {
     ctx.progress(
         "Aguardando app",
-        "Validando healthcheck do app com o banco.",
+        "Validando /api/health sem depender do banco.",
         88,
     );
-    retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
-        run_capture(
-            compose.command(
-                project_dir,
-                [
-                    "--env-file",
-                    ".env.docker-local",
-                    "exec",
-                    "-T",
-                    "app",
-                    "wget",
-                    "--spider",
-                    "-q",
-                    "http://localhost:3000/api/health",
-                ],
-            ),
-            SHORT_TIMEOUT,
-            Some(ctx.job.cancel_flag()),
-        )
-        .map(|output| output.success)
-        .unwrap_or(false)
+    let result = retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
+        app_healthcheck_success(ctx, compose, project_dir, "/api/health")
+    });
+
+    if result.is_ok() {
+        return Ok(());
+    }
+
+    log_service_tail(ctx, compose, project_dir, "app", "Aguardando app");
+    Err(LauncherError::friendly(
+        "O aplicativo não respondeu ao healthcheck. Veja os logs do app.",
+    ))
+}
+
+fn warn_if_database_unavailable(
+    ctx: &mut NativeJob<'_, '_>,
+    compose: &ComposeCommand,
+    project_dir: &Path,
+) {
+    ctx.progress(
+        "Validando banco",
+        "Consultando /api/health/db pelo container app.",
+        90,
+    );
+
+    let connected = retry_step(ctx, Duration::from_secs(30), Duration::from_secs(2), || {
+        app_healthcheck_success(ctx, compose, project_dir, "/api/health/db")
     })
-    .map_err(|_| {
-        LauncherError::friendly(
-            "O app iniciou, mas ainda não consegue acessar o Postgres pelo Docker. Veja os logs pelo launcher.",
-        )
-    })
+    .is_ok();
+
+    if connected {
+        ctx.log("Validando banco", "Banco conectado via /api/health/db.", "info");
+        return;
+    }
+
+    ctx.log(
+        "Validando banco",
+        "O aplicativo iniciou, mas ainda não conseguiu conectar ao banco. Aguarde alguns segundos ou teste /api/health/db.",
+        "error",
+    );
+    log_compose_service_status(ctx, compose, project_dir, "postgres", "Validando banco");
+}
+
+fn app_healthcheck_success(
+    ctx: &NativeJob<'_, '_>,
+    compose: &ComposeCommand,
+    project_dir: &Path,
+    path: &str,
+) -> bool {
+    let url = format!("http://localhost:3000{path}");
+    run_capture(
+        compose.command(
+            project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "exec",
+                "-T",
+                "app",
+                "wget",
+                "--spider",
+                "-q",
+                &url,
+            ],
+        ),
+        SHORT_TIMEOUT,
+        Some(ctx.job.cancel_flag()),
+    )
+    .map(|output| output.success)
+    .unwrap_or(false)
+}
+
+fn log_service_tail(
+    ctx: &mut NativeJob<'_, '_>,
+    compose: &ComposeCommand,
+    project_dir: &Path,
+    service: &str,
+    step: &str,
+) {
+    if let Ok(output) = run_capture(
+        compose.command(
+            project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "logs",
+                "--tail=80",
+                service,
+            ],
+        ),
+        SHORT_TIMEOUT,
+        Some(ctx.job.cancel_flag()),
+    ) {
+        let logs = [output.stdout.trim(), output.stderr.trim()]
+            .into_iter()
+            .filter(|value| !value.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n");
+        if !logs.trim().is_empty() {
+            ctx.log(step, &limit_lines(&logs, 80), "error");
+        }
+    }
+}
+
+fn log_compose_service_status(
+    ctx: &mut NativeJob<'_, '_>,
+    compose: &ComposeCommand,
+    project_dir: &Path,
+    service: &str,
+    step: &str,
+) {
+    if let Ok(output) = run_capture(
+        compose.command(
+            project_dir,
+            ["--env-file", ".env.docker-local", "ps", service],
+        ),
+        SHORT_TIMEOUT,
+        Some(ctx.job.cancel_flag()),
+    ) {
+        let status = [output.stdout.trim(), output.stderr.trim()]
+            .into_iter()
+            .filter(|value| !value.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n");
+        if !status.trim().is_empty() {
+            ctx.log(step, &limit_lines(&status, 20), "info");
+        }
+    }
 }
 
 fn run_seed_if_needed(
@@ -2614,6 +2833,7 @@ fn run_seed_if_needed(
                 ".env.docker-local",
                 "run",
                 "--rm",
+                "--build",
                 "maintenance",
                 "npm",
                 "run",
@@ -2663,15 +2883,20 @@ fn validate_site(ctx: &mut NativeJob<'_, '_>) -> LauncherResult<()> {
     let adminer_url = format!("http://localhost:{adminer_port}");
     ctx.progress(
         "Validando site/Adminer",
-        &format!("Validando {app_url}."),
+        &format!("Validando proxy local em {app_url}."),
         95,
     );
     retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
-        check_local_port(app_port, PORT_TIMEOUT)
+        check_http_path(app_port, "/healthz", PORT_TIMEOUT)
+    })
+    .map_err(|_| LauncherError::friendly("O proxy local não iniciou. Verifique se a porta já está em uso."))?;
+
+    retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
+        check_http_path(app_port, "/api/health", PORT_TIMEOUT)
     })
     .map_err(|_| {
         LauncherError::friendly(
-            format!("Os containers subiram, mas {app_url} não respondeu a tempo. Veja os logs pelo launcher."),
+            format!("O aplicativo não respondeu em {app_url}/api/health. Veja os logs do app."),
         )
     })?;
 
@@ -2854,7 +3079,7 @@ fn build_system_status(
         project_version,
         app_url: Some(app_url.clone()),
         adminer_url: Some(adminer_url),
-        app_online: check_local_port(app_port, PORT_TIMEOUT),
+        app_online: project_diagnostics.app_online,
         adminer_online: check_local_port(adminer_port, PORT_TIMEOUT),
         podman_installed: Some(podman_installed),
         container_runtime: Some(if docker_installed {
@@ -2870,7 +3095,7 @@ fn build_system_status(
         port_5432_available: !check_local_port(5432, PORT_TIMEOUT),
         database_connected: project_diagnostics.database_connected,
         containers_active: project_diagnostics.containers_active,
-        nginx_online: project_diagnostics.nginx_online || check_local_port(app_port, PORT_TIMEOUT),
+        nginx_online: project_diagnostics.nginx_online,
         uploads_directory_ok: project_diagnostics.uploads_directory_ok,
         uploads_served: project_diagnostics.uploads_served,
         next_assets_online: project_diagnostics.next_assets_online,
@@ -2879,6 +3104,7 @@ fn build_system_status(
 
 #[derive(Default)]
 struct ProjectDiagnostics {
+    app_online: bool,
     database_connected: bool,
     containers_active: bool,
     nginx_online: bool,
@@ -2895,27 +3121,8 @@ fn collect_project_diagnostics(
         return ProjectDiagnostics::default();
     };
     let app_port = local_service_port("APP_PORT", 3000, project_dir);
-    let database_connected = run_capture(
-        compose.command(
-            project_dir,
-            [
-                "--env-file",
-                ".env.docker-local",
-                "exec",
-                "-T",
-                "postgres",
-                "pg_isready",
-                "-U",
-                "meg",
-                "-d",
-                "meg_pocket",
-            ],
-        ),
-        QUICK_TIMEOUT,
-        cancel.clone(),
-    )
-    .map(|output| output.success)
-    .unwrap_or(false);
+    let app_online = check_http_path(app_port, "/api/health", PORT_TIMEOUT);
+    let database_connected = check_http_path(app_port, "/api/health/db", PORT_TIMEOUT);
 
     let running_services = run_capture(
         compose.command(
@@ -2961,6 +3168,7 @@ fn collect_project_diagnostics(
     .unwrap_or(false);
 
     ProjectDiagnostics {
+        app_online,
         database_connected,
         containers_active,
         nginx_online: check_http_path(app_port, "/healthz", PORT_TIMEOUT),
@@ -4713,6 +4921,27 @@ NEXTAUTH_URL="http://localhost:3000"
         assert!(complete.args.iter().any(|arg| arg == "down"));
         assert!(complete.args.iter().any(|arg| arg == "--remove-orphans"));
         assert!(complete.args.iter().any(|arg| arg == "-v"));
+    }
+
+    #[test]
+    fn compose_build_app_command_uses_no_cache_only_for_repair_and_light_env() {
+        let compose = ComposeCommand {
+            program: "docker".to_string(),
+            prefix: vec!["compose".to_string()],
+        };
+        let project = Path::new("/tmp/mg-pocket/app");
+
+        let normal = compose_build_app_command(&compose, project, false, false);
+        assert!(normal.args.iter().any(|arg| arg == "build"));
+        assert!(normal.args.iter().any(|arg| arg == "app"));
+        assert!(!normal.args.iter().any(|arg| arg == "--no-cache"));
+        assert!(normal.envs.is_empty());
+
+        let repair_light = compose_build_app_command(&compose, project, true, true);
+        assert!(repair_light.args.iter().any(|arg| arg == "--no-cache"));
+        assert!(repair_light.envs.iter().any(|(key, value)| {
+            key == "NEXT_REACT_COMPILER" && value == "false"
+        }));
     }
 
     fn planned_fast_diagnostic_commands_for_test() -> Vec<String> {

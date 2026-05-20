@@ -13,6 +13,7 @@ Ensure-EnvFile $projectDir
 Stop-LegacyAppComposeProject
 Invoke-Compose @("--env-file", ".env.docker-local", "up", "-d", "postgres", "app", "nginx")
 Start-OptionalAdminer
-Wait-AppDatabase
+Wait-AppAlive
+Write-DatabaseWarningIfUnavailable
 Wait-App
 Write-Host "M&G Pocket iniciado em http://localhost:3000"

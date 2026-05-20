@@ -75,14 +75,22 @@ describe("lib/ameacas", () => {
     ]);
   });
 
-  it("busca por slug e usa fallback do bestiario quando nao encontra no banco", async () => {
+  it("retorna lista vazia quando a tabela ainda nao tem ameacas", async () => {
+    prismaMocks.findMany.mockResolvedValueOnce([]);
+
+    await expect(listarAmeacas()).resolves.toEqual([]);
+  });
+
+  it("busca por slug e retorna null quando nao encontra no banco", async () => {
     prismaMocks.findUnique.mockResolvedValueOnce(null);
 
-    await expect(buscarAmeacaPorSlug("dragao-glacial")).resolves.toEqual(
-      expect.objectContaining({
-        id: "dragao-glacial",
-        nome: "Dragão Glacial",
-      })
-    );
+    await expect(buscarAmeacaPorSlug("dragao-glacial")).resolves.toBeNull();
+  });
+
+  it("propaga falhas do Prisma sem cair em dados estaticos", async () => {
+    const error = new Error("database unavailable");
+    prismaMocks.findMany.mockRejectedValueOnce(error);
+
+    await expect(listarAmeacas()).rejects.toThrow(error);
   });
 });

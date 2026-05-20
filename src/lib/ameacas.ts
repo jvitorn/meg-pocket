@@ -1,13 +1,11 @@
 import type { Prisma } from "@prisma/client";
 
 import {
-  dataBestiario,
-  getAmeacaById,
   type Ameaca,
   type AmeacaElemento,
   type AmeacaGolpe,
   type AmeacaTipo,
-} from "@/data/dataBestiario";
+} from "@/types/ameaca";
 import { prisma } from "@/lib/prisma";
 
 type AmeacaDbRow = {
@@ -32,44 +30,20 @@ type AmeacaDbRow = {
   golpes: Prisma.JsonValue;
 };
 
-function shouldUseStaticBestiary() {
-  return process.env.MEG_POCKET_STATIC_BESTIARY === "1";
-}
-
 export async function listarAmeacas() {
-  if (shouldUseStaticBestiary()) {
-    return dataBestiario;
-  }
+  const ameacas = await prisma.ameaca.findMany({
+    orderBy: [{ va: "asc" }, { nome: "asc" }],
+  });
 
-  try {
-    const ameacas = await prisma.ameaca.findMany({
-      orderBy: [{ va: "asc" }, { nome: "asc" }],
-    });
-
-    return ameacas.length > 0 ? ameacas.map(toAmeaca) : dataBestiario;
-  } catch {
-    return dataBestiario;
-  }
+  return ameacas.map(toAmeaca);
 }
 
 export async function buscarAmeacaPorSlug(slug: string) {
-  if (shouldUseStaticBestiary()) {
-    return getAmeacaById(slug);
-  }
+  const ameaca = await prisma.ameaca.findUnique({
+    where: { slug },
+  });
 
-  try {
-    const ameaca = await prisma.ameaca.findUnique({
-      where: { slug },
-    });
-
-    if (ameaca) {
-      return toAmeaca(ameaca);
-    }
-  } catch {
-    return getAmeacaById(slug);
-  }
-
-  return getAmeacaById(slug);
+  return ameaca ? toAmeaca(ameaca) : null;
 }
 
 function toAmeaca(ameaca: AmeacaDbRow): Ameaca {

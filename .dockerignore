@@ -14,6 +14,10 @@ logs
 .codex
 .github
 
+launcher/node_modules
+launcher/src-tauri/target
+launcher
+
 .env
 .env.*
 !.env.example
@@ -24,7 +28,6 @@ yarn-debug.log*
 yarn-error.log*
 *.tsbuildinfo
 
-launcher
 docs/*
 !docs/
 !docs/PRIVACY.md

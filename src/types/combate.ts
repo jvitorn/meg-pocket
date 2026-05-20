@@ -1,4 +1,4 @@
-import type { AmeacaGolpe } from "@/data/dataBestiario";
+import type { AmeacaGolpe } from "@/types/ameaca";
 import type { MagiaPersonagem, SlotsDefensivos } from "@/types/personagem";
 
 export type CombateStatusValue = "RASCUNHO" | "EM_ANDAMENTO" | "ENCERRADO";

@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isReactCompilerEnabled = process.env.NEXT_REACT_COMPILER !== "false";
+
 const securityHeaders = [
   {
     key: "X-Frame-Options",
@@ -56,11 +58,8 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  /* desabilita Cache Components para evitar erro de Date no build */
   cacheComponents: false,
-
-  /* já estava no seu config — mantém o React Compiler ativo */
-  reactCompiler: true,
+  reactCompiler: isReactCompilerEnabled,
   async headers() {
     return [
       {

@@ -348,6 +348,44 @@ main {
   margin-top: 16px;
 }
 
+.advanced-panel {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.advanced-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 360px;
+  padding: 10px 12px;
+  border: 1px solid rgba(134, 213, 196, 0.22);
+  border-radius: 8px;
+  background: rgba(31, 41, 47, 0.72);
+  cursor: pointer;
+}
+
+.advanced-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: #86d5c4;
+}
+
+.advanced-toggle span {
+  display: grid;
+  gap: 2px;
+}
+
+.advanced-toggle strong {
+  font-size: 0.92rem;
+}
+
+.advanced-toggle small {
+  color: #c8bba5;
+  line-height: 1.35;
+}
+
 .action-button {
   display: inline-flex;
   align-items: center;
@@ -590,6 +628,15 @@ main {
   .status-grid,
   .actions-panel {
     grid-template-columns: 1fr;
+  }
+
+  .advanced-panel {
+    justify-content: stretch;
+  }
+
+  .advanced-toggle {
+    max-width: none;
+    width: 100%;
   }
 
   .step-progress {
