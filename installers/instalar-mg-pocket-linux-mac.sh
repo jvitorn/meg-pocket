@@ -11,8 +11,8 @@ case "$(uname -s)" in
     ;;
   Darwin)
     cat <<'MSG'
-O instalador automático v1.1 tem suporte inicial oficial para Linux.
-No macOS, instale Docker Desktop manualmente e use o fluxo manual avançado com Docker Compose.
+O launcher v1.1 publica artefatos testáveis apenas para Linux e Windows.
+macOS não é suportado por este instalador enquanto não houver validação local desses builds.
 MSG
     exit 1
     ;;

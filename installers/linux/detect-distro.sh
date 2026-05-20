@@ -33,6 +33,15 @@ case "$id_lc" in
   arch|manjaro|endeavouros)
     family="arch_like"
     ;;
+  cachyos)
+    family="arch_like"
+    ;;
+  fedora)
+    family="fedora_like"
+    ;;
+  opensuse*|suse|sles)
+    family="opensuse_like"
+    ;;
   *)
     case " $id_like_lc " in
       *" ubuntu "*)
@@ -44,12 +53,18 @@ case "$id_lc" in
       *" arch "*)
         family="arch_like"
         ;;
+      *" fedora "*|*" rhel "*)
+        family="fedora_like"
+        ;;
+      *" suse "*|*" opensuse "*)
+        family="opensuse_like"
+        ;;
     esac
     ;;
 esac
 
 supported=false
-if [ "$family" != "unsupported" ]; then
+if [ "$family" = "ubuntu_like" ] || [ "$family" = "debian_like" ] || [ "$family" = "arch_like" ] || [ "$family" = "fedora_like" ]; then
   supported=true
 fi
 

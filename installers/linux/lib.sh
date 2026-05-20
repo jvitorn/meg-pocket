@@ -41,6 +41,10 @@ launcher_dir() {
   printf '%s\n' "$MG_POCKET_LAUNCHER_DIR"
 }
 
+compose_project_name() {
+  printf '%s\n' "${MG_POCKET_COMPOSE_PROJECT_NAME:-meg-pocket}"
+}
+
 http_ok() {
   local url="$1"
 
@@ -74,6 +78,20 @@ wait_for_url() {
 }
 
 compose_cmd() {
+  if [ "${MG_POCKET_DOCKER_USE_SUDO:-}" = "1" ]; then
+    if has_command sudo && has_command docker && sudo -n docker compose version >/dev/null 2>&1; then
+      printf '%s\n' "sudo -n docker compose"
+      return 0
+    fi
+
+    if has_command sudo && has_command docker-compose && sudo -n docker-compose version >/dev/null 2>&1; then
+      printf '%s\n' "sudo -n docker-compose"
+      return 0
+    fi
+
+    return 1
+  fi
+
   if has_command docker && docker compose version >/dev/null 2>&1; then
     printf '%s\n' "docker compose"
     return 0
@@ -84,29 +102,46 @@ compose_cmd() {
     return 0
   fi
 
-  if has_command sudo && has_command docker && sudo docker compose version >/dev/null 2>&1; then
-    printf '%s\n' "sudo docker compose"
-    return 0
-  fi
-
-  if has_command sudo && has_command docker-compose && sudo docker-compose version >/dev/null 2>&1; then
-    printf '%s\n' "sudo docker-compose"
-    return 0
-  fi
-
   return 1
 }
 
 run_compose() {
   local cmd
+  local project_name
   local -a parts
 
   cmd="$(compose_cmd)" || fail "Docker Compose não foi encontrado ou não está acessível."
+  project_name="$(compose_project_name)"
   read -r -a parts <<< "$cmd"
-  "${parts[@]}" "$@"
+  "${parts[@]}" --project-name "$project_name" "$@"
+}
+
+run_compose_project() {
+  local project_name="$1"
+  local cmd
+  local -a parts
+  shift
+
+  cmd="$(compose_cmd)" || fail "Docker Compose não foi encontrado ou não está acessível."
+  read -r -a parts <<< "$cmd"
+  "${parts[@]}" --project-name "$project_name" "$@"
 }
 
 run_compose_no_prompt_cmd() {
+  if [ "${MG_POCKET_DOCKER_USE_SUDO:-}" = "1" ]; then
+    if has_command sudo && has_command docker && sudo -n docker compose version >/dev/null 2>&1; then
+      printf '%s\n' "sudo -n docker compose"
+      return 0
+    fi
+
+    if has_command sudo && has_command docker-compose && sudo -n docker-compose version >/dev/null 2>&1; then
+      printf '%s\n' "sudo -n docker-compose"
+      return 0
+    fi
+
+    return 1
+  fi
+
   if has_command docker && docker compose version >/dev/null 2>&1; then
     printf '%s\n' "docker compose"
     return 0
@@ -118,12 +153,12 @@ run_compose_no_prompt_cmd() {
   fi
 
   if has_command sudo && has_command docker && sudo -n docker compose version >/dev/null 2>&1; then
-    printf '%s\n' "sudo docker compose"
+    printf '%s\n' "sudo -n docker compose"
     return 0
   fi
 
   if has_command sudo && has_command docker-compose && sudo -n docker-compose version >/dev/null 2>&1; then
-    printf '%s\n' "sudo docker-compose"
+    printf '%s\n' "sudo -n docker-compose"
     return 0
   fi
 
@@ -134,12 +169,29 @@ docker_info_works() {
   has_command docker && docker info >/dev/null 2>&1
 }
 
-sudo_docker_info_works() {
-  has_command sudo && has_command docker && sudo docker info >/dev/null 2>&1
-}
-
 sudo_docker_info_works_no_prompt() {
   has_command sudo && has_command docker && sudo -n docker info >/dev/null 2>&1
+}
+
+docker_needs_relogin_but_sudo_works() {
+  ! docker_info_works && sudo_docker_info_works_no_prompt
+}
+
+ensure_docker_permission_or_explicit_sudo() {
+  if docker_info_works; then
+    return 0
+  fi
+
+  if [ "${MG_POCKET_DOCKER_USE_SUDO:-}" = "1" ]; then
+    sudo_docker_info_works_no_prompt || fail "O sudo para Docker não está autorizado nesta sessão. Abra os logs e tente novamente depois de validar sua permissão administrativa pelo sistema."
+    return 0
+  fi
+
+  if sudo_docker_info_works_no_prompt; then
+    fail "Permissão do Docker ainda não está ativa. Salve seus arquivos, saia da sessão do Linux e entre novamente. Depois abra o launcher e clique em Instalar/Atualizar M&G Pocket. Se preferir continuar temporariamente, escolha a opção de usar sudo nesta sessão no launcher."
+  fi
+
+  fail "Docker não está acessível para seu usuário. Use o fluxo de permissões do launcher antes de continuar."
 }
 
 ensure_project_ready_dir() {
@@ -167,12 +219,12 @@ DIRECT_URL="postgresql://meg:meg@localhost:5433/meg_pocket?schema=public"
 NEXTAUTH_SECRET="meg-pocket-local-secret-change-me"
 NEXTAUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_BASE_URL="http://localhost:3000"
-GOOGLE_CLIENT_ID="local-google-client-id"
-GOOGLE_CLIENT_SECRET="local-google-client-secret"
+APP_PORT="3000"
+ADMINER_PORT="8081"
 STORAGE_DRIVER="local"
 STORAGE_BUCKET="personagens"
-STORAGE_LOCAL_DIR="./storage/local/public"
-STORAGE_LOCAL_PUBLIC_URL="http://localhost:9323"
+STORAGE_LOCAL_DIR="./public/uploads"
+STORAGE_LOCAL_PUBLIC_URL="/uploads"
 NEXT_PUBLIC_STORAGE_MAX_FILE_SIZE_MB="40"
 ADMINER_URL="http://localhost:8081"
 ENV
@@ -199,6 +251,73 @@ wait_for_postgres() {
   done
 
   return 1
+}
+
+wait_for_app_database() {
+  local attempts="${1:-60}"
+  local i
+
+  for i in $(seq 1 "$attempts"); do
+    if run_compose --env-file .env.docker-local exec -T app wget --spider -q http://localhost:3000/api/health >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  return 1
+}
+
+start_optional_adminer() {
+  if run_compose up -d adminer; then
+    return 0
+  fi
+
+  info "Adminer não foi iniciado automaticamente, provavelmente porque a porta 8081 já está em uso."
+  info "O M&G Pocket pode continuar funcionando sem o Adminer. Se quiser usar o Adminer do launcher, libere a porta 8081 e clique em Instalar/Atualizar novamente."
+  return 0
+}
+
+cleanup_legacy_app_compose_project() {
+  if [ "$(compose_project_name)" = "app" ]; then
+    return 0
+  fi
+
+  run_compose_project app down --remove-orphans >/dev/null 2>&1 || true
+}
+
+stop_compose_project_stack() {
+  local project_name="$1"
+  local -a compose_args
+
+  compose_args=()
+  if [ -f ".env.docker-local" ]; then
+    compose_args+=(--env-file .env.docker-local)
+  fi
+  compose_args+=(down --remove-orphans)
+
+  run_compose_project "$project_name" "${compose_args[@]}"
+}
+
+stop_all_project_stacks() {
+  local current_project
+
+  current_project="$(compose_project_name)"
+  stop_compose_project_stack "$current_project" || fail "não foi possível parar os containers do M&G Pocket."
+
+  if [ "$current_project" != "meg-pocket" ]; then
+    stop_compose_project_stack "meg-pocket" >/dev/null 2>&1 || true
+  fi
+
+  if [ "$current_project" != "app" ]; then
+    stop_compose_project_stack "app" >/dev/null 2>&1 || true
+  fi
+}
+
+run_project_test_suite() {
+  info "Executando testes automatizados do M&G Pocket..."
+  info "Esta etapa pode levar alguns minutos na primeira instalação."
+  run_compose exec -T app sh -lc 'NODE_ENV=test MEG_E2E_DOCKER=1 MEG_E2E_REUSE_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 npm run test:all'
+  info "Testes automatizados concluídos com sucesso."
 }
 
 seed_ready() {

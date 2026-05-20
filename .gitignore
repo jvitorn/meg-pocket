@@ -24,6 +24,7 @@
 /.next/
 /out/
 /launcher/dist/
+/launcher/src-tauri/gen/
 /launcher/src-tauri/target/
 
 # production

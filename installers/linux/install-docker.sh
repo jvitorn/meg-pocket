@@ -35,6 +35,19 @@ case "$family" in
     sudo -v
     exec "$SCRIPT_DIR/install-docker-arch.sh"
     ;;
+  fedora_like)
+    info "Distribuição detectada: $distro_name"
+    info "Instalando Docker com dnf."
+    sudo -v
+    sudo dnf install -y docker docker-compose-plugin
+    sudo systemctl enable --now docker
+    sudo groupadd -f docker
+    sudo usermod -aG docker "$USER"
+    docker --version || sudo docker --version
+    docker compose version || sudo docker compose version
+    docker info >/dev/null 2>&1 || sudo docker info >/dev/null
+    "$SCRIPT_DIR/ensure-docker-permission.sh"
+    ;;
   *)
     cat >&2 <<'MSG'
 Esta distribuição ainda não é suportada pelo instalador automático.

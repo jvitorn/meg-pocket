@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -10,12 +9,7 @@ const launcherRoot = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(launcherRoot, "..");
 const iconsDir = path.join(launcherRoot, "src-tauri", "icons");
 const sourceIcon = path.join(iconsDir, "app-icon-source.png");
-const tauriBin = path.join(
-  launcherRoot,
-  "node_modules",
-  ".bin",
-  process.platform === "win32" ? "tauri.cmd" : "tauri",
-);
+const tempIcon = path.join(iconsDir, ".icon-normalized.tmp.png");
 
 const sourceCandidates = [
   sourceIcon,
@@ -30,6 +24,7 @@ const pngTargets = [
   ["icon.png", 512],
 ];
 const keptIconEntries = new Set([
+  ".icon-normalized.tmp.png",
   "32x32.png",
   "128x128.png",
   "128x128@2x.png",
@@ -42,6 +37,10 @@ const keptIconEntries = new Set([
 function fail(message) {
   console.error(`fix-icons: ${message}`);
   process.exit(1);
+}
+
+function relativeIconPath(filePath) {
+  return path.relative(launcherRoot, filePath).replaceAll(path.sep, "/");
 }
 
 function findSourceIcon() {
@@ -93,17 +92,6 @@ async function assertRgbaPng(fileName, expectedSize) {
   }
 }
 
-function runTauriIconGenerator() {
-  if (!fs.existsSync(tauriBin)) {
-    fail("Tauri CLI local não encontrado. Rode npm ci dentro de launcher/ antes de corrigir os ícones.");
-  }
-
-  execFileSync(tauriBin, ["icon", sourceIcon, "-o", iconsDir], {
-    cwd: launcherRoot,
-    stdio: "inherit",
-  });
-}
-
 function removeUnconfiguredIcons() {
   for (const entry of fs.readdirSync(iconsDir, { withFileTypes: true })) {
     if (keptIconEntries.has(entry.name)) continue;
@@ -119,16 +107,17 @@ async function main() {
   fs.mkdirSync(iconsDir, { recursive: true });
 
   const originalSource = findSourceIcon();
-  await writeRgbaSquare(originalSource, sourceIcon, 1024);
+  console.log(`Icon source: ${relativeIconPath(originalSource)}`);
 
-  runTauriIconGenerator();
+  await writeRgbaSquare(originalSource, tempIcon, 1024);
+  await writeRgbaSquare(tempIcon, sourceIcon, 1024);
   removeUnconfiguredIcons();
 
   for (const [fileName, size] of pngTargets) {
     const filePath = path.join(iconsDir, fileName);
-    const input = fs.existsSync(filePath) ? filePath : sourceIcon;
-    await writeRgbaSquare(input, filePath, size);
+    await writeRgbaSquare(tempIcon, filePath, size);
     await assertRgbaPng(fileName, size);
+    console.log(`${fileName === "icon.png" ? "Normalized" : "Generated"}: ${fileName}`);
   }
 
   for (const fileName of ["icon.ico", "icon.icns"]) {
@@ -138,7 +127,8 @@ async function main() {
     }
   }
 
-  console.log("fix-icons: ícones Tauri gerados e validados em RGBA");
+  fs.rmSync(tempIcon, { force: true });
+  console.log("fix-icons: PNGs Tauri normalizados como RGBA; .ico/.icns preservados.");
 }
 
 main().catch((error) => {

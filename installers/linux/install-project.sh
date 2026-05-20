@@ -64,6 +64,7 @@ prepare_project_source() {
 
 "$SCRIPT_DIR/ensure-docker-running.sh"
 "$SCRIPT_DIR/ensure-docker-permission.sh" || true
+ensure_docker_permission_or_explicit_sudo
 
 project_path="$(project_dir)"
 prepare_project_source "$project_path"
@@ -71,33 +72,52 @@ prepare_project_source "$project_path"
 cd "$project_path"
 [ -f docker-compose.yml ] || fail "docker-compose.yml não foi encontrado em $project_path."
 
-mkdir -p storage/local/public installers
+mkdir -p storage/local/public public/uploads installers
 ensure_env_file "$project_path"
+cleanup_legacy_app_compose_project
 
-info "Subindo containers do M&G Pocket. A primeira execução pode levar alguns minutos..."
-run_compose --env-file .env.docker-local up -d --build
+info "Construindo imagens do M&G Pocket. A primeira execução pode levar alguns minutos..."
+run_compose --env-file .env.docker-local build app maintenance
+
+info "Subindo Postgres..."
+run_compose --env-file .env.docker-local up -d postgres
 
 info "Aguardando Postgres ficar pronto..."
 wait_for_postgres 60 || fail "o banco de dados não ficou pronto a tempo."
 
 info "Aplicando migrations e preparando Prisma..."
-run_compose --env-file .env.docker-local exec -T app npm run db:setup
+run_compose --env-file .env.docker-local run --rm maintenance npm run db:setup
 
 seed_status="$(seed_ready || true)"
 seed_marker="installers/.seed-inicial-concluido"
+run_install_tests=false
 
 if [ -f "$seed_marker" ] || [ "$seed_status" = "1" ]; then
   info "Seed inicial já foi executado ou dados essenciais já existem. Pulando seed."
   touch "$seed_marker"
 else
   info "Executando seed inicial com os dados essenciais do RPG..."
-  run_compose --env-file .env.docker-local exec -T app npm run db:seed
+  run_compose --env-file .env.docker-local run --rm maintenance npm run db:seed
   touch "$seed_marker"
+  run_install_tests=true
 fi
+
+info "Subindo app e Nginx..."
+run_compose --env-file .env.docker-local up -d app nginx
+start_optional_adminer
+
+info "Validando conexão do app com o banco de dados..."
+wait_for_app_database 60 || fail "o app iniciou, mas ainda não consegue acessar o Postgres pelo Docker. Reinicie a instalação pelo launcher."
 
 info "Validando http://localhost:3000..."
 if wait_for_url "http://localhost:3000" 60 2; then
   info "M&G Pocket instalado e online em http://localhost:3000"
 else
   fail "os containers subiram, mas http://localhost:3000 não respondeu a tempo. Veja os logs pelo launcher."
+fi
+
+if [ "$run_install_tests" = "true" ]; then
+  run_project_test_suite
+else
+  info "Validação completa por testes automatizados pulada para preservar dados locais já existentes."
 fi

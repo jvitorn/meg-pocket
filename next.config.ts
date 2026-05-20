@@ -33,8 +33,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  output: 'standalone',
+  output: "standalone",
   images: {
+    unoptimized: true,
     dangerouslyAllowLocalIP: true,
     remotePatterns: [
       {

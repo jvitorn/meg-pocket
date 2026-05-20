@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendMock = vi.fn();
@@ -64,6 +67,23 @@ describe("uploadImageFile", () => {
     expect(result.url).toMatch(
       /^https:\/\/cdn\.example\.com\/personagens\/personagens\/\d{4}\/\d{2}\/.+\.png$/
     );
+  });
+
+  it("salva imagem local em /uploads sem expor caminho interno", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "meg-pocket-storage-"));
+    process.env.STORAGE_LOCAL_DIR = tmpDir;
+    process.env.STORAGE_LOCAL_PUBLIC_URL = "/uploads";
+
+    const { uploadImageFile } = await import("@/lib/storage/provider");
+    const file = new File(["avatar"], "avatar.png", { type: "image/png" });
+
+    const result = await uploadImageFile(file, "personagens");
+
+    expect(result.key).toMatch(/^personagens\/\d{4}\/\d{2}\/.+\.png$/);
+    expect(result.url).toMatch(
+      /^\/uploads\/personagens\/\d{4}\/\d{2}\/.+\.png$/
+    );
+    await expect(fs.stat(path.join(tmpDir, result.key))).resolves.toBeTruthy();
   });
 
   it("nao duplica o bucket na url publica quando a base ja aponta para ele", async () => {

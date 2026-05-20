@@ -9,5 +9,5 @@ project_path="$(project_dir)"
 [ -f "$project_path/docker-compose.yml" ] || fail "Projeto não encontrado em $project_path."
 
 cd "$project_path"
-run_compose --env-file .env.docker-local stop
+stop_all_project_stacks
 info "M&G Pocket parado. Dados locais preservados."

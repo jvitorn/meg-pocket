@@ -27,6 +27,8 @@ cd "$project_path"
 run_compose --env-file .env.docker-local down -v
 rm -rf storage/local/public
 mkdir -p storage/local/public
+rm -rf public/uploads
+mkdir -p public/uploads
 rm -f installers/.seed-inicial-concluido
 
 "$SCRIPT_DIR/install-project.sh"

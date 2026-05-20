@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runner
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -13,23 +14,58 @@ services:
       NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-meg-pocket-local-secret-change-me}"
       NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
       NEXT_PUBLIC_BASE_URL: "${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}"
-      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-local-google-client-id}"
-      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-local-google-client-secret}"
       STORAGE_DRIVER: local
       STORAGE_BUCKET: personagens
-      STORAGE_LOCAL_DIR: /app/storage/local/public
-      STORAGE_LOCAL_PUBLIC_URL: "http://storage"
+      STORAGE_LOCAL_DIR: /app/uploads
+      STORAGE_LOCAL_PUBLIC_URL: /uploads
       NEXT_PUBLIC_STORAGE_MAX_FILE_SIZE_MB: "40"
-      ADMINER_URL: "http://localhost:8081"
-    ports:
-      - "127.0.0.1:3000:3000"
+      ADMINER_URL: "${ADMINER_URL:-http://localhost:8081}"
+    expose:
+      - "3000"
     volumes:
-      - ./storage/local/public:/app/storage/local/public
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
-      storage:
-        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  maintenance:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: maintenance
+    profiles:
+      - maintenance
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://meg:meg@postgres:5432/meg_pocket?schema=public"
+      DIRECT_URL: "postgresql://meg:meg@postgres:5432/meg_pocket?schema=public"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-meg-pocket-local-secret-change-me}"
+      NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
+      NEXT_PUBLIC_BASE_URL: "${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}"
+      STORAGE_DRIVER: local
+      STORAGE_BUCKET: personagens
+      STORAGE_LOCAL_DIR: /app/uploads
+      STORAGE_LOCAL_PUBLIC_URL: /uploads
+      NEXT_PUBLIC_STORAGE_MAX_FILE_SIZE_MB: "40"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   postgres:
     image: postgres:16-alpine
@@ -38,31 +74,53 @@ services:
       POSTGRES_DB: meg_pocket
       POSTGRES_USER: meg
       POSTGRES_PASSWORD: meg
-    ports:
-      - "127.0.0.1:5433:5432"
+    expose:
+      - "5432"
     volumes:
-      - meg-pocket-postgres-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U meg -d meg_pocket"]
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  storage:
+  nginx:
     image: nginx:1.29-alpine
     restart: unless-stopped
     ports:
-      - "127.0.0.1:9323:80"
+      - "127.0.0.1:${APP_PORT:-3000}:80"
     volumes:
-      - ./storage/local/public:/usr/share/nginx/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - uploads_data:/app/uploads:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   adminer:
     image: adminer:4.8.1
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8081:8080"
+      - "127.0.0.1:${ADMINER_PORT:-8081}:8080"
     depends_on:
       - postgres
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
-  meg-pocket-postgres-data:
+  postgres_data:
+  uploads_data:

@@ -35,7 +35,7 @@ if (Test-Path (Join-Path $tmp "env.docker-local")) {
   Ensure-EnvFile $projectDir
 }
 
-try { Invoke-Compose @("--env-file", ".env.docker-local", "stop", "app", "adminer", "storage") *> $null } catch {}
+try { Invoke-Compose @("--env-file", ".env.docker-local", "stop", "app", "adminer", "nginx") *> $null } catch {}
 Invoke-Compose @("--env-file", ".env.docker-local", "up", "-d", "postgres")
 Wait-Postgres
 

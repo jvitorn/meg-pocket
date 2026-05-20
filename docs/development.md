@@ -231,6 +231,8 @@ Esses dados existem para desenvolvimento, demonstração e uso em mesas própria
 
 Os comandos de seed podem apagar dados existentes nas tabelas alvo antes de recriar os dados. Use seeds apenas em ambientes locais ou de desenvolvimento.
 
+O ponto de entrada dos seeds é `prisma/seeds/generated/index.sql`. Mantenha IDs estáveis quando alterar dados de exemplo, pois os testes e relacionamentos usam fixtures determinísticas.
+
 ## Ambientes
 
 O arquivo ativo da aplicação é `.env.local`.
@@ -261,6 +263,7 @@ Por padrão, seeds só podem rodar quando `DATABASE_URL` ou `DIRECT_URL` apontam
 - `localhost`
 - `127.0.0.1`
 - `::1`
+- `postgres`
 
 Para um override consciente, é necessário usar:
 

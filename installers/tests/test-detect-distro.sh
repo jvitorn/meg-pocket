@@ -49,6 +49,6 @@ assert_contains "$(OS_RELEASE_FILE="$tmp_dir/ubuntu" "$SCRIPT")" "family=ubuntu_
 assert_contains "$(OS_RELEASE_FILE="$tmp_dir/mint" "$SCRIPT")" "family=ubuntu_like"
 assert_contains "$(OS_RELEASE_FILE="$tmp_dir/debian" "$SCRIPT")" "family=debian_like"
 assert_contains "$(OS_RELEASE_FILE="$tmp_dir/arch" "$SCRIPT")" "family=arch_like"
-assert_contains "$(OS_RELEASE_FILE="$tmp_dir/fedora" "$SCRIPT")" "family=unsupported"
+assert_contains "$(OS_RELEASE_FILE="$tmp_dir/fedora" "$SCRIPT")" "family=fedora_like"
 
 printf 'test-detect-distro: ok\n'

@@ -14,9 +14,9 @@ if docker_info_works; then
   exit 0
 fi
 
-if sudo_docker_info_works; then
-  sudo groupadd -f docker
-  sudo usermod -aG docker "$USER"
+if sudo_docker_info_works_no_prompt; then
+  sudo -n groupadd -f docker
+  sudo -n usermod -aG docker "$USER"
   printf 'dockerPermissionOk=false\n'
   printf 'sudoDockerWorks=true\n'
   printf 'requiresRelogin=true\n'
@@ -24,4 +24,13 @@ if sudo_docker_info_works; then
   exit 0
 fi
 
-fail "Docker não respondeu nem com sudo. Verifique se o serviço docker está ativo."
+if has_command pkexec && pkexec docker info >/dev/null 2>&1; then
+  pkexec sh -c 'groupadd -f docker && usermod -aG docker "$1"' sh "$USER"
+  printf 'dockerPermissionOk=false\n'
+  printf 'sudoDockerWorks=false\n'
+  printf 'requiresRelogin=true\n'
+  printf 'message=%s\n' "Usuário adicionado ao grupo docker. Saia da sessão do Linux e entre novamente para ativar a permissão."
+  exit 0
+fi
+
+fail "Docker não está acessível para seu usuário e o launcher não pode pedir senha na interface. Use a ação administrativa guiada ou configure o grupo docker manualmente."

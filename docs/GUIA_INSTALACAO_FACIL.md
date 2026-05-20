@@ -36,17 +36,48 @@ O bootstrap não instala Docker, não baixa o projeto web e não roda Docker Com
 
 Outras distros exigem instalação manual do Docker. Depois de instalar Docker manualmente, volte ao launcher e clique em **Preparar ambiente**.
 
-## Windows
+## Linux — AppImage Abriu Em Branco
 
-No Windows, instale o Docker Desktop primeiro:
+Em alguns ambientes Linux com Wayland/WebKitGTK, o AppImage pode abrir em branco.
 
-```text
-https://www.docker.com/products/docker-desktop/
+Teste pelo terminal:
+
+```bash
+WEBKIT_DISABLE_COMPOSITING_MODE=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
 ```
 
-Depois baixe o instalador `.exe` do M&G Pocket Launcher pela página de Releases.
+Se continuar:
 
-O launcher no Windows detecta Docker Desktop e, quando ele estiver rodando, permite preparar, iniciar, parar, reiniciar e ver logs do projeto.
+```bash
+WEBKIT_DISABLE_DMABUF_RENDERER=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
+```
+
+Ou:
+
+```bash
+GDK_BACKEND=x11 WEBKIT_DISABLE_COMPOSITING_MODE=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
+```
+
+No Arch Linux, garanta dependências comuns:
+
+```bash
+sudo pacman -S webkit2gtk-4.1 gtk3 glib2 libayatana-appindicator librsvg fuse2
+```
+
+## Windows
+
+Baixe o instalador `.exe` do M&G Pocket Launcher pela página de Releases.
+
+No Windows, o launcher detecta `winget`, Git for Windows, Docker Desktop, Docker CLI, Docker Compose, PowerShell e WSL2 quando necessário.
+
+Se Git ou Docker Desktop estiverem ausentes e `winget` existir, o launcher oferece instalação guiada com confirmação:
+
+```powershell
+winget install -e --id Git.Git
+winget install -e --id Docker.DockerDesktop
+```
+
+Depois de instalar Docker Desktop, abra o Docker Desktop e aguarde o Docker Engine iniciar. Se o Windows pedir reinicialização, reinicie antes de voltar ao launcher.
 
 ## Onde Ficam Os Arquivos
 
@@ -99,7 +130,7 @@ http://localhost:8081
 
 Os scripts antigos em `installers/` foram mantidos como wrappers de compatibilidade.
 
-- `instalar-mg-pocket-linux-mac.sh` agora abre o fluxo do launcher no Linux.
-- `iniciar-mg-pocket-linux-mac.sh` chama `installers/linux/start.sh`.
-- `parar-mg-pocket-linux-mac.sh` chama `installers/linux/stop.sh`.
+- `instalar-mg-pocket-linux-mac.sh` agora abre o fluxo do launcher no Linux; macOS não tem artefatos publicados nesta fase.
+- `iniciar-mg-pocket-linux-mac.sh` chama `installers/linux/start.sh` no Linux.
+- `parar-mg-pocket-linux-mac.sh` chama `installers/linux/stop.sh` no Linux.
 - Os `.bat` do Windows chamam os scripts PowerShell novos.

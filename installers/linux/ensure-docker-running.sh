@@ -10,13 +10,19 @@ has_command docker || fail "Docker não foi encontrado. Instale o Docker antes d
 if has_command systemctl; then
   if ! systemctl is-active --quiet docker 2>/dev/null; then
     info "Docker Engine não está ativo. Iniciando serviço docker..."
-    sudo systemctl enable --now docker
+    if has_command sudo && sudo -n systemctl enable --now docker; then
+      :
+    elif has_command pkexec; then
+      pkexec systemctl enable --now docker
+    else
+      fail "O Docker precisa ser iniciado com permissão administrativa. O launcher não pede senha na interface; autorize pelo terminal do sistema e tente novamente."
+    fi
   fi
 else
   info "systemctl não foi encontrado. Tentando validar Docker diretamente."
 fi
 
-if docker_info_works || sudo_docker_info_works; then
+if docker_info_works || sudo_docker_info_works_no_prompt; then
   info "Docker Engine está rodando."
   exit 0
 fi

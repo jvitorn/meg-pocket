@@ -6,6 +6,7 @@ import sharp from "sharp";
 const launcherRoot = process.cwd();
 const tauriDir = path.join(launcherRoot, "src-tauri");
 const configPath = path.join(tauriDir, "tauri.conf.json");
+const postcssConfigPath = path.join(launcherRoot, "postcss.config.mjs");
 const requiredIcons = [
   "icons/32x32.png",
   "icons/128x128.png",
@@ -20,6 +21,18 @@ const requiredPngIcons = new Map([
   ["icons/128x128@2x.png", 256],
   ["icons/icon.png", 512],
 ]);
+const requiredInstallerFiles = [
+  "bootstrap/linux.sh",
+  "bootstrap/windows.ps1",
+  "linux/doctor.sh",
+  "linux/install-project.sh",
+  "linux/start.sh",
+  "linux/stop.sh",
+  "windows/doctor.ps1",
+  "windows/install-project.ps1",
+  "windows/start.ps1",
+  "windows/stop.ps1",
+];
 
 function fail(message) {
   console.error(`validate-tauri-assets: ${message}`);
@@ -35,6 +48,24 @@ function assertFile(filePath, label) {
 function assertPathExists(targetPath, label) {
   if (!fs.existsSync(targetPath)) {
     fail(`${label} não encontrado: ${path.relative(launcherRoot, targetPath)}`);
+  }
+}
+
+function assertDirectory(targetPath, label) {
+  assertPathExists(targetPath, label);
+  if (!fs.statSync(targetPath).isDirectory()) {
+    fail(`${label} deve ser uma pasta: ${path.relative(launcherRoot, targetPath)}`);
+  }
+}
+
+function assertExecutable(filePath, label) {
+  if (process.platform === "win32") {
+    return;
+  }
+
+  const mode = fs.statSync(filePath).mode;
+  if ((mode & 0o111) === 0) {
+    fail(`${label} precisa ter permissão de execução: ${path.relative(launcherRoot, filePath)}`);
   }
 }
 
@@ -59,7 +90,10 @@ async function assertRgbaPng(icon, expectedSize) {
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 const bundle = config.bundle ?? {};
 const icons = Array.isArray(bundle.icon) && bundle.icon.length > 0 ? bundle.icon : ["icons/icon.png"];
-const resources = Array.isArray(bundle.resources) ? bundle.resources : [];
+const resources = bundle.resources ?? {};
+const resourceEntries = Array.isArray(resources)
+  ? resources.map((resource) => [resource, null])
+  : Object.entries(resources);
 
 for (const requiredIcon of requiredIcons) {
   if (!icons.includes(requiredIcon)) {
@@ -75,14 +109,32 @@ for (const [icon, expectedSize] of requiredPngIcons.entries()) {
   await assertRgbaPng(icon, expectedSize);
 }
 
-for (const resource of resources) {
+for (const [resource] of resourceEntries) {
   assertPathExists(path.resolve(tauriDir, resource), "recurso Tauri");
 }
 
-if (!resources.includes("../../installers")) {
-  fail("bundle.resources deve incluir ../../installers para empacotar os scripts do launcher");
+if (!resources || Array.isArray(resources) || resources["../../installers/"] !== "installers/") {
+  fail('bundle.resources deve mapear "../../installers/" para "installers/"');
+}
+
+const installersDir = path.resolve(tauriDir, "../../installers");
+assertDirectory(installersDir, "pasta installers");
+
+for (const installerFile of requiredInstallerFiles) {
+  const installerPath = path.join(installersDir, installerFile);
+  assertFile(installerPath, "script installer");
+
+  if (installerFile.endsWith(".sh")) {
+    assertExecutable(installerPath, "script shell do installer");
+  }
 }
 
 assertFile(path.join(tauriDir, "capabilities", "default.json"), "capability default");
+assertFile(postcssConfigPath, "config PostCSS local do launcher");
+
+const postcssConfig = fs.readFileSync(postcssConfigPath, "utf8");
+if (postcssConfig.includes("@tailwindcss/postcss")) {
+  fail("o launcher não deve depender do PostCSS/Tailwind do projeto principal");
+}
 
 console.log("validate-tauri-assets: ok");

@@ -1,6 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "M&G Pocket Launcher",
+  "productName": "mg-pocket-launcher",
+  "mainBinaryName": "mg-pocket-launcher",
   "version": "1.1.0",
   "identifier": "br.com.megpocket.launcher",
   "build": {
@@ -26,7 +27,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["appimage", "deb", "rpm", "nsis", "msi"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -35,6 +36,8 @@
       "icons/icon.ico",
       "icons/icon.png"
     ],
-    "resources": ["../../installers"]
+    "resources": {
+      "../../installers/": "installers/"
+    }
   }
 }

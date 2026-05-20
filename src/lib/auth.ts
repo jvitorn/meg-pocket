@@ -5,17 +5,23 @@ import { prisma } from "@/lib/prisma";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { hasGoogleAuthCredentials } from "@/lib/auth/google";
 
 const SESSION_MAX_AGE_SECONDS = 2 * 24 * 60 * 60;
+const googleProvider = hasGoogleAuthCredentials()
+  ? [
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      }),
+    ]
+  : [];
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
 
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
+    ...googleProvider,
     CredentialsProvider({
       name: "credentials",
       credentials: {

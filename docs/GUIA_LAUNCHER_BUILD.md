@@ -2,12 +2,14 @@
 
 Este guia descreve a validação local e o empacotamento do launcher Tauri.
 
+Rust e Cargo são necessários apenas para desenvolver ou compilar o launcher. Usuários finais não precisam instalar Rust/Cargo para usar o M&G Pocket pelo launcher.
+
 ## Requisitos
 
 - Node.js 22 ou superior.
 - npm.
-- Rust estável com Cargo.
-- Dependências Linux do Tauri quando estiver gerando AppImage ou `.deb`.
+- Rust estável com Cargo, somente para desenvolvimento/build do launcher.
+- Dependências Linux do Tauri quando estiver gerando AppImage, `.deb` ou `.rpm`.
 
 No Ubuntu 22.04, use:
 
@@ -23,6 +25,7 @@ sudo apt-get install -y \
   libwebkit2gtk-4.1-dev \
   libxdo-dev \
   patchelf \
+  rpm \
   wget
 ```
 
@@ -69,9 +72,35 @@ chmod +x src-tauri/target/release/bundle/appimage/*.AppImage
 ./src-tauri/target/release/bundle/appimage/*.AppImage
 ```
 
+## Linux — AppImage Abriu Em Branco
+
+Em alguns ambientes Linux com Wayland/WebKitGTK, o AppImage pode abrir em branco por falha de EGL/DMABUF. O launcher já aplica workarounds antes de criar o WebView, mas estes comandos ajudam a diagnosticar o ambiente:
+
+```bash
+WEBKIT_DISABLE_COMPOSITING_MODE=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
+```
+
+Se continuar:
+
+```bash
+WEBKIT_DISABLE_DMABUF_RENDERER=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
+```
+
+Ou:
+
+```bash
+GDK_BACKEND=x11 WEBKIT_DISABLE_COMPOSITING_MODE=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
+```
+
+No Arch Linux, garanta as dependências comuns:
+
+```bash
+sudo pacman -S webkit2gtk-4.1 gtk3 glib2 libayatana-appindicator librsvg fuse2
+```
+
 ## Resources empacotados
 
-O bundle inclui a pasta `installers/` como resource Tauri. Em execução empacotada, o launcher copia esses scripts para:
+O bundle inclui a pasta `installers/` como resource Tauri mapeado para `$RESOURCE/installers/`. Em execução empacotada, o launcher copia esses scripts para:
 
 ```text
 ~/.local/share/mg-pocket-launcher/installers/
@@ -82,7 +111,9 @@ No modo de desenvolvimento, o launcher usa a pasta `installers/` do próprio rep
 ## GitHub Actions
 
 - `.github/workflows/launcher-ci.yml` valida ícones, frontend, backend Rust e testes do launcher em PR/push.
-- `.github/workflows/launcher-prerelease.yml` gera builds Linux, Windows e macOS via `tauri-apps/tauri-action` e cria pre-release/draft release.
+- `.github/workflows/launcher-prerelease.yml` gera builds Linux e Windows via `tauri-apps/tauri-action` e cria pre-release/draft release.
+
+macOS não é gerado nem publicado por enquanto, porque não há validação local disponível para esses artefatos.
 
 O workflow de pre-release pode ser executado manualmente com uma tag como:
 

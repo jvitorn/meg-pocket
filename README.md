@@ -106,7 +106,7 @@ src/lib                  Regras, auth, prisma e utilitários
 src/services             Chamadas client-side para APIs
 prisma/schema.prisma     Schema do banco
 prisma/migrations        Migrations Prisma
-prisma/seeds/generated   Seeds SQL gerados
+prisma/seeds/generated   Seeds SQL versionados
 tests/unit               Testes unitários
 tests/e2e                Testes Playwright
 scripts                  Scripts de ambiente, seed e e2e

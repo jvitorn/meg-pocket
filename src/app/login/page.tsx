@@ -3,6 +3,7 @@ import { LoginForm } from "@/components/login/login-form";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Toaster } from "sonner";
+import { hasGoogleAuthCredentials } from "@/lib/auth/google";
 
 export default async function LoginPage({
   searchParams,
@@ -11,6 +12,7 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   const showExpiredNotice = params?.expired === "1";
+  const googleLoginEnabled = hasGoogleAuthCredentials();
 
   return (
     <>
@@ -20,7 +22,10 @@ export default async function LoginPage({
         backgroundSrc="/imgs/backgrounds/login.jpg"
         backgroundAlt="Cena de fantasia para tela de login"
       >
-        <LoginForm showExpiredNotice={showExpiredNotice} />
+        <LoginForm
+          showExpiredNotice={showExpiredNotice}
+          googleLoginEnabled={googleLoginEnabled}
+        />
       </AuthPageShell>
       <Footer />
     </>

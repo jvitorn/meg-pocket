@@ -24,11 +24,17 @@ if [ "$1" = "compose" ] && [ "$2" = "version" ]; then
   echo "Docker Compose version v2.fake"
   exit 0
 fi
+if [ "$1" = "compose" ]; then
+  printf '%s\n' "$*" > "$COMPOSE_ARGS_FILE"
+  exit 0
+fi
 exit 1
 EOF
 chmod +x "$tmp_dir/docker"
 
 assert_eq "$(compose_cmd)" "docker compose"
+COMPOSE_ARGS_FILE="$tmp_dir/compose-args" MG_POCKET_COMPOSE_PROJECT_NAME="mg-pocket-test" run_compose ps
+assert_eq "$(cat "$tmp_dir/compose-args")" "compose --project-name mg-pocket-test ps"
 
 cat > "$tmp_dir/docker" <<'EOF'
 #!/usr/bin/env bash

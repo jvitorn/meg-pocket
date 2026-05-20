@@ -7,5 +7,5 @@ if (-not (Test-Path (Join-Path $projectDir "docker-compose.yml"))) {
 }
 
 Set-Location $projectDir
-Invoke-Compose @("--env-file", ".env.docker-local", "stop")
+Stop-AllProjectStacks
 Write-Host "M&G Pocket parado. Dados locais preservados."

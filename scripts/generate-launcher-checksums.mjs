@@ -4,7 +4,8 @@ import path from "node:path";
 import process from "node:process";
 
 const repoRoot = process.cwd();
-const outputArg = process.argv[2] ?? "checksums.txt";
+const allowEmpty = process.argv.includes("--allow-empty");
+const outputArg = process.argv.find((arg, index) => index > 1 && !arg.startsWith("--")) ?? "checksums.txt";
 const targetDir = path.join(repoRoot, "launcher", "src-tauri", "target");
 const outputPath = path.resolve(repoRoot, outputArg);
 const artifactPatterns = [
@@ -13,9 +14,6 @@ const artifactPatterns = [
   /\.rpm$/i,
   /\.msi$/i,
   /\.exe$/i,
-  /\.dmg$/i,
-  /\.app\.tar\.gz$/i,
-  /\.app\.tar\.gz\.sig$/i,
   /\.tar\.gz$/i,
 ];
 
@@ -55,8 +53,15 @@ const artifacts = findBundleDirs(targetDir)
   .sort((a, b) => a.localeCompare(b));
 
 if (artifacts.length === 0) {
-  console.error(`generate-launcher-checksums: nenhum artefato encontrado em ${path.relative(repoRoot, targetDir)}`);
-  process.exit(1);
+  const message = `generate-launcher-checksums: nenhum artefato encontrado em ${path.relative(repoRoot, targetDir)}`;
+  if (!allowEmpty) {
+    console.error(message);
+    process.exit(1);
+  }
+
+  fs.writeFileSync(outputPath, `# ${message}\n`);
+  console.warn(message);
+  process.exit(0);
 }
 
 const lines = artifacts.map((filePath) => {

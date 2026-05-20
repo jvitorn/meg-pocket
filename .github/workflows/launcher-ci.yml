@@ -75,8 +75,8 @@ jobs:
         run: npm run build
 
       - name: Check Tauri Rust backend
-        working-directory: launcher
-        run: cargo check --manifest-path src-tauri/Cargo.toml
+        working-directory: launcher/src-tauri
+        run: cargo check
 
       - name: Run launcher tests
         working-directory: launcher
