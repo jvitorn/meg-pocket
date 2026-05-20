@@ -13,9 +13,9 @@ use std::{
     thread,
 };
 
+use serde::Serialize;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use serde::Serialize;
 use tauri::AppHandle;
 
 use crate::{
@@ -128,7 +128,13 @@ pub fn run_admin_or_error(
         let job = job_manager.start(action)?;
         let progress = Arc::new(AtomicU8::new(0));
 
-        jobs::emit_started(app, &job, "Aguardando permissão", "Abrindo terminal administrativo.", 0);
+        jobs::emit_started(
+            app,
+            &job,
+            "Aguardando permissão",
+            "Abrindo terminal administrativo.",
+            0,
+        );
 
         let result = run_linux_admin_script(app, &job, &progress, script_name, args);
         match result {
@@ -243,12 +249,14 @@ fn run_platform_script(
         .spawn()
         .map_err(|error| LauncherError::technical("Não foi possível executar script", error))?;
 
-    let stdout = child.stdout.take().ok_or_else(|| {
-        LauncherError::friendly("Não foi possível capturar a saída do script.")
-    })?;
-    let stderr = child.stderr.take().ok_or_else(|| {
-        LauncherError::friendly("Não foi possível capturar os erros do script.")
-    })?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| LauncherError::friendly("Não foi possível capturar a saída do script."))?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| LauncherError::friendly("Não foi possível capturar os erros do script."))?;
 
     let stdout_buffer = Arc::new(Mutex::new(String::new()));
     let stderr_buffer = Arc::new(Mutex::new(String::new()));
@@ -327,15 +335,7 @@ fn spawn_stream_reader<R: Read + Send + 'static>(
             }
 
             let current_progress = progress.load(Ordering::Relaxed);
-            jobs::emit_log(
-                &app,
-                &job_id,
-                &action,
-                "",
-                &line,
-                current_progress,
-                level,
-            );
+            jobs::emit_log(&app, &job_id, &action, "", &line, current_progress, level);
 
             if let Some((step, message_progress)) = progress_hint(&script_name, &line) {
                 update_progress(
@@ -439,14 +439,18 @@ exit "$code"
         args = script_args,
     );
 
-    fs::write(&wrapper_path, wrapper)
-        .map_err(|error| LauncherError::technical("Não foi possível preparar terminal administrativo", error))?;
+    fs::write(&wrapper_path, wrapper).map_err(|error| {
+        LauncherError::technical("Não foi possível preparar terminal administrativo", error)
+    })?;
     let mut permissions = fs::metadata(&wrapper_path)
-        .map_err(|error| LauncherError::technical("Não foi possível ler script administrativo", error))?
+        .map_err(|error| {
+            LauncherError::technical("Não foi possível ler script administrativo", error)
+        })?
         .permissions();
     permissions.set_mode(0o700);
-    fs::set_permissions(&wrapper_path, permissions)
-        .map_err(|error| LauncherError::technical("Não foi possível proteger script administrativo", error))?;
+    fs::set_permissions(&wrapper_path, permissions).map_err(|error| {
+        LauncherError::technical("Não foi possível proteger script administrativo", error)
+    })?;
 
     update_progress(
         app,
@@ -476,9 +480,23 @@ exit "$code"
 fn run_terminal_and_wait(wrapper_path: &Path) -> LauncherResult<std::process::ExitStatus> {
     let wrapper = wrapper_path.to_string_lossy().to_string();
     let candidates: Vec<(&str, Vec<String>)> = vec![
-        ("gnome-terminal", vec!["--wait".into(), "--".into(), "bash".into(), wrapper.clone()]),
-        ("konsole", vec!["--nofork".into(), "-e".into(), "bash".into(), wrapper.clone()]),
-        ("x-terminal-emulator", vec!["-e".into(), "bash".into(), wrapper.clone()]),
+        (
+            "gnome-terminal",
+            vec!["--wait".into(), "--".into(), "bash".into(), wrapper.clone()],
+        ),
+        (
+            "konsole",
+            vec![
+                "--nofork".into(),
+                "-e".into(),
+                "bash".into(),
+                wrapper.clone(),
+            ],
+        ),
+        (
+            "x-terminal-emulator",
+            vec!["-e".into(), "bash".into(), wrapper.clone()],
+        ),
         ("xterm", vec!["-e".into(), "bash".into(), wrapper]),
     ];
 
@@ -628,7 +646,10 @@ pub fn sanitize_child_environment(command: &mut Command) {
 }
 
 #[cfg(target_os = "linux")]
-pub(crate) fn sanitize_linux_child_environment(command: &mut Command, original_path: Option<OsString>) {
+pub(crate) fn sanitize_linux_child_environment(
+    command: &mut Command,
+    original_path: Option<OsString>,
+) {
     let preserved_home = env::var_os("HOME");
     let preserved_path = original_path.or_else(|| env::var_os("PATH"));
     let preserved_user = env::var_os("USER");
@@ -690,9 +711,14 @@ fn progress_hint(script_name: &str, line: &str) -> Option<(&'static str, u8)> {
         "ensure-docker-running" => Some(("Verificando Docker", 20)),
         "ensure-docker-permission" => Some(("Verificando permissões", 30)),
         "install-project" => {
-            if lower.contains("docker") && (lower.contains("iniciando") || lower.contains("desktop")) {
+            if lower.contains("docker")
+                && (lower.contains("iniciando") || lower.contains("desktop"))
+            {
                 Some(("Verificando Docker", 20))
-            } else if lower.contains("permiss") || lower.contains("grupo docker") || lower.contains("sudo") {
+            } else if lower.contains("permiss")
+                || lower.contains("grupo docker")
+                || lower.contains("sudo")
+            {
                 Some(("Verificando permissões", 30))
             } else if lower.contains("projeto já existe")
                 || lower.contains("git pull")
@@ -812,14 +838,37 @@ mod tests {
             Some(OsString::from("/usr/local/bin:/usr/bin")),
         );
 
-        assert_eq!(command_env(&command, "LD_LIBRARY_PATH"), Some(None));
-        assert_eq!(command_env(&command, "APPDIR"), Some(None));
-        assert_eq!(command_env(&command, "APPIMAGE"), Some(None));
-        assert_eq!(command_env(&command, "ARGV0"), Some(None));
-        assert_eq!(command_env(&command, "OWD"), Some(None));
+        assert_eq!(command_env(&command, "LD_LIBRARY_PATH").flatten(), None);
+        assert_eq!(command_env(&command, "APPDIR").flatten(), None);
+        assert_eq!(command_env(&command, "APPIMAGE").flatten(), None);
+        assert_eq!(command_env(&command, "ARGV0").flatten(), None);
+        assert_eq!(command_env(&command, "OWD").flatten(), None);
         assert_eq!(
             command_env(&command, "PATH"),
             Some(Some(OsString::from("/usr/local/bin:/usr/bin")))
         );
+    }
+
+    #[test]
+    fn friendly_errors_stay_short_and_user_facing() {
+        assert!(is_friendly_error(
+            "Docker não está rodando. Abra o Docker Desktop e tente novamente."
+        ));
+        assert!(!is_friendly_error("falha técnica\ncom stack trace"));
+        assert!(!is_friendly_error("/usr/bin/docker: symbol lookup error"));
+        assert!(!is_friendly_error(&"x".repeat(221)));
+    }
+
+    #[test]
+    fn redacts_sensitive_lines_before_showing_logs() {
+        assert_eq!(
+            redact_sensitive("DATABASE_URL=postgresql://meg:senha@localhost/db"),
+            "DATABASE_URL=<oculto>"
+        );
+        assert_eq!(
+            redact_sensitive("GOOGLE_CLIENT_SECRET=segredo"),
+            "GOOGLE_CLIENT_SECRET=<oculto>"
+        );
+        assert_eq!(redact_sensitive("Docker iniciado"), "Docker iniciado");
     }
 }

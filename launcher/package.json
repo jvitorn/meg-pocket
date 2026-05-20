@@ -9,11 +9,14 @@
     "preview": "vite preview --host 127.0.0.1",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
+    "tauri:build": "node scripts/build-tauri.mjs",
     "fix:icons": "node scripts/fix-icons.mjs",
-    "check": "npm run fix:icons && npm run build && cargo check --manifest-path src-tauri/Cargo.toml",
+    "check": "npm run fix:icons && npm run build && npm run check:rust && npm run test:rust",
     "build:launcher": "npm run fix:icons && npm run test:assets && npm run tauri:build",
-    "test": "vitest run && npm run test:assets",
+    "test": "npm run test:ui && npm run test:assets && npm run test:rust",
+    "test:ui": "vitest run",
+    "check:rust": "cargo check --manifest-path src-tauri/Cargo.toml",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
     "test:assets": "node scripts/validate-tauri-assets.mjs"
   },
   "dependencies": {

@@ -29,7 +29,10 @@ fn quickDiagnose() -> Result<String, String> {
 
 #[tauri::command(async)]
 #[allow(non_snake_case)]
-fn installDockerLinux(app: AppHandle, jobs: State<'_, JobManager>) -> Result<CommandOutput, String> {
+fn installDockerLinux(
+    app: AppHandle,
+    jobs: State<'_, JobManager>,
+) -> Result<CommandOutput, String> {
     command_result(native::install_docker_linux(&app, &jobs))
 }
 
@@ -52,7 +55,10 @@ fn installSystemDependencies(
 
 #[tauri::command(async)]
 #[allow(non_snake_case)]
-fn ensureDockerRunning(app: AppHandle, jobs: State<'_, JobManager>) -> Result<CommandOutput, String> {
+fn ensureDockerRunning(
+    app: AppHandle,
+    jobs: State<'_, JobManager>,
+) -> Result<CommandOutput, String> {
     command_result(native::ensure_docker_running(&app, &jobs))
 }
 

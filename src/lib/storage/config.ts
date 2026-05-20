@@ -73,7 +73,7 @@ export function getStorageConfig(): StorageConfig {
   return {
     driver,
     bucket: process.env.STORAGE_BUCKET?.trim() || "personagens",
-    localDir: process.env.STORAGE_LOCAL_DIR?.trim() || "./storage/local/public",
+    localDir: process.env.STORAGE_LOCAL_DIR?.trim() || "./public/uploads",
     localPublicUrl: trimTrailingSlash(
       process.env.STORAGE_LOCAL_PUBLIC_URL?.trim() || "/uploads"
     ),

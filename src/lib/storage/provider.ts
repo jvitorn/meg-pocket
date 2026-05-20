@@ -96,8 +96,11 @@ async function uploadToLocalStorage({
 }: UploadInput): Promise<StorageUploadResult> {
   const config = getStorageConfig();
   const key = buildObjectKey(folder, extension);
-  const localDir = path.resolve(process.cwd(), config.localDir);
-  const destination = path.join(localDir, key);
+  const localDir = path.resolve(
+    /* turbopackIgnore: true */ process.cwd(),
+    config.localDir
+  );
+  const destination = path.join(/* turbopackIgnore: true */ localDir, key);
 
   await fs.mkdir(path.dirname(destination), { recursive: true });
   await fs.writeFile(destination, buffer);

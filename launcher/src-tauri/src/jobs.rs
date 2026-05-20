@@ -1,7 +1,6 @@
 use std::sync::{
     atomic::{AtomicBool, AtomicU64, Ordering},
-    Arc,
-    Mutex,
+    Arc, Mutex,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -47,10 +46,9 @@ pub struct JobGuard<'a> {
 
 impl JobManager {
     pub fn start(&self, action: &str) -> LauncherResult<JobGuard<'_>> {
-        let mut active = self
-            .active
-            .lock()
-            .map_err(|_| LauncherError::friendly("O controle de jobs do launcher ficou indisponível."))?;
+        let mut active = self.active.lock().map_err(|_| {
+            LauncherError::friendly("O controle de jobs do launcher ficou indisponível.")
+        })?;
 
         if active.is_some() {
             return Err(LauncherError::friendly(
@@ -78,10 +76,9 @@ impl JobManager {
     }
 
     pub fn cancel_active(&self) -> LauncherResult<Option<String>> {
-        let active = self
-            .active
-            .lock()
-            .map_err(|_| LauncherError::friendly("O controle de jobs do launcher ficou indisponível."))?;
+        let active = self.active.lock().map_err(|_| {
+            LauncherError::friendly("O controle de jobs do launcher ficou indisponível.")
+        })?;
 
         if let Some(active) = active.as_ref() {
             active.cancelled.store(true, Ordering::Relaxed);
@@ -132,7 +129,16 @@ impl JobGuard<'_> {
 }
 
 pub fn emit_started(app: &AppHandle, job: &JobGuard<'_>, step: &str, message: &str, progress: u8) {
-    emit(app, JOB_STARTED, job.job_id(), job.action(), step, message, progress, "info");
+    emit(
+        app,
+        JOB_STARTED,
+        job.job_id(),
+        job.action(),
+        step,
+        message,
+        progress,
+        "info",
+    );
 }
 
 pub fn emit_progress(
@@ -143,7 +149,16 @@ pub fn emit_progress(
     message: &str,
     progress: u8,
 ) {
-    emit(app, JOB_PROGRESS, job_id, action, step, message, progress, "info");
+    emit(
+        app,
+        JOB_PROGRESS,
+        job_id,
+        action,
+        step,
+        message,
+        progress,
+        "info",
+    );
 }
 
 pub fn emit_log(
@@ -158,8 +173,17 @@ pub fn emit_log(
     emit(app, JOB_LOG, job_id, action, step, message, progress, level);
 }
 
-pub fn emit_error(app: &AppHandle, job_id: &str, action: &str, step: &str, message: &str, progress: u8) {
-    emit(app, JOB_ERROR, job_id, action, step, message, progress, "error");
+pub fn emit_error(
+    app: &AppHandle,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    message: &str,
+    progress: u8,
+) {
+    emit(
+        app, JOB_ERROR, job_id, action, step, message, progress, "error",
+    );
 }
 
 pub fn emit_finished(
@@ -171,7 +195,16 @@ pub fn emit_finished(
     progress: u8,
     level: &str,
 ) {
-    emit(app, JOB_FINISHED, job_id, action, step, message, progress, level);
+    emit(
+        app,
+        JOB_FINISHED,
+        job_id,
+        action,
+        step,
+        message,
+        progress,
+        level,
+    );
 }
 
 fn emit(

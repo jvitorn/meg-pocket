@@ -70,6 +70,9 @@ pub fn installers_io_error(action: &str, error: io::Error) -> LauncherError {
     if is_windows_file_lock(&error) {
         LauncherError::installers_locked(technical)
     } else {
-        LauncherError::new("Não foi possível preparar os scripts do launcher.", technical)
+        LauncherError::new(
+            "Não foi possível preparar os scripts do launcher.",
+            technical,
+        )
     }
 }

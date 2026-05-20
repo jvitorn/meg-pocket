@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
@@ -36,6 +36,19 @@ const baseStatus: SystemStatus = {
   projectVersion: "v1.1.0",
   appOnline: true,
   adminerOnline: true,
+  gitInstalled: true,
+  podmanInstalled: false,
+  containerRuntime: "docker",
+  port3000Available: true,
+  port80Available: true,
+  port443Available: true,
+  port5432Available: true,
+  databaseConnected: true,
+  containersActive: true,
+  nginxOnline: true,
+  uploadsDirectoryOk: true,
+  uploadsServed: true,
+  nextAssetsOnline: true,
 };
 
 const baseDependencies: DependencyStatus = {
@@ -135,6 +148,24 @@ describe("M&G Pocket Launcher", () => {
 
     expect(screen.getByText("Docker instalado")).toBeInTheDocument();
     expect(screen.getByText("usando sudo")).toBeInTheDocument();
+  });
+
+  it("mostra diagnóstico completo de infraestrutura local", async () => {
+    mockDoctor();
+    render(<App />);
+
+    const diagnostics = within(await screen.findByLabelText("Diagnóstico"));
+
+    expect(await diagnostics.findByText("Git instalado")).toBeInTheDocument();
+    expect(diagnostics.getByText("Banco conectado")).toBeInTheDocument();
+    expect(diagnostics.getByText("Containers ativos")).toBeInTheDocument();
+    expect(diagnostics.getByText("Nginx")).toBeInTheDocument();
+    expect(diagnostics.getByText("Uploads")).toBeInTheDocument();
+    expect(diagnostics.getByText("Assets Next")).toBeInTheDocument();
+    expect(diagnostics.getByText("Porta 3000")).toBeInTheDocument();
+    expect(diagnostics.getByText("Portas 80/443/5432")).toBeInTheDocument();
+    expect(diagnostics.getAllByText("ok").length).toBeGreaterThanOrEqual(3);
+    expect(diagnostics.getAllByText("livres").length).toBeGreaterThanOrEqual(1);
   });
 
   it("botão Preparar ambiente chama os comandos esperados", async () => {

@@ -1,6 +1,5 @@
 use std::{
-    fs,
-    io,
+    fs, io,
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
     thread,
@@ -67,7 +66,9 @@ fn prepare_bundled_installers(source: &Path, destination: &Path) -> LauncherResu
     }
 
     let data_dir = launcher_data_dir()?;
-    retry_io("criar pasta local do launcher", || fs::create_dir_all(&data_dir))?;
+    retry_io("criar pasta local do launcher", || {
+        fs::create_dir_all(&data_dir)
+    })?;
     cleanup_old_temporaries(&data_dir, None);
 
     let temp_dir = data_dir.join(format!(
@@ -129,7 +130,9 @@ fn copy_dir_all(source: &Path, destination: &Path) -> LauncherResult<()> {
         fs::create_dir_all(destination)
     })?;
 
-    let entries = retry_io("ler pasta de installers empacotada", || fs::read_dir(source))?;
+    let entries = retry_io("ler pasta de installers empacotada", || {
+        fs::read_dir(source)
+    })?;
     for entry in entries {
         let entry = entry.map_err(|error| installers_io_error("ler item de installers", error))?;
         let source_path = entry.path();
@@ -144,7 +147,11 @@ fn copy_dir_all(source: &Path, destination: &Path) -> LauncherResult<()> {
             })?;
 
             #[cfg(unix)]
-            if target_path.extension().and_then(|extension| extension.to_str()) == Some("sh") {
+            if target_path
+                .extension()
+                .and_then(|extension| extension.to_str())
+                == Some("sh")
+            {
                 let mut permissions =
                     retry_io("ler permissão do script", || fs::metadata(&target_path))?
                         .permissions();
@@ -170,7 +177,9 @@ fn swap_installers_dir(temp_dir: &Path, destination: &Path) -> LauncherResult<()
         )
     })?;
 
-    retry_io("criar pasta local do launcher", || fs::create_dir_all(parent))?;
+    retry_io("criar pasta local do launcher", || {
+        fs::create_dir_all(parent)
+    })?;
 
     let old_dir = parent.join(format!(
         "installers_old_{}_{}",

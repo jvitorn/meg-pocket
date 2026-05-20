@@ -14,8 +14,6 @@ services:
       NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-meg-pocket-local-secret-change-me}"
       NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
       NEXT_PUBLIC_BASE_URL: "${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}"
-      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
-      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
       STORAGE_DRIVER: local
       STORAGE_BUCKET: personagens
       STORAGE_LOCAL_DIR: /app/uploads
@@ -54,8 +52,6 @@ services:
       NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:-meg-pocket-local-secret-change-me}"
       NEXTAUTH_URL: "${NEXTAUTH_URL:-http://localhost:3000}"
       NEXT_PUBLIC_BASE_URL: "${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}"
-      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
-      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
       STORAGE_DRIVER: local
       STORAGE_BUCKET: personagens
       STORAGE_LOCAL_DIR: /app/uploads

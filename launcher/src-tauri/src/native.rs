@@ -1,7 +1,6 @@
 use std::{
     collections::{HashMap, VecDeque},
-    env,
-    fs,
+    env, fs,
     io::{BufRead, BufReader, Read, Write},
     net::{SocketAddr, TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
@@ -14,9 +13,9 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
+use serde::Serialize;
 #[cfg(target_os = "linux")]
 use std::os::unix::fs::PermissionsExt;
-use serde::Serialize;
 use tauri::AppHandle;
 
 use crate::{
@@ -500,11 +499,15 @@ fn run_doctor_steps(
 
 pub fn check_system_dependencies() -> LauncherResult<String> {
     let dependencies = build_dependency_status()?;
-    serde_json::to_string(&dependencies)
-        .map_err(|error| LauncherError::technical("Não foi possível serializar dependências", error))
+    serde_json::to_string(&dependencies).map_err(|error| {
+        LauncherError::technical("Não foi possível serializar dependências", error)
+    })
 }
 
-pub fn install_docker_linux(app: &AppHandle, job_manager: &JobManager) -> LauncherResult<CommandOutput> {
+pub fn install_docker_linux(
+    app: &AppHandle,
+    job_manager: &JobManager,
+) -> LauncherResult<CommandOutput> {
     #[cfg(target_os = "linux")]
     {
         install_system_dependencies_with_action(app, job_manager, "Instalar Docker")
@@ -520,7 +523,10 @@ pub fn install_docker_linux(app: &AppHandle, job_manager: &JobManager) -> Launch
     }
 }
 
-pub fn install_system_dependencies(app: &AppHandle, job_manager: &JobManager) -> LauncherResult<CommandOutput> {
+pub fn install_system_dependencies(
+    app: &AppHandle,
+    job_manager: &JobManager,
+) -> LauncherResult<CommandOutput> {
     install_system_dependencies_with_action(app, job_manager, "Instalar dependências")
 }
 
@@ -551,7 +557,10 @@ fn install_system_dependencies_with_action(
     }
 }
 
-pub fn ensure_docker_running(app: &AppHandle, job_manager: &JobManager) -> LauncherResult<CommandOutput> {
+pub fn ensure_docker_running(
+    app: &AppHandle,
+    job_manager: &JobManager,
+) -> LauncherResult<CommandOutput> {
     let job = job_manager.start("Verificar Docker")?;
     let mut ctx = NativeJob::new(app, job);
     ctx.started("Verificando Docker", "Validando Docker Engine.", 0);
@@ -649,7 +658,9 @@ pub fn stop_app(
 
     let result = stop_app_steps(&mut ctx, use_sudo_docker);
     match result {
-        Ok(()) => Ok(ctx.finish_success("Finalizado", "M&G Pocket parado. Dados locais preservados.")),
+        Ok(()) => {
+            Ok(ctx.finish_success("Finalizado", "M&G Pocket parado. Dados locais preservados."))
+        }
         Err(error) if ctx.job.is_cancelled() => {
             ctx.finish_cancelled();
             Err(error)
@@ -745,12 +756,18 @@ pub fn restore_backup(
     use_sudo_docker: bool,
 ) -> LauncherResult<CommandOutput> {
     if !confirmed {
-        return Err(LauncherError::friendly("Restore exige confirmação explícita."));
+        return Err(LauncherError::friendly(
+            "Restore exige confirmação explícita.",
+        ));
     }
 
     let job = job_manager.start("Restaurar backup")?;
     let mut ctx = NativeJob::new(app, job);
-    ctx.started("Iniciando restauração", "Validando backup antes de alterar dados locais.", 0);
+    ctx.started(
+        "Iniciando restauração",
+        "Validando backup antes de alterar dados locais.",
+        0,
+    );
 
     let result = restore_backup_steps(&mut ctx, PathBuf::from(backup_path), use_sudo_docker);
     match result {
@@ -773,7 +790,9 @@ pub fn reset_local_data(
     use_sudo_docker: bool,
 ) -> LauncherResult<CommandOutput> {
     if !confirmed {
-        return Err(LauncherError::friendly("Reset local exige confirmação explícita."));
+        return Err(LauncherError::friendly(
+            "Reset local exige confirmação explícita.",
+        ));
     }
 
     let job = job_manager.start("Resetar dados locais")?;
@@ -802,7 +821,9 @@ pub fn remove_local_project(
     use_sudo_docker: bool,
 ) -> LauncherResult<CommandOutput> {
     if !confirmed {
-        return Err(LauncherError::friendly("Remoção local exige confirmação explícita."));
+        return Err(LauncherError::friendly(
+            "Remoção local exige confirmação explícita.",
+        ));
     }
     if mode != "safe" && mode != "complete" {
         return Err(LauncherError::friendly("Modo de remoção inválido."));
@@ -831,7 +852,11 @@ pub fn cancel_current_job(job_manager: &JobManager) -> LauncherResult<bool> {
 }
 
 fn install_system_dependencies_steps(ctx: &mut NativeJob<'_, '_>) -> LauncherResult<()> {
-    ctx.progress("Verificando dependências", "Mapeando dependências ausentes.", 10);
+    ctx.progress(
+        "Verificando dependências",
+        "Mapeando dependências ausentes.",
+        10,
+    );
     let dependencies = build_dependency_status()?;
     if dependencies.missing.is_empty() {
         ctx.log(
@@ -965,7 +990,11 @@ fn ensure_docker_permission_steps(ctx: &mut NativeJob<'_, '_>) -> LauncherResult
         SHORT_TIMEOUT,
         Some(ctx.job.cancel_flag()),
     );
-    if direct.as_ref().map(|output| output.success).unwrap_or(false) {
+    if direct
+        .as_ref()
+        .map(|output| output.success)
+        .unwrap_or(false)
+    {
         if let Ok(output) = direct {
             ctx.append_output(&output);
         }
@@ -1015,13 +1044,22 @@ fn ensure_docker_permission_steps(ctx: &mut NativeJob<'_, '_>) -> LauncherResult
 
 fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> LauncherResult<()> {
     ctx.progress("Verificando Git", "Verificando Git.", 10);
-    require_command("git", ["--version"], "Git não foi encontrado. Instale o Git antes de continuar.")?;
+    require_command(
+        "git",
+        ["--version"],
+        "Git não foi encontrado. Instale o Git antes de continuar.",
+    )?;
 
     ctx.progress("Verificando Docker", "Verificando Docker Engine.", 20);
     ensure_docker_daemon(ctx, use_sudo_docker, 20)?;
 
-    ctx.progress("Verificando Docker Compose", "Verificando Docker Compose.", 30);
-    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+    ctx.progress(
+        "Verificando Docker Compose",
+        "Verificando Docker Compose.",
+        30,
+    );
+    let compose =
+        resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
 
     ctx.progress("Verificando permissões", "Validando permissão Docker.", 40);
     ensure_docker_permission_for_install(use_sudo_docker)?;
@@ -1031,7 +1069,11 @@ fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> 
     validate_project_path(&project_dir)?;
     prepare_project_source(ctx, &project_dir)?;
 
-    ctx.progress("Preparando .env", "Preparando .env.docker-local e storage local.", 70);
+    ctx.progress(
+        "Preparando .env",
+        "Preparando .env.docker-local e storage local.",
+        70,
+    );
     prepare_project_files(&project_dir)?;
     cleanup_legacy_app_compose_project(ctx, &compose, &project_dir);
 
@@ -1039,7 +1081,16 @@ fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> 
         "Construindo imagens",
         "Construindo runtime standalone e imagem de manutenção.",
         80,
-        compose.command(&project_dir, ["--env-file", ".env.docker-local", "build", "app", "maintenance"]),
+        compose.command(
+            &project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "build",
+                "app",
+                "maintenance",
+            ],
+        ),
         LONG_TIMEOUT,
     )?;
 
@@ -1047,7 +1098,10 @@ fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> 
         "Subindo banco",
         "Subindo Postgres para setup local.",
         84,
-        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "postgres"]),
+        compose.command(
+            &project_dir,
+            ["--env-file", ".env.docker-local", "up", "-d", "postgres"],
+        ),
         LONG_TIMEOUT,
     )?;
 
@@ -1078,14 +1132,27 @@ fn install_project_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> 
         "Subindo containers",
         "Subindo aplicação standalone e Nginx.",
         95,
-        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "app", "nginx"]),
+        compose.command(
+            &project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "up",
+                "-d",
+                "app",
+                "nginx",
+            ],
+        ),
         LONG_TIMEOUT,
     )?;
     ctx.run_optional(
         "Subindo Adminer",
         "Tentando iniciar Adminer.",
         96,
-        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "adminer"]),
+        compose.command(
+            &project_dir,
+            ["--env-file", ".env.docker-local", "up", "-d", "adminer"],
+        ),
         MEDIUM_TIMEOUT,
     );
     wait_for_app_database(ctx, &compose, &project_dir)?;
@@ -1101,14 +1168,18 @@ fn start_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Launch
 
     ctx.progress("Verificando Docker", "Validando Docker Engine.", 15);
     ensure_docker_daemon(ctx, use_sudo_docker, 15)?;
-    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+    let compose =
+        resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
     cleanup_legacy_app_compose_project(ctx, &compose, &project_dir);
 
     ctx.run_required(
         "Subindo banco",
         "Subindo Postgres.",
         65,
-        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "postgres"]),
+        compose.command(
+            &project_dir,
+            ["--env-file", ".env.docker-local", "up", "-d", "postgres"],
+        ),
         LONG_TIMEOUT,
     )?;
     wait_for_postgres(ctx, &compose, &project_dir)?;
@@ -1116,14 +1187,27 @@ fn start_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Launch
         "Subindo containers",
         "Subindo aplicação standalone e Nginx.",
         70,
-        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "app", "nginx"]),
+        compose.command(
+            &project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "up",
+                "-d",
+                "app",
+                "nginx",
+            ],
+        ),
         LONG_TIMEOUT,
     )?;
     ctx.run_optional(
         "Subindo Adminer",
         "Tentando iniciar Adminer.",
         75,
-        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "adminer"]),
+        compose.command(
+            &project_dir,
+            ["--env-file", ".env.docker-local", "up", "-d", "adminer"],
+        ),
         MEDIUM_TIMEOUT,
     );
     wait_for_app_database(ctx, &compose, &project_dir)?;
@@ -1134,7 +1218,8 @@ fn start_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Launch
 fn stop_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> LauncherResult<()> {
     let project_dir = project_dir();
     require_project(&project_dir)?;
-    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+    let compose =
+        resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
     stop_compose_project(ctx, &compose, &project_dir, &compose_project_name(), true)?;
     if compose_project_name() != "meg-pocket" {
         stop_compose_project(ctx, &compose, &project_dir, "meg-pocket", false)?;
@@ -1152,7 +1237,8 @@ fn restart_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Laun
     validate_project_path(&project_dir)?;
     prepare_project_files(&project_dir)?;
     ensure_docker_daemon(ctx, use_sudo_docker, 28)?;
-    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+    let compose =
+        resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
 
     ctx.run_required(
         "Parando containers",
@@ -1166,14 +1252,28 @@ fn restart_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Laun
         "Subindo containers",
         "Subindo aplicação standalone e Nginx.",
         60,
-        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "postgres", "app", "nginx"]),
+        compose.command(
+            &project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "up",
+                "-d",
+                "postgres",
+                "app",
+                "nginx",
+            ],
+        ),
         LONG_TIMEOUT,
     )?;
     ctx.run_optional(
         "Subindo Adminer",
         "Tentando iniciar Adminer.",
         75,
-        compose.command(&project_dir, ["--env-file", ".env.docker-local", "up", "-d", "adminer"]),
+        compose.command(
+            &project_dir,
+            ["--env-file", ".env.docker-local", "up", "-d", "adminer"],
+        ),
         MEDIUM_TIMEOUT,
     );
     ctx.progress("Aguardando serviços", "Aguardando serviços locais.", 85);
@@ -1185,7 +1285,8 @@ fn restart_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Laun
 fn read_logs_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> LauncherResult<String> {
     let project_dir = project_dir();
     require_project(&project_dir)?;
-    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+    let compose =
+        resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
     let output = ctx.run_required(
         "Logs",
         "Lendo somente as últimas linhas.",
@@ -1201,14 +1302,23 @@ fn read_logs_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Launch
 
 fn backup_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> LauncherResult<PathBuf> {
     let project_dir = project_dir();
-    ctx.progress("Verificando projeto local", "Validando pasta local do projeto.", 15);
+    ctx.progress(
+        "Verificando projeto local",
+        "Validando pasta local do projeto.",
+        15,
+    );
     require_project(&project_dir)?;
     validate_project_path(&project_dir)?;
     prepare_project_files(&project_dir)?;
 
-    ctx.progress("Verificando containers", "Validando Docker e Docker Compose.", 30);
+    ctx.progress(
+        "Verificando containers",
+        "Validando Docker e Docker Compose.",
+        30,
+    );
     ensure_docker_daemon(ctx, use_sudo_docker, 30)?;
-    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+    let compose =
+        resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
     ensure_postgres_for_maintenance(ctx, &compose, &project_dir, 40)?;
 
     create_backup_archive(ctx, &compose, &project_dir, 45, 65, 85)
@@ -1223,7 +1333,11 @@ fn restore_backup_steps(
     validate_backup_file(&backup_file)?;
 
     let mut temp_dir = TempDirGuard::new("mg-pocket-restore")?;
-    ctx.progress("Extraindo backup", "Extraindo backup em pasta temporária.", 25);
+    ctx.progress(
+        "Extraindo backup",
+        "Extraindo backup em pasta temporária.",
+        25,
+    );
     extract_backup_archive(ctx, &backup_file, temp_dir.path())?;
     let dump_file = temp_dir.path().join(BACKUP_SQL_FILE);
     if !dump_file.is_file() {
@@ -1233,12 +1347,21 @@ fn restore_backup_steps(
     }
 
     let project_dir = project_dir();
-    ctx.progress("Validando projeto local", "Validando pasta local do projeto.", 35);
+    ctx.progress(
+        "Validando projeto local",
+        "Validando pasta local do projeto.",
+        35,
+    );
     require_project(&project_dir)?;
     validate_project_path(&project_dir)?;
 
-    ctx.progress("Parando containers", "Parando app, Adminer e Nginx antes do restore.", 40);
-    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+    ctx.progress(
+        "Parando containers",
+        "Parando app, Adminer e Nginx antes do restore.",
+        40,
+    );
+    let compose =
+        resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
     restore_env_file(temp_dir.path(), &project_dir)?;
     ctx.run_optional(
         "Parando containers",
@@ -1306,24 +1429,40 @@ fn restore_backup_steps(
         None,
     )?;
 
-    ctx.progress("Aplicando arquivos", "Aplicando arquivos locais do backup.", 82);
-    restore_storage_with_rollback(&mut ctx, &compose, temp_dir.path(), &project_dir)?;
+    ctx.progress(
+        "Aplicando arquivos",
+        "Aplicando arquivos locais do backup.",
+        82,
+    );
+    restore_storage_with_rollback(ctx, &compose, temp_dir.path(), &project_dir)?;
 
-    ctx.progress("Subindo containers", "Subindo containers depois da restauração.", 90);
+    ctx.progress(
+        "Subindo containers",
+        "Subindo containers depois da restauração.",
+        90,
+    );
     start_app_steps(ctx, use_sudo_docker)?;
     temp_dir.cleanup();
     Ok(())
 }
 
-fn reset_local_data_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> LauncherResult<()> {
+fn reset_local_data_steps(
+    ctx: &mut NativeJob<'_, '_>,
+    use_sudo_docker: bool,
+) -> LauncherResult<()> {
     let project_dir = project_dir();
     ctx.progress("Validando segurança", "Validando escopo do reset.", 20);
     require_project(&project_dir)?;
     validate_project_path(&project_dir)?;
     prepare_project_files(&project_dir)?;
-    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
+    let compose =
+        resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
 
-    ctx.log("Backup automático", "Tentando criar backup antes do reset.", "info");
+    ctx.log(
+        "Backup automático",
+        "Tentando criar backup antes do reset.",
+        "info",
+    );
     match ensure_postgres_for_maintenance(ctx, &compose, &project_dir, 25)
         .and_then(|_| create_backup_archive(ctx, &compose, &project_dir, 28, 32, 36))
     {
@@ -1353,14 +1492,24 @@ fn reset_local_data_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) ->
         LONG_TIMEOUT,
     )?;
 
-    ctx.progress("Limpando estado local", "Limpando storage e marcador de seed.", 80);
+    ctx.progress(
+        "Limpando estado local",
+        "Limpando storage e marcador de seed.",
+        80,
+    );
     remove_dir_retry(&project_dir.join("storage").join("local").join("public"))?;
-    fs::create_dir_all(project_dir.join("storage").join("local").join("public"))
-        .map_err(|error| LauncherError::technical("Não foi possível recriar storage local", error))?;
+    fs::create_dir_all(project_dir.join("storage").join("local").join("public")).map_err(
+        |error| LauncherError::technical("Não foi possível recriar storage local", error),
+    )?;
     remove_dir_retry(&project_dir.join("public").join("uploads"))?;
-    fs::create_dir_all(project_dir.join("public").join("uploads"))
-        .map_err(|error| LauncherError::technical("Não foi possível recriar uploads públicos locais", error))?;
-    remove_file_if_exists(&project_dir.join("installers").join(".seed-inicial-concluido"))?;
+    fs::create_dir_all(project_dir.join("public").join("uploads")).map_err(|error| {
+        LauncherError::technical("Não foi possível recriar uploads públicos locais", error)
+    })?;
+    remove_file_if_exists(
+        &project_dir
+            .join("installers")
+            .join(".seed-inicial-concluido"),
+    )?;
 
     install_project_steps(ctx, use_sudo_docker)?;
     Ok(())
@@ -1381,10 +1530,15 @@ fn remove_local_project_steps(
         return Ok(());
     }
 
-    ctx.progress("Validando projeto local", "Validando caminho local antes de apagar.", 20);
+    ctx.progress(
+        "Validando projeto local",
+        "Validando caminho local antes de apagar.",
+        20,
+    );
     let safe_project_dir = validate_project_delete_path(&project_dir)?;
 
-    let compose = resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()));
+    let compose =
+        resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()));
     match (mode, compose) {
         ("complete", Ok(compose)) => {
             ctx.run_required(
@@ -1417,7 +1571,11 @@ fn remove_local_project_steps(
         }
     }
 
-    ctx.progress("Removendo pasta local", "Removendo pasta local do projeto.", 85);
+    ctx.progress(
+        "Removendo pasta local",
+        "Removendo pasta local do projeto.",
+        85,
+    );
     remove_dir_retry(&safe_project_dir)?;
     Ok(())
 }
@@ -1476,7 +1634,11 @@ fn create_backup_archive(
         Some(&dump_file),
     )?;
 
-    ctx.progress("Preparando arquivos", "Copiando arquivos locais para pasta temporária.", files_progress);
+    ctx.progress(
+        "Preparando arquivos",
+        "Copiando arquivos locais para pasta temporária.",
+        files_progress,
+    );
     let env_file = project_dir.join(".env.docker-local");
     if env_file.is_file() {
         copy_file_retry(&env_file, &temp_dir.path().join(BACKUP_ENV_FILE))?;
@@ -1529,8 +1691,9 @@ fn create_backup_archive(
     }
 
     let destination_dir = backup_dir()?;
-    fs::create_dir_all(&destination_dir)
-        .map_err(|error| LauncherError::technical("Não foi possível criar pasta de backups", error))?;
+    fs::create_dir_all(&destination_dir).map_err(|error| {
+        LauncherError::technical("Não foi possível criar pasta de backups", error)
+    })?;
     let backup_file = destination_dir.join(default_backup_file_name());
     archive_temp_dir(ctx, temp_dir.path(), &backup_file, archive_progress)?;
     temp_dir.cleanup();
@@ -1697,7 +1860,11 @@ fn restore_storage_with_rollback(
     Ok(())
 }
 
-fn compose_down_command(compose: &ComposeCommand, project_dir: &Path, remove_volumes: bool) -> NativeCommand {
+fn compose_down_command(
+    compose: &ComposeCommand,
+    project_dir: &Path,
+    remove_volumes: bool,
+) -> NativeCommand {
     let mut args = Vec::new();
     if project_dir.join(".env.docker-local").is_file() {
         args.extend(["--env-file".to_string(), ".env.docker-local".to_string()]);
@@ -1835,14 +2002,18 @@ exit "$code"
         commands = command_text,
     );
 
-    fs::write(&wrapper_path, wrapper)
-        .map_err(|error| LauncherError::technical("Não foi possível preparar terminal administrativo", error))?;
+    fs::write(&wrapper_path, wrapper).map_err(|error| {
+        LauncherError::technical("Não foi possível preparar terminal administrativo", error)
+    })?;
     let mut permissions = fs::metadata(&wrapper_path)
-        .map_err(|error| LauncherError::technical("Não foi possível ler terminal administrativo", error))?
+        .map_err(|error| {
+            LauncherError::technical("Não foi possível ler terminal administrativo", error)
+        })?
         .permissions();
     permissions.set_mode(0o700);
-    fs::set_permissions(&wrapper_path, permissions)
-        .map_err(|error| LauncherError::technical("Não foi possível proteger terminal administrativo", error))?;
+    fs::set_permissions(&wrapper_path, permissions).map_err(|error| {
+        LauncherError::technical("Não foi possível proteger terminal administrativo", error)
+    })?;
 
     ctx.progress(
         "Terminal administrativo",
@@ -1852,7 +2023,11 @@ exit "$code"
     let status = run_terminal_and_wait(&wrapper_path)?;
     let _ = fs::remove_file(&wrapper_path);
     if status.success() {
-        ctx.progress("Dependências instaladas", "Dependências verificadas pelo sistema.", 90);
+        ctx.progress(
+            "Dependências instaladas",
+            "Dependências verificadas pelo sistema.",
+            90,
+        );
         Ok(log_path)
     } else {
         append_admin_log(ctx, &log_path);
@@ -1870,8 +2045,19 @@ fn run_terminal_and_wait(wrapper_path: &Path) -> LauncherResult<std::process::Ex
             "gnome-terminal",
             vec!["--wait".into(), "--".into(), "bash".into(), wrapper.clone()],
         ),
-        ("konsole", vec!["--nofork".into(), "-e".into(), "bash".into(), wrapper.clone()]),
-        ("x-terminal-emulator", vec!["-e".into(), "bash".into(), wrapper.clone()]),
+        (
+            "konsole",
+            vec![
+                "--nofork".into(),
+                "-e".into(),
+                "bash".into(),
+                wrapper.clone(),
+            ],
+        ),
+        (
+            "x-terminal-emulator",
+            vec!["-e".into(), "bash".into(), wrapper.clone()],
+        ),
         ("xterm", vec!["-e".into(), "bash".into(), wrapper]),
     ];
 
@@ -1962,17 +2148,18 @@ fn windows_dependency_packages(missing: &[String]) -> Vec<(&'static str, &'stati
     if missing.iter().any(|item| item.eq_ignore_ascii_case("git")) {
         packages.push(("Git for Windows", "Git.Git"));
     }
-    if missing
-        .iter()
-        .any(|item| item.eq_ignore_ascii_case("docker desktop") || item.eq_ignore_ascii_case("docker"))
-    {
+    if missing.iter().any(|item| {
+        item.eq_ignore_ascii_case("docker desktop") || item.eq_ignore_ascii_case("docker")
+    }) {
         packages.push(("Docker Desktop", "Docker.DockerDesktop"));
     }
     packages
 }
 
 #[cfg(target_os = "windows")]
-fn write_windows_dependency_script(packages: &[(&str, &str)]) -> LauncherResult<(PathBuf, PathBuf)> {
+fn write_windows_dependency_script(
+    packages: &[(&str, &str)],
+) -> LauncherResult<(PathBuf, PathBuf)> {
     let (log_path, script_path) = admin_temp_paths("windows-dependencies", "ps1")?;
     let friendly_list = packages
         .iter()
@@ -2042,8 +2229,9 @@ exit 0
         friendly_list = friendly_list,
         install_blocks = install_blocks,
     );
-    fs::write(&script_path, script)
-        .map_err(|error| LauncherError::technical("Não foi possível preparar instalador Windows", error))?;
+    fs::write(&script_path, script).map_err(|error| {
+        LauncherError::technical("Não foi possível preparar instalador Windows", error)
+    })?;
     Ok((script_path, log_path))
 }
 
@@ -2060,14 +2248,19 @@ fn admin_temp_paths(prefix: &str, extension: &str) -> LauncherResult<(PathBuf, P
 
 fn append_admin_log(ctx: &mut NativeJob<'_, '_>, log_path: &Path) {
     if let Ok(text) = fs::read_to_string(log_path) {
-        append_limited(&mut ctx.stdout, &limit_lines(&text, UI_LOG_LINES), CAPTURE_LIMIT_BYTES);
+        append_limited(
+            &mut ctx.stdout,
+            &limit_lines(&text, UI_LOG_LINES),
+            CAPTURE_LIMIT_BYTES,
+        );
     }
 }
 
 fn prepare_project_source(ctx: &mut NativeJob<'_, '_>, project_dir: &Path) -> LauncherResult<()> {
     if let Some(parent) = project_dir.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| LauncherError::technical("Não foi possível criar pasta do projeto", error))?;
+        fs::create_dir_all(parent).map_err(|error| {
+            LauncherError::technical("Não foi possível criar pasta do projeto", error)
+        })?;
     }
 
     let git_dir = project_dir.join(".git");
@@ -2105,7 +2298,10 @@ fn prepare_project_source(ctx: &mut NativeJob<'_, '_>, project_dir: &Path) -> La
                 "O caminho {} já existe, mas não parece ser o projeto M&G Pocket.",
                 project_dir.display()
             ),
-            format!("Pasta existente sem .git e sem docker-compose.yml: {}", project_dir.display()),
+            format!(
+                "Pasta existente sem .git e sem docker-compose.yml: {}",
+                project_dir.display()
+            ),
         ));
     }
 
@@ -2146,7 +2342,11 @@ fn trim_installed_project_source(ctx: &mut NativeJob<'_, '_>, project_dir: &Path
             Some(ctx.job.cancel_flag()),
         );
 
-        if sparse.as_ref().map(|output| output.success).unwrap_or(false) {
+        if sparse
+            .as_ref()
+            .map(|output| output.success)
+            .unwrap_or(false)
+        {
             ctx.log(
                 "Organizando instalação",
                 "Pasta launcher removida da cópia local via sparse checkout.",
@@ -2171,7 +2371,10 @@ fn trim_installed_project_source(ctx: &mut NativeJob<'_, '_>, project_dir: &Path
         ),
         Err(error) => ctx.log(
             "Organizando instalação",
-            &format!("Não foi possível remover launcher local: {}", error.friendly_message()),
+            &format!(
+                "Não foi possível remover launcher local: {}",
+                error.friendly_message()
+            ),
             "error",
         ),
     }
@@ -2180,10 +2383,12 @@ fn trim_installed_project_source(ctx: &mut NativeJob<'_, '_>, project_dir: &Path
 fn prepare_project_files(project_dir: &Path) -> LauncherResult<()> {
     fs::create_dir_all(project_dir.join("storage").join("local").join("public"))
         .map_err(|error| LauncherError::technical("Não foi possível criar storage local", error))?;
-    fs::create_dir_all(project_dir.join("public").join("uploads"))
-        .map_err(|error| LauncherError::technical("Não foi possível criar pasta pública de uploads", error))?;
-    fs::create_dir_all(project_dir.join("installers"))
-        .map_err(|error| LauncherError::technical("Não foi possível criar pasta técnica do projeto", error))?;
+    fs::create_dir_all(project_dir.join("public").join("uploads")).map_err(|error| {
+        LauncherError::technical("Não foi possível criar pasta pública de uploads", error)
+    })?;
+    fs::create_dir_all(project_dir.join("installers")).map_err(|error| {
+        LauncherError::technical("Não foi possível criar pasta técnica do projeto", error)
+    })?;
 
     let env_file = project_dir.join(".env.docker-local");
     if env_file.is_file() {
@@ -2210,7 +2415,10 @@ fn prepare_project_files(project_dir: &Path) -> LauncherResult<()> {
     content = upsert_env_var(&content, "STORAGE_LOCAL_PUBLIC_URL", "/uploads");
 
     let secret = format!("mg-pocket-local-{}", timestamp_nanos());
-    if content.lines().any(|line| line.starts_with("NEXTAUTH_SECRET=")) {
+    if content
+        .lines()
+        .any(|line| line.starts_with("NEXTAUTH_SECRET="))
+    {
         content = content
             .lines()
             .map(|line| {
@@ -2225,8 +2433,9 @@ fn prepare_project_files(project_dir: &Path) -> LauncherResult<()> {
         content.push('\n');
     }
 
-    fs::write(&env_file, content)
-        .map_err(|error| LauncherError::technical("Não foi possível criar .env.docker-local", error))?;
+    fs::write(&env_file, content).map_err(|error| {
+        LauncherError::technical("Não foi possível criar .env.docker-local", error)
+    })?;
     Ok(())
 }
 
@@ -2240,7 +2449,12 @@ fn cleanup_legacy_app_compose_project(
     }
 
     let mut command_args = compose.prefix.clone();
-    command_args.extend(["--project-name".to_string(), "app".to_string(), "down".to_string(), "--remove-orphans".to_string()]);
+    command_args.extend([
+        "--project-name".to_string(),
+        "app".to_string(),
+        "down".to_string(),
+        "--remove-orphans".to_string(),
+    ]);
     let command = NativeCommand::new(compose.program.clone())
         .args(command_args)
         .cwd(project_dir);
@@ -2261,10 +2475,7 @@ fn stop_compose_project(
     required: bool,
 ) -> LauncherResult<()> {
     let mut command_args = compose.prefix.clone();
-    command_args.extend([
-        "--project-name".to_string(),
-        project_name.to_string(),
-    ]);
+    command_args.extend(["--project-name".to_string(), project_name.to_string()]);
     if project_dir.join(".env.docker-local").is_file() {
         command_args.extend(["--env-file".to_string(), ".env.docker-local".to_string()]);
     }
@@ -2299,30 +2510,39 @@ fn wait_for_postgres(
     project_dir: &Path,
 ) -> LauncherResult<()> {
     ctx.progress("Aguardando banco", "Aguardando Postgres responder.", 86);
-    retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
-        run_capture(
-            compose.command(
-                project_dir,
-                [
-                    "--env-file",
-                    ".env.docker-local",
-                    "exec",
-                    "-T",
-                    "postgres",
-                    "pg_isready",
-                    "-U",
-                    "meg",
-                    "-d",
-                    "meg_pocket",
-                ],
-            ),
-            SHORT_TIMEOUT,
-            Some(ctx.job.cancel_flag()),
+    retry_step(
+        ctx,
+        Duration::from_secs(120),
+        Duration::from_secs(2),
+        || {
+            run_capture(
+                compose.command(
+                    project_dir,
+                    [
+                        "--env-file",
+                        ".env.docker-local",
+                        "exec",
+                        "-T",
+                        "postgres",
+                        "pg_isready",
+                        "-U",
+                        "meg",
+                        "-d",
+                        "meg_pocket",
+                    ],
+                ),
+                SHORT_TIMEOUT,
+                Some(ctx.job.cancel_flag()),
+            )
+            .map(|output| output.success)
+            .unwrap_or(false)
+        },
+    )
+    .map_err(|_| {
+        LauncherError::friendly(
+            "O banco de dados não ficou pronto a tempo. Veja os logs pelo launcher.",
         )
-        .map(|output| output.success)
-        .unwrap_or(false)
     })
-    .map_err(|_| LauncherError::friendly("O banco de dados não ficou pronto a tempo. Veja os logs pelo launcher."))
 }
 
 fn wait_for_app_database(
@@ -2330,7 +2550,11 @@ fn wait_for_app_database(
     compose: &ComposeCommand,
     project_dir: &Path,
 ) -> LauncherResult<()> {
-    ctx.progress("Aguardando app", "Validando healthcheck do app com o banco.", 88);
+    ctx.progress(
+        "Aguardando app",
+        "Validando healthcheck do app com o banco.",
+        88,
+    );
     retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
         run_capture(
             compose.command(
@@ -2365,7 +2589,9 @@ fn run_seed_if_needed(
     compose: &ComposeCommand,
     project_dir: &Path,
 ) -> LauncherResult<()> {
-    let seed_marker = project_dir.join("installers").join(".seed-inicial-concluido");
+    let seed_marker = project_dir
+        .join("installers")
+        .join(".seed-inicial-concluido");
     let seed_ready = seed_ready(compose, project_dir, ctx.job.cancel_flag());
     if seed_marker.is_file() || seed_ready {
         ctx.log(
@@ -2396,8 +2622,9 @@ fn run_seed_if_needed(
         ),
         LONG_TIMEOUT,
     )?;
-    fs::write(seed_marker, "")
-        .map_err(|error| LauncherError::technical("Não foi possível gravar marcador de seed", error))?;
+    fs::write(seed_marker, "").map_err(|error| {
+        LauncherError::technical("Não foi possível gravar marcador de seed", error)
+    })?;
     Ok(())
 }
 
@@ -2434,7 +2661,11 @@ fn validate_site(ctx: &mut NativeJob<'_, '_>) -> LauncherResult<()> {
     let adminer_port = local_service_port("ADMINER_PORT", 8081, &project_dir);
     let app_url = format!("http://localhost:{app_port}");
     let adminer_url = format!("http://localhost:{adminer_port}");
-    ctx.progress("Validando site/Adminer", &format!("Validando {app_url}."), 95);
+    ctx.progress(
+        "Validando site/Adminer",
+        &format!("Validando {app_url}."),
+        95,
+    );
     retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
         check_local_port(app_port, PORT_TIMEOUT)
     })
@@ -2445,7 +2676,11 @@ fn validate_site(ctx: &mut NativeJob<'_, '_>) -> LauncherResult<()> {
     })?;
 
     if check_local_port(adminer_port, PORT_TIMEOUT) {
-        ctx.log("Validando site/Adminer", &format!("Adminer respondeu em {adminer_url}."), "info");
+        ctx.log(
+            "Validando site/Adminer",
+            &format!("Adminer respondeu em {adminer_url}."),
+            "info",
+        );
     } else {
         ctx.log(
             "Validando site/Adminer",
@@ -2479,7 +2714,10 @@ where
     Err(())
 }
 
-fn build_system_status(quick: bool, cancel: Option<Arc<AtomicBool>>) -> LauncherResult<SystemStatus> {
+fn build_system_status(
+    quick: bool,
+    cancel: Option<Arc<AtomicBool>>,
+) -> LauncherResult<SystemStatus> {
     if let Some(cancel) = &cancel {
         check_cancelled(cancel)?;
     }
@@ -2494,8 +2732,16 @@ fn build_system_status(quick: bool, cancel: Option<Arc<AtomicBool>>) -> Launcher
             .map(|distro| distro.family != "unsupported")
             .unwrap_or(os == "linux");
 
-    let git = command_version(NativeCommand::new("git").arg("--version"), QUICK_TIMEOUT, cancel.clone());
-    let docker_version = command_version(NativeCommand::new("docker").arg("--version"), QUICK_TIMEOUT, cancel.clone());
+    let git = command_version(
+        NativeCommand::new("git").arg("--version"),
+        QUICK_TIMEOUT,
+        cancel.clone(),
+    );
+    let docker_version = command_version(
+        NativeCommand::new("docker").arg("--version"),
+        QUICK_TIMEOUT,
+        cancel.clone(),
+    );
     let docker_installed = docker_version.is_some();
 
     let docker_ps = if docker_installed {
@@ -2509,7 +2755,13 @@ fn build_system_status(quick: bool, cancel: Option<Arc<AtomicBool>>) -> Launcher
         None
     };
 
-    let sudo_docker = if cfg!(target_os = "linux") && docker_installed && docker_ps.as_ref().map(|output| !output.success).unwrap_or(true) {
+    let sudo_docker = if cfg!(target_os = "linux")
+        && docker_installed
+        && docker_ps
+            .as_ref()
+            .map(|output| !output.success)
+            .unwrap_or(true)
+    {
         run_capture(
             docker_command(vec!["ps", "--format", "{{.ID}}"], true),
             QUICK_TIMEOUT,
@@ -2522,7 +2774,13 @@ fn build_system_status(quick: bool, cancel: Option<Arc<AtomicBool>>) -> Launcher
 
     let compose_version = resolve_compose_command(false, QUICK_TIMEOUT, cancel.clone())
         .ok()
-        .and_then(|compose| command_version(compose.command(Path::new("."), ["version"]), QUICK_TIMEOUT, cancel.clone()));
+        .and_then(|compose| {
+            command_version(
+                compose.command(Path::new("."), ["version"]),
+                QUICK_TIMEOUT,
+                cancel.clone(),
+            )
+        });
 
     let project_dir = project_dir();
     let app_port = local_service_port("APP_PORT", 3000, &project_dir);
@@ -2538,10 +2796,22 @@ fn build_system_status(quick: bool, cancel: Option<Arc<AtomicBool>>) -> Launcher
         None
     };
 
-    let docker_running = docker_ps.as_ref().map(|output| output.success).unwrap_or(false)
-        || sudo_docker.as_ref().map(|output| output.success).unwrap_or(false);
-    let docker_permission_ok = docker_ps.as_ref().map(|output| output.success).unwrap_or(false);
-    let sudo_docker_works = sudo_docker.as_ref().map(|output| output.success).unwrap_or(false);
+    let docker_running = docker_ps
+        .as_ref()
+        .map(|output| output.success)
+        .unwrap_or(false)
+        || sudo_docker
+            .as_ref()
+            .map(|output| output.success)
+            .unwrap_or(false);
+    let docker_permission_ok = docker_ps
+        .as_ref()
+        .map(|output| output.success)
+        .unwrap_or(false);
+    let sudo_docker_works = sudo_docker
+        .as_ref()
+        .map(|output| output.success)
+        .unwrap_or(false);
     let project_diagnostics = if !quick && project_installed && docker_running {
         collect_project_diagnostics(&project_dir, cancel.clone())
     } else {
@@ -2554,17 +2824,29 @@ fn build_system_status(quick: bool, cancel: Option<Arc<AtomicBool>>) -> Launcher
         distro_family,
         distro_name,
         supported,
-        winget_installed: (os == "windows").then(|| command_success("winget", ["--version"], QUICK_TIMEOUT)),
+        winget_installed: (os == "windows")
+            .then(|| command_success("winget", ["--version"], QUICK_TIMEOUT)),
         git_installed: Some(git.is_some()),
-        power_shell_installed: (os == "windows").then(|| command_success("powershell.exe", ["-NoProfile", "-Command", "$PSVersionTable.PSVersion"], QUICK_TIMEOUT)),
-        wsl2_installed: (os == "windows").then(|| command_success("wsl.exe", ["--status"], QUICK_TIMEOUT)),
+        power_shell_installed: (os == "windows").then(|| {
+            command_success(
+                "powershell.exe",
+                ["-NoProfile", "-Command", "$PSVersionTable.PSVersion"],
+                QUICK_TIMEOUT,
+            )
+        }),
+        wsl2_installed: (os == "windows")
+            .then(|| command_success("wsl.exe", ["--status"], QUICK_TIMEOUT)),
         docker_desktop_installed: (os == "windows").then(|| docker_desktop_installed()),
         docker_installed,
         docker_version,
         docker_running,
         docker_compose_installed: compose_version.is_some(),
         docker_compose_version: compose_version,
-        docker_permission_ok: if os == "windows" { docker_running } else { docker_permission_ok },
+        docker_permission_ok: if os == "windows" {
+            docker_running
+        } else {
+            docker_permission_ok
+        },
         sudo_docker_works,
         requires_relogin: os == "linux" && !docker_permission_ok && sudo_docker_works,
         project_installed,
@@ -2638,7 +2920,14 @@ fn collect_project_diagnostics(
     let running_services = run_capture(
         compose.command(
             project_dir,
-            ["--env-file", ".env.docker-local", "ps", "--services", "--filter", "status=running"],
+            [
+                "--env-file",
+                ".env.docker-local",
+                "ps",
+                "--services",
+                "--filter",
+                "status=running",
+            ],
         ),
         QUICK_TIMEOUT,
         cancel.clone(),
@@ -2709,12 +2998,29 @@ fn build_dependency_status() -> LauncherResult<DependencyStatus> {
         packages.push("git".to_string());
     }
     if !command_success("docker", ["--version"], QUICK_TIMEOUT) {
-        missing.push(if os == "windows" { "Docker Desktop" } else { "docker" }.to_string());
-        packages.push(if os == "windows" { "Docker Desktop" } else { "docker" }.to_string());
+        missing.push(
+            if os == "windows" {
+                "Docker Desktop"
+            } else {
+                "docker"
+            }
+            .to_string(),
+        );
+        packages.push(
+            if os == "windows" {
+                "Docker Desktop"
+            } else {
+                "docker"
+            }
+            .to_string(),
+        );
     }
     if resolve_compose_command(false, QUICK_TIMEOUT, None).is_err() {
         missing.push("docker compose".to_string());
-        packages.push(dependency_package("docker_compose", distro_family.as_deref()));
+        packages.push(dependency_package(
+            "docker_compose",
+            distro_family.as_deref(),
+        ));
     }
 
     if os == "linux" {
@@ -2726,7 +3032,8 @@ fn build_dependency_status() -> LauncherResult<DependencyStatus> {
         }
     }
 
-    let winget_installed = os == "windows" && command_success("winget", ["--version"], QUICK_TIMEOUT);
+    let winget_installed =
+        os == "windows" && command_success("winget", ["--version"], QUICK_TIMEOUT);
     let sudo_installed = os == "linux" && command_success("sudo", ["-V"], QUICK_TIMEOUT);
     let mut commands = Vec::new();
     let mut installable = false;
@@ -2741,7 +3048,8 @@ fn build_dependency_status() -> LauncherResult<DependencyStatus> {
             commands = windows_winget_plan(&missing);
             install_command = commands.join("\n");
             manual_instructions =
-                "O launcher pode instalar Git e Docker Desktop via winget após sua confirmação.".to_string();
+                "O launcher pode instalar Git e Docker Desktop via winget após sua confirmação."
+                    .to_string();
         } else {
             manual_instructions =
                 "winget não foi encontrado. Instale ou atualize o App Installer pela Microsoft Store e tente novamente."
@@ -2861,7 +3169,15 @@ fn run_streaming_command_with_files(
     stdout_file: Option<&Path>,
 ) -> Result<CommandOutput, ProcessError> {
     let display = command.display();
-    jobs::emit_log(app, job_id, action, step, &format!("Executando: {display}"), progress, "info");
+    jobs::emit_log(
+        app,
+        job_id,
+        action,
+        step,
+        &format!("Executando: {display}"),
+        progress,
+        "info",
+    );
 
     let mut process = command.into_command();
     if let Some(stdin_file) = stdin_file {
@@ -2893,7 +3209,8 @@ fn run_streaming_command_with_files(
     let stderr = child.stderr.take();
     let (sender, receiver) = mpsc::channel::<StreamLine>();
 
-    let stdout_handle = stdout.map(|stdout| spawn_line_reader(stdout, StreamKind::Stdout, sender.clone()));
+    let stdout_handle =
+        stdout.map(|stdout| spawn_line_reader(stdout, StreamKind::Stdout, sender.clone()));
     let stderr_handle = stderr.map(|stderr| spawn_line_reader(stderr, StreamKind::Stderr, sender));
 
     let started = Instant::now();
@@ -2933,9 +3250,23 @@ fn run_streaming_command_with_files(
         if cancel.load(Ordering::Relaxed) {
             let _ = child.kill();
             let _ = child.wait();
-            drain_streams(&receiver, &mut stdout_text, &mut stderr_text, &mut stdout_batch, &mut stderr_batch);
+            drain_streams(
+                &receiver,
+                &mut stdout_text,
+                &mut stderr_text,
+                &mut stdout_batch,
+                &mut stderr_batch,
+            );
             join_line_readers(stdout_handle, stderr_handle);
-            flush_stream_batches(app, job_id, action, step, progress, &mut stdout_batch, &mut stderr_batch);
+            flush_stream_batches(
+                app,
+                job_id,
+                action,
+                step,
+                progress,
+                &mut stdout_batch,
+                &mut stderr_batch,
+            );
             return Err(ProcessError::cancelled(
                 display,
                 CommandOutput {
@@ -2949,10 +3280,30 @@ fn run_streaming_command_with_files(
 
         match child.try_wait() {
             Ok(Some(status)) => {
-                drain_streams(&receiver, &mut stdout_text, &mut stderr_text, &mut stdout_batch, &mut stderr_batch);
+                drain_streams(
+                    &receiver,
+                    &mut stdout_text,
+                    &mut stderr_text,
+                    &mut stdout_batch,
+                    &mut stderr_batch,
+                );
                 join_line_readers(stdout_handle, stderr_handle);
-                drain_streams(&receiver, &mut stdout_text, &mut stderr_text, &mut stdout_batch, &mut stderr_batch);
-                flush_stream_batches(app, job_id, action, step, progress, &mut stdout_batch, &mut stderr_batch);
+                drain_streams(
+                    &receiver,
+                    &mut stdout_text,
+                    &mut stderr_text,
+                    &mut stdout_batch,
+                    &mut stderr_batch,
+                );
+                flush_stream_batches(
+                    app,
+                    job_id,
+                    action,
+                    step,
+                    progress,
+                    &mut stdout_batch,
+                    &mut stderr_batch,
+                );
                 return Ok(CommandOutput {
                     success: status.success(),
                     code: status.code(),
@@ -2976,9 +3327,23 @@ fn run_streaming_command_with_files(
         if started.elapsed() >= timeout {
             let _ = child.kill();
             let _ = child.wait();
-            drain_streams(&receiver, &mut stdout_text, &mut stderr_text, &mut stdout_batch, &mut stderr_batch);
+            drain_streams(
+                &receiver,
+                &mut stdout_text,
+                &mut stderr_text,
+                &mut stdout_batch,
+                &mut stderr_batch,
+            );
             join_line_readers(stdout_handle, stderr_handle);
-            flush_stream_batches(app, job_id, action, step, progress, &mut stdout_batch, &mut stderr_batch);
+            flush_stream_batches(
+                app,
+                job_id,
+                action,
+                step,
+                progress,
+                &mut stdout_batch,
+                &mut stderr_batch,
+            );
             return Err(ProcessError::timeout(
                 display,
                 CommandOutput {
@@ -3228,7 +3593,11 @@ fn resolve_compose_command(
     let docker_compose = if cfg!(target_os = "linux") && use_sudo {
         ComposeCommand {
             program: "sudo".to_string(),
-            prefix: vec!["-n".to_string(), "docker".to_string(), "compose".to_string()],
+            prefix: vec![
+                "-n".to_string(),
+                "docker".to_string(),
+                "compose".to_string(),
+            ],
         }
     } else {
         ComposeCommand {
@@ -3307,7 +3676,9 @@ fn require_project(project_dir: &Path) -> LauncherResult<()> {
 
 pub(crate) fn validate_project_path(path: &Path) -> LauncherResult<()> {
     if path.as_os_str().is_empty() {
-        return Err(LauncherError::friendly("Caminho local do projeto está vazio."));
+        return Err(LauncherError::friendly(
+            "Caminho local do projeto está vazio.",
+        ));
     }
 
     if path.parent().is_none() {
@@ -3318,7 +3689,9 @@ pub(crate) fn validate_project_path(path: &Path) -> LauncherResult<()> {
 
     let path_text = path_string(path);
     if path_text == "/" || path_text == "\\" {
-        return Err(LauncherError::friendly("Caminho local do projeto inválido."));
+        return Err(LauncherError::friendly(
+            "Caminho local do projeto inválido.",
+        ));
     }
 
     Ok(())
@@ -3421,13 +3794,20 @@ fn unquote_os_release(value: &str) -> String {
 
 fn detect_distro_family(id: &str, id_like: &str) -> &'static str {
     let haystack = format!("{id} {id_like}").to_ascii_lowercase();
-    if haystack.contains("arch") || haystack.contains("manjaro") || haystack.contains("endeavouros") {
+    if haystack.contains("arch") || haystack.contains("manjaro") || haystack.contains("endeavouros")
+    {
         "arch_like"
-    } else if haystack.contains("ubuntu") || haystack.contains("linuxmint") || haystack.contains("pop") {
+    } else if haystack.contains("ubuntu")
+        || haystack.contains("linuxmint")
+        || haystack.contains("pop")
+    {
         "ubuntu_like"
     } else if haystack.contains("debian") {
         "debian_like"
-    } else if haystack.contains("fedora") || haystack.contains("rhel") || haystack.contains("centos") {
+    } else if haystack.contains("fedora")
+        || haystack.contains("rhel")
+        || haystack.contains("centos")
+    {
         "fedora_like"
     } else if haystack.contains("suse") || haystack.contains("opensuse") {
         "opensuse_like"
@@ -3460,9 +3840,7 @@ fn check_http_path(port: u16, path: &str, timeout: Duration) -> bool {
     };
     let _ = stream.set_read_timeout(Some(timeout));
     let _ = stream.set_write_timeout(Some(timeout));
-    let request = format!(
-        "GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
-    );
+    let request = format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
     if stream.write_all(request.as_bytes()).is_err() {
         return false;
     }
@@ -3590,7 +3968,9 @@ fn backup_dir() -> LauncherResult<PathBuf> {
                 .join("backups"));
         }
         if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
-            return Ok(PathBuf::from(local_app_data).join("mg-pocket").join("backups"));
+            return Ok(PathBuf::from(local_app_data)
+                .join("mg-pocket")
+                .join("backups"));
         }
     }
 
@@ -3606,7 +3986,11 @@ fn backup_dir() -> LauncherResult<PathBuf> {
             if documents.is_dir() {
                 return Ok(documents.join("MG Pocket").join("backups"));
             }
-            return Ok(home.join(".local").join("share").join("mg-pocket").join("backups"));
+            return Ok(home
+                .join(".local")
+                .join("share")
+                .join("mg-pocket")
+                .join("backups"));
         }
     }
 
@@ -3623,8 +4007,9 @@ struct TempDirGuard {
 impl TempDirGuard {
     fn new(prefix: &str) -> LauncherResult<Self> {
         let path = env::temp_dir().join(format!("{prefix}-{}", timestamp_nanos()));
-        fs::create_dir_all(&path)
-            .map_err(|error| LauncherError::technical("Não foi possível criar pasta temporária", error))?;
+        fs::create_dir_all(&path).map_err(|error| {
+            LauncherError::technical("Não foi possível criar pasta temporária", error)
+        })?;
         Ok(Self {
             path,
             cleanup: true,
@@ -3683,14 +4068,19 @@ fn backup_extension_valid(path: &Path) -> bool {
 }
 
 fn validate_project_delete_path(path: &Path) -> LauncherResult<PathBuf> {
-    let resolved = fs::canonicalize(path)
-        .map_err(|error| LauncherError::technical("Não foi possível resolver pasta do projeto", error))?;
+    let resolved = fs::canonicalize(path).map_err(|error| {
+        LauncherError::technical("Não foi possível resolver pasta do projeto", error)
+    })?;
     let home = env::var("HOME")
         .or_else(|_| env::var("USERPROFILE"))
         .ok()
         .map(PathBuf::from);
     let root = resolved.parent().is_none();
-    if root || home.as_ref().is_some_and(|home| fs::canonicalize(home).ok().as_ref() == Some(&resolved)) {
+    if root
+        || home
+            .as_ref()
+            .is_some_and(|home| fs::canonicalize(home).ok().as_ref() == Some(&resolved))
+    {
         return Err(LauncherError::friendly("Caminho de remoção inválido."));
     }
     if !resolved.join("docker-compose.yml").is_file() || !resolved.join("package.json").is_file() {
@@ -3700,14 +4090,17 @@ fn validate_project_delete_path(path: &Path) -> LauncherResult<PathBuf> {
     }
 
     let default = default_project_dir();
-    let default_parent = default.parent().ok_or_else(|| {
-        LauncherError::friendly("Caminho padrão do projeto local é inválido.")
-    })?;
+    let default_parent = default
+        .parent()
+        .ok_or_else(|| LauncherError::friendly("Caminho padrão do projeto local é inválido."))?;
     let _ = fs::create_dir_all(default_parent);
     let resolved_default = fs::canonicalize(default_parent)
         .map(|parent| parent.join("app"))
         .unwrap_or(default);
-    let allow_custom = env::var("MG_POCKET_ALLOW_CUSTOM_PROJECT_DELETE").ok().as_deref() == Some("1");
+    let allow_custom = env::var("MG_POCKET_ALLOW_CUSTOM_PROJECT_DELETE")
+        .ok()
+        .as_deref()
+        == Some("1");
     if resolved != resolved_default && !allow_custom {
         return Err(LauncherError::friendly(format!(
             "O caminho do projeto não é o diretório local esperado do launcher. Remoção cancelada por segurança: {}",
@@ -3761,8 +4154,9 @@ fn remove_dir_retry(path: &Path) -> LauncherResult<()> {
 
 fn rename_retry(source: &Path, destination: &Path) -> LauncherResult<()> {
     if let Some(parent) = destination.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| LauncherError::technical("Não foi possível preparar destino", error))?;
+        fs::create_dir_all(parent).map_err(|error| {
+            LauncherError::technical("Não foi possível preparar destino", error)
+        })?;
     }
     if destination.exists() {
         remove_dir_retry(destination)?;
@@ -3812,7 +4206,9 @@ fn dependency_package(dependency: &str, family: Option<&str>) -> String {
     match dependency {
         "docker_compose" => match family {
             Some("arch_like") => "docker-compose".to_string(),
-            Some("ubuntu_like" | "debian_like" | "fedora_like") => "docker-compose-plugin".to_string(),
+            Some("ubuntu_like" | "debian_like" | "fedora_like") => {
+                "docker-compose-plugin".to_string()
+            }
             _ => "docker compose".to_string(),
         },
         value => value.to_string(),
@@ -3837,13 +4233,13 @@ pub(crate) fn windows_winget_plan(missing: &[String]) -> Vec<String> {
         commands.push("winget install -e --id Git.Git".to_string());
         commands.push("winget install --id Git.Git --exact --source winget".to_string());
     }
-    if missing
-        .iter()
-        .any(|item| item.eq_ignore_ascii_case("docker desktop") || item.eq_ignore_ascii_case("docker"))
-    {
+    if missing.iter().any(|item| {
+        item.eq_ignore_ascii_case("docker desktop") || item.eq_ignore_ascii_case("docker")
+    }) {
         commands.push("winget show --id Docker.DockerDesktop --exact --source winget".to_string());
         commands.push("winget install -e --id Docker.DockerDesktop".to_string());
-        commands.push("winget install --id Docker.DockerDesktop --exact --source winget".to_string());
+        commands
+            .push("winget install --id Docker.DockerDesktop --exact --source winget".to_string());
     }
     commands
 }
@@ -3857,10 +4253,20 @@ fn docker_desktop_installed() -> bool {
     {
         let mut candidates = Vec::new();
         if let Ok(program_files) = env::var("ProgramFiles") {
-            candidates.push(PathBuf::from(program_files).join("Docker").join("Docker").join("Docker Desktop.exe"));
+            candidates.push(
+                PathBuf::from(program_files)
+                    .join("Docker")
+                    .join("Docker")
+                    .join("Docker Desktop.exe"),
+            );
         }
         if let Ok(program_files_x86) = env::var("ProgramFiles(x86)") {
-            candidates.push(PathBuf::from(program_files_x86).join("Docker").join("Docker").join("Docker Desktop.exe"));
+            candidates.push(
+                PathBuf::from(program_files_x86)
+                    .join("Docker")
+                    .join("Docker")
+                    .join("Docker Desktop.exe"),
+            );
         }
         if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
             candidates.push(
@@ -3884,10 +4290,20 @@ fn docker_desktop_installed() -> bool {
 fn docker_desktop_path() -> Option<PathBuf> {
     let mut candidates = Vec::new();
     if let Ok(program_files) = env::var("ProgramFiles") {
-        candidates.push(PathBuf::from(program_files).join("Docker").join("Docker").join("Docker Desktop.exe"));
+        candidates.push(
+            PathBuf::from(program_files)
+                .join("Docker")
+                .join("Docker")
+                .join("Docker Desktop.exe"),
+        );
     }
     if let Ok(program_files_x86) = env::var("ProgramFiles(x86)") {
-        candidates.push(PathBuf::from(program_files_x86).join("Docker").join("Docker").join("Docker Desktop.exe"));
+        candidates.push(
+            PathBuf::from(program_files_x86)
+                .join("Docker")
+                .join("Docker")
+                .join("Docker Desktop.exe"),
+        );
     }
     if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
         candidates.push(
@@ -3907,13 +4323,15 @@ fn docker_desktop_path() -> Option<PathBuf> {
 }
 
 fn normalize_existing_env_file(env_file: &Path) -> LauncherResult<()> {
-    let content = fs::read_to_string(env_file)
-        .map_err(|error| LauncherError::technical("Não foi possível ler .env.docker-local", error))?;
+    let content = fs::read_to_string(env_file).map_err(|error| {
+        LauncherError::technical("Não foi possível ler .env.docker-local", error)
+    })?;
     let next = upsert_env_var(&content, "STORAGE_LOCAL_PUBLIC_URL", "/uploads");
 
     if next != content {
-        fs::write(env_file, next)
-            .map_err(|error| LauncherError::technical("Não foi possível atualizar .env.docker-local", error))?;
+        fs::write(env_file, next).map_err(|error| {
+            LauncherError::technical("Não foi possível atualizar .env.docker-local", error)
+        })?;
     }
 
     Ok(())
@@ -3961,8 +4379,6 @@ NEXTAUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_BASE_URL="http://localhost:3000"
 APP_PORT="3000"
 ADMINER_PORT="8081"
-GOOGLE_CLIENT_ID=""
-GOOGLE_CLIENT_SECRET=""
 STORAGE_DRIVER="local"
 STORAGE_BUCKET="personagens"
 STORAGE_LOCAL_DIR="./public/uploads"
@@ -4048,7 +4464,10 @@ fn unique(values: Vec<String>) -> Vec<String> {
 }
 
 fn shellish_quote(value: &str) -> String {
-    if value.chars().all(|ch| ch.is_ascii_alphanumeric() || "-_./:=@".contains(ch)) {
+    if value
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || "-_./:=@".contains(ch))
+    {
         value.to_string()
     } else {
         format!("'{}'", value.replace('\'', "'\\''"))
@@ -4136,13 +4555,19 @@ PRETTY_NAME="Ubuntu 24.04 LTS"
                 "diagnóstico rápido não deve executar {forbidden}"
             );
         }
-        assert!(commands.iter().all(|command| command.contains("timeout=2s")));
+        assert!(commands
+            .iter()
+            .all(|command| command.contains("timeout=2s")));
     }
 
     #[test]
     fn capture_command_times_out() {
         let command = if cfg!(target_os = "windows") {
-            NativeCommand::new("powershell.exe").args(["-NoProfile", "-Command", "Start-Sleep -Seconds 2"])
+            NativeCommand::new("powershell.exe").args([
+                "-NoProfile",
+                "-Command",
+                "Start-Sleep -Seconds 2",
+            ])
         } else {
             NativeCommand::new("sh").args(["-c", "sleep 2"])
         };
@@ -4158,9 +4583,86 @@ PRETTY_NAME="Ubuntu 24.04 LTS"
         assert!(plan.contains(&"winget show --id Git.Git --exact --source winget".to_string()));
         assert!(plan.contains(&"winget install -e --id Git.Git".to_string()));
         assert!(plan.contains(&"winget install --id Git.Git --exact --source winget".to_string()));
-        assert!(plan.contains(&"winget show --id Docker.DockerDesktop --exact --source winget".to_string()));
+        assert!(plan.contains(
+            &"winget show --id Docker.DockerDesktop --exact --source winget".to_string()
+        ));
         assert!(plan.contains(&"winget install -e --id Docker.DockerDesktop".to_string()));
-        assert!(plan.contains(&"winget install --id Docker.DockerDesktop --exact --source winget".to_string()));
+        assert!(plan.contains(
+            &"winget install --id Docker.DockerDesktop --exact --source winget".to_string()
+        ));
+    }
+
+    #[test]
+    fn parses_env_text_with_exports_quotes_and_inline_comments() {
+        let env = parse_env_text(
+            r#"
+# comentario
+export APP_PORT='3010'
+ADMINER_PORT="8090"
+STORAGE_LOCAL_PUBLIC_URL=/uploads # comentario inline
+BROKEN_LINE
+DATABASE_URL="postgresql://meg:meg@localhost:5433/meg_pocket?schema=public"
+"#,
+        );
+
+        assert_eq!(env.get("APP_PORT").map(String::as_str), Some("3010"));
+        assert_eq!(env.get("ADMINER_PORT").map(String::as_str), Some("8090"));
+        assert_eq!(
+            env.get("STORAGE_LOCAL_PUBLIC_URL").map(String::as_str),
+            Some("/uploads")
+        );
+        assert_eq!(
+            env.get("DATABASE_URL").map(String::as_str),
+            Some("postgresql://meg:meg@localhost:5433/meg_pocket?schema=public")
+        );
+        assert!(!env.contains_key("BROKEN_LINE"));
+    }
+
+    #[test]
+    fn upsert_env_var_updates_existing_key_without_duplicates() {
+        let original = r#"APP_PORT="3000"
+NEXTAUTH_URL="http://localhost:3000"
+"#;
+
+        let updated = upsert_env_var(original, "APP_PORT", "3010");
+
+        assert!(updated.contains("APP_PORT=\"3010\""));
+        assert!(updated.contains("NEXTAUTH_URL=\"http://localhost:3000\""));
+        assert_eq!(
+            updated
+                .lines()
+                .filter(|line| line.starts_with("APP_PORT="))
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn upsert_env_var_appends_missing_key_with_trailing_newline() {
+        let updated = upsert_env_var("APP_PORT=\"3000\"\n", "ADMINER_PORT", "8082");
+
+        assert!(updated.contains("APP_PORT=\"3000\""));
+        assert!(updated.contains("ADMINER_PORT=\"8082\""));
+        assert!(updated.ends_with('\n'));
+    }
+
+    #[test]
+    fn default_env_file_is_local_upload_ready_and_omits_google_credentials() {
+        let content = default_env_file();
+        let env = parse_env_text(&content);
+
+        assert!(!content.contains("GOOGLE_CLIENT_ID"));
+        assert!(!content.contains("GOOGLE_CLIENT_SECRET"));
+        assert_eq!(env.get("APP_PORT").map(String::as_str), Some("3000"));
+        assert_eq!(env.get("ADMINER_PORT").map(String::as_str), Some("8081"));
+        assert_eq!(
+            env.get("STORAGE_LOCAL_DIR").map(String::as_str),
+            Some("./public/uploads")
+        );
+        assert_eq!(
+            env.get("STORAGE_LOCAL_PUBLIC_URL").map(String::as_str),
+            Some("/uploads")
+        );
     }
 
     #[test]
@@ -4172,7 +4674,10 @@ PRETTY_NAME="Ubuntu 24.04 LTS"
 
     #[test]
     fn limit_lines_keeps_only_tail() {
-        let text = (0..80).map(|line| format!("linha {line}")).collect::<Vec<_>>().join("\n");
+        let text = (0..80)
+            .map(|line| format!("linha {line}"))
+            .collect::<Vec<_>>()
+            .join("\n");
         let limited = limit_lines(&text, UI_LOG_LINES);
         assert_eq!(limited.lines().count(), UI_LOG_LINES);
         assert!(limited.starts_with("linha 30"));
