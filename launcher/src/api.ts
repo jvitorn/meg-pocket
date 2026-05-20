@@ -52,10 +52,15 @@ export function ensureDockerPermission(): Promise<CommandOutput> {
 
 type DockerCommandOptions = {
   useSudoDocker?: boolean;
+  lightBuild?: boolean;
 };
 
 export function installProject(options: DockerCommandOptions = {}): Promise<CommandOutput> {
   return invoke<CommandOutput>("installProject", options);
+}
+
+export function repairInstallation(options: DockerCommandOptions = {}): Promise<CommandOutput> {
+  return invoke<CommandOutput>("repairInstallation", options);
 }
 
 export function startApp(options: DockerCommandOptions = {}): Promise<CommandOutput> {

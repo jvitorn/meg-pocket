@@ -15,11 +15,13 @@ export const metadata: Metadata = {
     "Bestiário público de ameaças para campanhas de Magos & Grimórios.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function AmeacasPage() {
   const ameacas = await listarAmeacas();
   const totalAmeacas = ameacas.length;
   const totalTipos = new Set(ameacas.map((ameaca) => ameaca.tipo)).size;
-  const maiorVa = Math.max(...ameacas.map((ameaca) => ameaca.va));
+  const maiorVa = ameacas.length > 0 ? Math.max(...ameacas.map((ameaca) => ameaca.va)) : 0;
 
   return (
     <>

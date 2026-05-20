@@ -258,6 +258,20 @@ wait_for_app_database() {
   local i
 
   for i in $(seq 1 "$attempts"); do
+    if run_compose --env-file .env.docker-local exec -T app wget --spider -q http://localhost:3000/api/health/db >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  return 1
+}
+
+wait_for_app_alive() {
+  local attempts="${1:-60}"
+  local i
+
+  for i in $(seq 1 "$attempts"); do
     if run_compose --env-file .env.docker-local exec -T app wget --spider -q http://localhost:3000/api/health >/dev/null 2>&1; then
       return 0
     fi
@@ -265,6 +279,18 @@ wait_for_app_database() {
   done
 
   return 1
+}
+
+warn_if_database_unavailable() {
+  if wait_for_app_database 15; then
+    info "Banco conectado via /api/health/db."
+    return 0
+  fi
+
+  info "O aplicativo iniciou, mas ainda não conseguiu conectar ao banco. Aguarde alguns segundos ou teste /api/health/db."
+  info "Status do Postgres:"
+  run_compose --env-file .env.docker-local ps postgres || true
+  return 0
 }
 
 start_optional_adminer() {

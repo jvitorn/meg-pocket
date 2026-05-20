@@ -16,7 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 
-import type { Ameaca, AmeacaElemento, AmeacaTipo } from "@/data/dataBestiario";
+import type { Ameaca, AmeacaElemento, AmeacaTipo } from "@/types/ameaca";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { dataBestiario } from "@/data/dataBestiario";
+import { ameacasFixture } from "../../fixtures/ameacas";
 
 vi.mock("next/link", () => ({
   default: ({
@@ -23,7 +23,7 @@ import { AmeacasClient } from "@/components/ameacas/AmeacasClient";
 
 describe("AmeacasClient", () => {
   it("filtra a busca por texto ignorando acentos", async () => {
-    render(<AmeacasClient ameacas={dataBestiario} />);
+    render(<AmeacasClient ameacas={ameacasFixture} />);
 
     fireEvent.change(screen.getByLabelText("Buscar ameaças"), {
       target: { value: "dragao glacial" },
@@ -38,7 +38,7 @@ describe("AmeacasClient", () => {
   it("filtra por tipo e limpa os filtros", async () => {
     const user = userEvent.setup();
 
-    render(<AmeacasClient ameacas={dataBestiario} />);
+    render(<AmeacasClient ameacas={ameacasFixture} />);
 
     await user.click(screen.getAllByRole("button", { name: /elemental/i })[0]);
 
@@ -53,7 +53,7 @@ describe("AmeacasClient", () => {
   it("troca para lista mantendo o item inteiro como link", async () => {
     const user = userEvent.setup();
 
-    render(<AmeacasClient ameacas={dataBestiario} />);
+    render(<AmeacasClient ameacas={ameacasFixture} />);
 
     await user.click(screen.getByRole("button", { name: "Lista" }));
 
@@ -66,7 +66,7 @@ describe("AmeacasClient", () => {
   it("aplica atalhos de pesquisa", async () => {
     const user = userEvent.setup();
 
-    render(<AmeacasClient ameacas={dataBestiario} />);
+    render(<AmeacasClient ameacas={ameacasFixture} />);
 
     await user.click(screen.getByRole("button", { name: "Boss" }));
 

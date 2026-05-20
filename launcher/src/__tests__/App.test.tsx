@@ -176,7 +176,12 @@ describe("M&G Pocket Launcher", () => {
     await screen.findByText("Arch Linux");
     await user.click(screen.getByRole("button", { name: /Preparar ambiente/i }));
 
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installProject", { useSudoDocker: false }));
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith("installProject", {
+        useSudoDocker: false,
+        lightBuild: false,
+      }),
+    );
     expect(invokeMock).toHaveBeenCalledWith("ensureDockerRunning");
     expect(invokeMock).toHaveBeenCalledWith("ensureDockerPermission");
   });
@@ -198,8 +203,38 @@ describe("M&G Pocket Launcher", () => {
 
     await waitFor(() =>
       withDockerOptions
-        ? expect(invokeMock).toHaveBeenCalledWith(command, { useSudoDocker: false })
+        ? expect(invokeMock).toHaveBeenCalledWith(
+            command,
+            command === "installProject"
+              ? { useSudoDocker: false, lightBuild: false }
+              : { useSudoDocker: false },
+          )
         : expect(invokeMock).toHaveBeenCalledWith(command),
+    );
+  });
+
+  it("modo de build leve acompanha instalação e reparo", async () => {
+    const user = await renderReady();
+
+    await user.click(screen.getByLabelText(/Modo de build leve/i));
+    await user.click(screen.getByRole("button", { name: /Instalar\/Atualizar M&G Pocket/i }));
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith("installProject", {
+        useSudoDocker: false,
+        lightBuild: true,
+      }),
+    );
+    await waitFor(() => expect(screen.getByRole("button", { name: /Reparar instalação/i })).toBeEnabled());
+
+    await user.click(screen.getByRole("button", { name: /Reparar instalação/i }));
+    await user.click(await screen.findByRole("button", { name: /Reconstruir do zero/i }));
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith("repairInstallation", {
+        useSudoDocker: false,
+        lightBuild: true,
+      }),
     );
   });
 
@@ -541,7 +576,12 @@ describe("M&G Pocket Launcher", () => {
     await user.click(await screen.findByRole("button", { name: /^Continuar$/i }));
 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installSystemDependencies"));
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("installProject", { useSudoDocker: false }));
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith("installProject", {
+        useSudoDocker: false,
+        lightBuild: false,
+      }),
+    );
   });
 
   it("erro técnico de instalação fica fora do alerta principal", async () => {

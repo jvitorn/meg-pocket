@@ -18,7 +18,7 @@ import {
   Wind,
 } from "lucide-react";
 
-import type { AmeacaElemento, AmeacaTipo } from "@/data/dataBestiario";
+import type { AmeacaElemento, AmeacaTipo } from "@/types/ameaca";
 
 type IconComponent = ComponentType<{ className?: string }>;
 

@@ -51,7 +51,7 @@ $status = [ordered]@{
   projectInstalled = (Test-Path (Join-Path $projectDir "docker-compose.yml"))
   projectPath = $projectDir
   projectVersion = ""
-  appOnline = (Test-Url "http://localhost:3000")
+  appOnline = (Test-Url "http://localhost:3000/api/health")
   adminerOnline = (Test-Url "http://localhost:8081")
 }
 

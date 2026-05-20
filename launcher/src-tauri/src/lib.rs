@@ -77,11 +77,29 @@ fn installProject(
     app: AppHandle,
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
+    light_build: Option<bool>,
 ) -> Result<CommandOutput, String> {
     command_result(native::install_project(
         &app,
         &jobs,
         use_sudo_docker.unwrap_or(false),
+        light_build.unwrap_or(false),
+    ))
+}
+
+#[tauri::command(rename_all = "camelCase", async)]
+#[allow(non_snake_case)]
+fn repairInstallation(
+    app: AppHandle,
+    jobs: State<'_, JobManager>,
+    use_sudo_docker: Option<bool>,
+    light_build: Option<bool>,
+) -> Result<CommandOutput, String> {
+    command_result(native::repair_installation(
+        &app,
+        &jobs,
+        use_sudo_docker.unwrap_or(false),
+        light_build.unwrap_or(false),
     ))
 }
 
@@ -318,6 +336,7 @@ pub fn run() {
             ensureDockerRunning,
             ensureDockerPermission,
             installProject,
+            repairInstallation,
             startApp,
             stopApp,
             restartApp,

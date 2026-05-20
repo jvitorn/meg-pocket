@@ -23,17 +23,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
-import { buscarAmeacaPorSlug, listarAmeacas } from "@/lib/ameacas";
+import { buscarAmeacaPorSlug } from "@/lib/ameacas";
 import { cn } from "@/lib/utils";
 
 type PageParams = {
   params: Promise<{ id: string }>;
 };
 
-export async function generateStaticParams() {
-  const ameacas = await listarAmeacas();
-  return ameacas.map((ameaca) => ({ id: ameaca.id }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageParams): Promise<Metadata> {
   const { id } = await params;

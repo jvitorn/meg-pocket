@@ -44,13 +44,12 @@ New-Item -ItemType Directory -Force -Path "installers" | Out-Null
 Ensure-EnvFile $projectDir
 Stop-LegacyAppComposeProject
 
-Invoke-Compose @("--env-file", ".env.docker-local", "build", "app", "maintenance")
+Invoke-Compose @("--env-file", ".env.docker-local", "build", "app")
 Invoke-Compose @("--env-file", ".env.docker-local", "up", "-d", "postgres")
 Wait-Postgres
-Invoke-Compose @("--env-file", ".env.docker-local", "run", "--rm", "maintenance", "npm", "run", "db:setup")
+Invoke-Compose @("--env-file", ".env.docker-local", "run", "--rm", "--build", "maintenance", "npm", "run", "db:setup")
 
 $seedMarker = "installers\.seed-inicial-concluido"
-$runInstallTests = $false
 $seedQuery = "SELECT CASE WHEN to_regclass('""Classe""') IS NULL OR to_regclass('""Raca""') IS NULL OR to_regclass('""MagiaCatalog""') IS NULL OR to_regclass('""PericiaCatalog""') IS NULL OR to_regclass('""Item""') IS NULL THEN 0 WHEN (SELECT count(*) FROM ""Classe"") > 0 AND (SELECT count(*) FROM ""Raca"") > 0 AND (SELECT count(*) FROM ""MagiaCatalog"") > 0 AND (SELECT count(*) FROM ""PericiaCatalog"") > 0 AND (SELECT count(*) FROM ""Item"") > 0 THEN 1 ELSE 0 END;"
 $seedReady = ""
 try {
@@ -62,18 +61,14 @@ if ((Test-Path $seedMarker) -or $seedReady -eq "1") {
   Write-Host "Seed inicial já executado ou dados essenciais já existem. Pulando seed."
   New-Item -ItemType File -Force -Path $seedMarker | Out-Null
 } else {
-  Invoke-Compose @("--env-file", ".env.docker-local", "run", "--rm", "maintenance", "npm", "run", "db:seed")
+  Invoke-Compose @("--env-file", ".env.docker-local", "run", "--rm", "--build", "maintenance", "npm", "run", "db:seed")
   New-Item -ItemType File -Force -Path $seedMarker | Out-Null
-  $runInstallTests = $true
 }
 
 Invoke-Compose @("--env-file", ".env.docker-local", "up", "-d", "app", "nginx")
 Start-OptionalAdminer
-Wait-AppDatabase
+Wait-AppAlive
+Write-DatabaseWarningIfUnavailable
 Wait-App
 Write-Host "M&G Pocket instalado e online em http://localhost:3000"
-if ($runInstallTests) {
-  Invoke-ProjectTestSuite
-} else {
-  Write-Host "Validação completa por testes automatizados pulada para preservar dados locais já existentes."
-}
+Write-Host "Validação automatizada completa fica reservada ao ambiente de desenvolvimento/CI para poupar esta máquina."

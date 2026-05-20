@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runner
+      args:
+        NEXT_REACT_COMPILER: "${NEXT_REACT_COMPILER:-true}"
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -74,6 +76,8 @@ services:
       POSTGRES_DB: meg_pocket
       POSTGRES_USER: meg
       POSTGRES_PASSWORD: meg
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     expose:
       - "5432"
     volumes:
@@ -100,7 +104,7 @@ services:
       app:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q http://localhost/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1/healthz || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -115,7 +119,8 @@ services:
     ports:
       - "127.0.0.1:${ADMINER_PORT:-8081}:8080"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     logging:
       options:
         max-size: "10m"
