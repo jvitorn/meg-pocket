@@ -1,11 +1,6 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runner
-      args:
-        NEXT_REACT_COMPILER: "${NEXT_REACT_COMPILER:-true}"
+    image: ghcr.io/jvitorn/meg-pocket-app:${MEG_POCKET_VERSION:-latest}
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -41,10 +36,7 @@ services:
         max-file: "3"
 
   maintenance:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: maintenance
+    image: ghcr.io/jvitorn/meg-pocket-maintenance:${MEG_POCKET_VERSION:-latest}
     profiles:
       - maintenance
     environment:

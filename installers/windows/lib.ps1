@@ -248,15 +248,15 @@ function Wait-AppAlive {
     Invoke-Compose @("--env-file", ".env.docker-local", "logs", "--tail=100", "app")
   } catch {}
 
-  throw "O aplicativo não respondeu ao healthcheck. Veja os logs do app."
+  throw "O M&G Pocket ainda não respondeu. Veja os detalhes técnicos."
 }
 
 function Write-DatabaseWarningIfUnavailable {
   try {
     Wait-AppDatabase 15
-    Write-Host "Banco conectado via /api/health/db."
+    Write-Host "Banco conectado."
   } catch {
-    Write-Host "O aplicativo iniciou, mas ainda não conseguiu conectar ao banco. Aguarde alguns segundos ou teste /api/health/db."
+    Write-Host "O aplicativo iniciou, mas ainda não conseguiu conectar aos dados. Aguarde alguns segundos e tente novamente."
     try {
       Invoke-Compose @("--env-file", ".env.docker-local", "ps", "postgres")
     } catch {}

@@ -1,0 +1,14 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        NEXT_REACT_COMPILER: "${NEXT_REACT_COMPILER:-false}"
+
+  maintenance:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: maintenance

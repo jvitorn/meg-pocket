@@ -43,7 +43,7 @@ RUN mkdir -p /app/uploads
 
 FROM base AS builder
 
-ARG NEXT_REACT_COMPILER=true
+ARG NEXT_REACT_COMPILER=false
 ENV NEXT_REACT_COMPILER=${NEXT_REACT_COMPILER}
 
 COPY --from=deps /app/node_modules ./node_modules

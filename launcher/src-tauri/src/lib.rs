@@ -78,12 +78,16 @@ fn installProject(
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
     light_build: Option<bool>,
+    local_build: Option<bool>,
+    no_cache: Option<bool>,
 ) -> Result<CommandOutput, String> {
     command_result(native::install_project(
         &app,
         &jobs,
         use_sudo_docker.unwrap_or(false),
         light_build.unwrap_or(false),
+        local_build.unwrap_or(false),
+        no_cache.unwrap_or(false),
     ))
 }
 
@@ -94,12 +98,16 @@ fn repairInstallation(
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
     light_build: Option<bool>,
+    local_build: Option<bool>,
+    no_cache: Option<bool>,
 ) -> Result<CommandOutput, String> {
     command_result(native::repair_installation(
         &app,
         &jobs,
         use_sudo_docker.unwrap_or(false),
         light_build.unwrap_or(false),
+        local_build.unwrap_or(false),
+        no_cache.unwrap_or(false),
     ))
 }
 

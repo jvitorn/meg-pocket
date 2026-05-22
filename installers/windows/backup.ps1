@@ -13,22 +13,8 @@ Wait-Postgres
 
 $backupDir = Get-MgBackupDir
 New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
-$stamp = Get-Date -Format "yyyy-MM-dd-HH-mm"
-$tmp = Join-Path ([IO.Path]::GetTempPath()) ("mg-pocket-backup-" + [Guid]::NewGuid().ToString("N"))
-New-Item -ItemType Directory -Force -Path $tmp | Out-Null
-$backupFile = Join-Path $backupDir "mg-pocket-backup-$stamp.zip"
+$stamp = Get-Date -Format "yyyy-MM-dd-HHmm"
+$backupFile = Join-Path $backupDir "meg-pocket-db-$stamp.sql"
 
-Invoke-Compose @("--env-file", ".env.docker-local", "exec", "-T", "postgres", "pg_dump", "-U", "meg", "-d", "meg_pocket") > (Join-Path $tmp "postgres.sql")
-
-if (Test-Path ".env.docker-local") {
-  Copy-Item ".env.docker-local" (Join-Path $tmp "env.docker-local")
-}
-
-if (Test-Path "storage\local\public") {
-  New-Item -ItemType Directory -Force -Path (Join-Path $tmp "storage\local") | Out-Null
-  Copy-Item -Recurse "storage\local\public" (Join-Path $tmp "storage\local\public")
-}
-
-Compress-Archive -Path (Join-Path $tmp "*") -DestinationPath $backupFile -Force
-Remove-Item -Recurse -Force $tmp
+Invoke-Compose @("--env-file", ".env.docker-local", "exec", "-T", "postgres", "pg_dump", "-U", "meg", "-d", "meg_pocket") > $backupFile
 Write-Host $backupFile

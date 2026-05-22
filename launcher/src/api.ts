@@ -53,6 +53,8 @@ export function ensureDockerPermission(): Promise<CommandOutput> {
 type DockerCommandOptions = {
   useSudoDocker?: boolean;
   lightBuild?: boolean;
+  localBuild?: boolean;
+  noCache?: boolean;
 };
 
 export function installProject(options: DockerCommandOptions = {}): Promise<CommandOutput> {

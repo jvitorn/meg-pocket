@@ -13,42 +13,44 @@ Use este guia apenas se não quiser usar o M&G Pocket Launcher.
 ```bash
 git clone https://github.com/jvitorn/meg-pocket.git
 cd meg-pocket
-```
-
-## Preparar Ambiente
-
-```bash
 cp .env.example .env.docker-local
-mkdir -p storage/local/public
+mkdir -p storage/local/public public/uploads
 ```
 
-## Subir Serviços
+## Modo Recomendado Manual
+
+Este modo usa a versão pronta do M&G Pocket.
 
 ```bash
-docker compose --env-file .env.docker-local build app
+docker compose --env-file .env.docker-local pull app maintenance
 docker compose --env-file .env.docker-local up -d postgres
-```
-
-## Banco De Dados
-
-```bash
-docker compose --env-file .env.docker-local run --rm --build maintenance npm run db:setup
-docker compose --env-file .env.docker-local run --rm --build maintenance npm run db:seed
+docker compose --env-file .env.docker-local run --rm maintenance npm run db:setup
+docker compose --env-file .env.docker-local run --rm maintenance npm run db:seed
 docker compose --env-file .env.docker-local up -d app nginx
 ```
 
-## Acessos
-
-Site:
+Acesse:
 
 ```text
 http://localhost:3000
 ```
 
-Adminer:
+## Modo Avançado Com Build Local
 
-```text
-http://localhost:8081
+Use apenas para desenvolvimento, debug ou reparo avançado.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local-build.yml --env-file .env.docker-local build app maintenance
+docker compose --env-file .env.docker-local up -d postgres
+docker compose --env-file .env.docker-local run --rm maintenance npm run db:setup
+docker compose --env-file .env.docker-local run --rm maintenance npm run db:seed
+docker compose --env-file .env.docker-local up -d app nginx
+```
+
+Para rebuild sem cache:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local-build.yml --env-file .env.docker-local build --no-cache app maintenance
 ```
 
 ## Parar Sem Apagar Dados
@@ -57,7 +59,7 @@ http://localhost:8081
 docker compose --env-file .env.docker-local stop
 ```
 
-## Remover Containers Sem Apagar Volumes
+## Remover Sem Apagar Dados Persistentes
 
 ```bash
 docker compose --env-file .env.docker-local down

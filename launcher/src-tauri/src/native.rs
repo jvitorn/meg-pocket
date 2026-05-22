@@ -37,9 +37,6 @@ const UI_LOG_LINES: usize = 50;
 
 const REPO_URL: &str = "https://github.com/jvitorn/meg-pocket.git";
 const COMPOSE_PROJECT: &str = "meg-pocket";
-const BACKUP_SQL_FILE: &str = "postgres.sql";
-const BACKUP_ENV_FILE: &str = "env.docker-local";
-const BACKUP_UPLOADS_FILE: &str = "uploads.tar";
 const UPLOADS_HEALTH_FILE: &str = ".meg-pocket-health";
 
 #[derive(Clone, Debug, Serialize)]
@@ -247,6 +244,26 @@ impl ComposeCommand {
     {
         let mut command_args = self.prefix.clone();
         command_args.extend(["--project-name".to_string(), compose_project_name()]);
+        command_args.extend(args.into_iter().map(Into::into));
+
+        NativeCommand::new(self.program.clone())
+            .args(command_args)
+            .cwd(project_dir)
+    }
+
+    fn local_build_command<I, S>(&self, project_dir: &Path, args: I) -> NativeCommand
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        let mut command_args = self.prefix.clone();
+        command_args.extend(["--project-name".to_string(), compose_project_name()]);
+        command_args.extend([
+            "-f".to_string(),
+            "docker-compose.yml".to_string(),
+            "-f".to_string(),
+            "docker-compose.local-build.yml".to_string(),
+        ]);
         command_args.extend(args.into_iter().map(Into::into));
 
         NativeCommand::new(self.program.clone())
@@ -489,7 +506,7 @@ fn run_doctor_steps(
     check_cancelled(&cancel)?;
     ctx.progress("Docker", "Verificando Docker com timeout curto.", 40);
     check_cancelled(&cancel)?;
-    ctx.progress("Docker Compose", "Verificando Docker Compose.", 55);
+    ctx.progress("Ferramentas locais", "Verificando ferramentas locais.", 55);
     check_cancelled(&cancel)?;
     ctx.progress("Projeto", "Verificando pasta local do projeto.", 75);
     check_cancelled(&cancel)?;
@@ -606,14 +623,29 @@ pub fn install_project(
     job_manager: &JobManager,
     use_sudo_docker: bool,
     light_build: bool,
+    local_build: bool,
+    no_cache: bool,
 ) -> LauncherResult<CommandOutput> {
-    let job = job_manager.start("Instalar/Atualizar M&G Pocket")?;
+    let job = job_manager.start("Preparar Ambiente")?;
     let mut ctx = NativeJob::new(app, job);
-    ctx.started("Iniciando", "Iniciando instalação nativa do launcher.", 0);
+    ctx.started(
+        "Iniciando",
+        "Preparando uma versão pronta do M&G Pocket neste computador.",
+        0,
+    );
 
-    let result = install_project_steps(&mut ctx, use_sudo_docker, light_build);
+    let result = install_project_steps(
+        &mut ctx,
+        use_sudo_docker,
+        light_build,
+        local_build,
+        no_cache,
+    );
     match result {
-        Ok(()) => Ok(ctx.finish_success("Finalizado", "M&G Pocket instalado e validado.")),
+        Ok(()) => Ok(ctx.finish_success(
+            "Concluído",
+            "Ambiente pronto. Você já pode abrir o M&G Pocket.",
+        )),
         Err(error) if ctx.job.is_cancelled() => {
             ctx.finish_cancelled();
             Err(error)
@@ -630,16 +662,28 @@ pub fn repair_installation(
     job_manager: &JobManager,
     use_sudo_docker: bool,
     light_build: bool,
+    local_build: bool,
+    no_cache: bool,
 ) -> LauncherResult<CommandOutput> {
     let job = job_manager.start("Reparar instalação")?;
     let mut ctx = NativeJob::new(app, job);
     ctx.started(
         "Iniciando reparo",
-        "Reconstruindo a imagem do aplicativo sem cache.",
+        if local_build {
+            "Recompilando localmente para reparar a instalação."
+        } else {
+            "Baixando novamente a versão pronta do M&G Pocket."
+        },
         0,
     );
 
-    let result = repair_installation_steps(&mut ctx, use_sudo_docker, light_build);
+    let result = repair_installation_steps(
+        &mut ctx,
+        use_sudo_docker,
+        light_build,
+        local_build,
+        no_cache,
+    );
     match result {
         Ok(()) => Ok(ctx.finish_success("Finalizado", "Reparo concluído.")),
         Err(error) if ctx.job.is_cancelled() => {
@@ -660,7 +704,7 @@ pub fn start_app(
 ) -> LauncherResult<CommandOutput> {
     let job = job_manager.start("Iniciar M&G Pocket")?;
     let mut ctx = NativeJob::new(app, job);
-    ctx.started("Iniciando", "Iniciando containers do M&G Pocket.", 0);
+    ctx.started("Iniciando", "Iniciando serviços locais do M&G Pocket.", 0);
 
     let result = start_app_steps(&mut ctx, use_sudo_docker);
     match result {
@@ -683,7 +727,7 @@ pub fn stop_app(
 ) -> LauncherResult<CommandOutput> {
     let job = job_manager.start("Parar M&G Pocket")?;
     let mut ctx = NativeJob::new(app, job);
-    ctx.started("Parando", "Parando containers do M&G Pocket.", 0);
+    ctx.started("Parando", "Parando serviços locais do M&G Pocket.", 0);
 
     let result = stop_app_steps(&mut ctx, use_sudo_docker);
     match result {
@@ -708,7 +752,11 @@ pub fn restart_app(
 ) -> LauncherResult<CommandOutput> {
     let job = job_manager.start("Reiniciar M&G Pocket")?;
     let mut ctx = NativeJob::new(app, job);
-    ctx.started("Reiniciando", "Reiniciando containers do M&G Pocket.", 0);
+    ctx.started(
+        "Reiniciando",
+        "Reiniciando serviços locais do M&G Pocket.",
+        0,
+    );
 
     let result = restart_app_steps(&mut ctx, use_sudo_docker);
     match result {
@@ -732,7 +780,11 @@ pub fn read_logs(
 ) -> LauncherResult<String> {
     let job = job_manager.start("Ler logs")?;
     let mut ctx = NativeJob::new(app, job);
-    ctx.started("Logs", "Carregando últimas linhas dos containers.", 0);
+    ctx.started(
+        "Detalhes técnicos",
+        "Carregando últimas mensagens técnicas.",
+        0,
+    );
 
     let result = read_logs_steps(&mut ctx, use_sudo_docker);
     match result {
@@ -890,7 +942,7 @@ fn install_system_dependencies_steps(ctx: &mut NativeJob<'_, '_>) -> LauncherRes
     if dependencies.missing.is_empty() {
         ctx.log(
             "Dependências",
-            "Git, Docker e Docker Compose já estão disponíveis.",
+            "As dependências locais já estão disponíveis.",
             "info",
         );
         return Ok(());
@@ -1075,6 +1127,8 @@ fn install_project_steps(
     ctx: &mut NativeJob<'_, '_>,
     use_sudo_docker: bool,
     light_build: bool,
+    local_build: bool,
+    no_cache: bool,
 ) -> LauncherResult<()> {
     ctx.progress("Verificando Git", "Verificando Git.", 10);
     require_command(
@@ -1087,8 +1141,8 @@ fn install_project_steps(
     ensure_docker_daemon(ctx, use_sudo_docker, 20)?;
 
     ctx.progress(
-        "Verificando Docker Compose",
-        "Verificando Docker Compose.",
+        "Verificando ferramentas locais",
+        "Verificando ferramentas locais.",
         30,
     );
     let compose =
@@ -1110,17 +1164,11 @@ fn install_project_steps(
     prepare_project_files(&project_dir)?;
     cleanup_legacy_app_compose_project(ctx, &compose, &project_dir);
 
-    ctx.run_required(
-        "Construindo imagem",
-        if light_build {
-            "Construindo app com React Compiler desativado."
-        } else {
-            "Construindo app standalone."
-        },
-        80,
-        compose_build_app_command(&compose, &project_dir, light_build, false),
-        LONG_TIMEOUT,
-    )?;
+    if local_build {
+        build_local_images(ctx, &compose, &project_dir, light_build, no_cache, 80)?;
+    } else {
+        pull_ready_images(ctx, &compose, &project_dir, 80)?;
+    }
 
     ctx.run_required(
         "Subindo banco",
@@ -1146,7 +1194,6 @@ fn install_project_steps(
                 ".env.docker-local",
                 "run",
                 "--rm",
-                "--build",
                 "maintenance",
                 "npm",
                 "run",
@@ -1158,8 +1205,8 @@ fn install_project_steps(
 
     run_seed_if_needed(ctx, &compose, &project_dir)?;
     ctx.run_required(
-        "Subindo containers",
-        "Subindo aplicação standalone e Nginx.",
+        "Iniciando M&G Pocket",
+        "Iniciando o M&G Pocket.",
         95,
         compose.command(
             &project_dir,
@@ -1194,6 +1241,8 @@ fn repair_installation_steps(
     ctx: &mut NativeJob<'_, '_>,
     use_sudo_docker: bool,
     light_build: bool,
+    local_build: bool,
+    no_cache: bool,
 ) -> LauncherResult<()> {
     let project_dir = project_dir();
     require_project(&project_dir)?;
@@ -1206,21 +1255,15 @@ fn repair_installation_steps(
         resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
     cleanup_legacy_app_compose_project(ctx, &compose, &project_dir);
 
-    ctx.run_required(
-        "Reconstruindo imagem",
-        if light_build {
-            "Reconstruindo app sem cache e com React Compiler desativado."
-        } else {
-            "Reconstruindo app sem cache."
-        },
-        55,
-        compose_build_app_command(&compose, &project_dir, light_build, true),
-        LONG_TIMEOUT,
-    )?;
+    if local_build {
+        build_local_images(ctx, &compose, &project_dir, light_build, no_cache, 55)?;
+    } else {
+        pull_ready_images(ctx, &compose, &project_dir, 55)?;
+    }
 
     ctx.run_required(
-        "Subindo containers",
-        "Subindo Postgres, aplicação standalone e Nginx.",
+        "Iniciando M&G Pocket",
+        "Reiniciando o M&G Pocket.",
         80,
         compose.command(
             &project_dir,
@@ -1229,6 +1272,7 @@ fn repair_installation_steps(
                 ".env.docker-local",
                 "up",
                 "-d",
+                "--force-recreate",
                 "postgres",
                 "app",
                 "nginx",
@@ -1276,8 +1320,8 @@ fn start_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Launch
     )?;
     wait_for_postgres(ctx, &compose, &project_dir)?;
     ctx.run_required(
-        "Subindo containers",
-        "Subindo aplicação standalone e Nginx.",
+        "Iniciando M&G Pocket",
+        "Iniciando o M&G Pocket.",
         70,
         compose.command(
             &project_dir,
@@ -1334,16 +1378,16 @@ fn restart_app_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> Laun
         resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
 
     ctx.run_required(
-        "Parando containers",
-        "Parando containers antes do reinício.",
+        "Parando serviços",
+        "Parando serviços antes do reinício.",
         35,
         compose_down_command(&compose, &project_dir, false),
         LONG_TIMEOUT,
     )?;
 
     ctx.run_required(
-        "Subindo containers",
-        "Subindo aplicação standalone e Nginx.",
+        "Iniciando M&G Pocket",
+        "Iniciando o M&G Pocket.",
         60,
         compose.command(
             &project_dir,
@@ -1405,17 +1449,13 @@ fn backup_steps(ctx: &mut NativeJob<'_, '_>, use_sudo_docker: bool) -> LauncherR
     validate_project_path(&project_dir)?;
     prepare_project_files(&project_dir)?;
 
-    ctx.progress(
-        "Verificando containers",
-        "Validando Docker e Docker Compose.",
-        30,
-    );
+    ctx.progress("Verificando serviços", "Validando serviços locais.", 30);
     ensure_docker_daemon(ctx, use_sudo_docker, 30)?;
     let compose =
         resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
     ensure_postgres_for_maintenance(ctx, &compose, &project_dir, 40)?;
 
-    create_backup_archive(ctx, &compose, &project_dir, 45, 65, 85)
+    create_database_backup_file(ctx, &compose, &project_dir, 45, 85)
 }
 
 fn restore_backup_steps(
@@ -1425,20 +1465,6 @@ fn restore_backup_steps(
 ) -> LauncherResult<()> {
     ctx.progress("Validando backup", "Validando arquivo de backup.", 10);
     validate_backup_file(&backup_file)?;
-
-    let mut temp_dir = TempDirGuard::new("mg-pocket-restore")?;
-    ctx.progress(
-        "Extraindo backup",
-        "Extraindo backup em pasta temporária.",
-        25,
-    );
-    extract_backup_archive(ctx, &backup_file, temp_dir.path())?;
-    let dump_file = temp_dir.path().join(BACKUP_SQL_FILE);
-    if !dump_file.is_file() {
-        return Err(LauncherError::friendly(
-            "Backup inválido: postgres.sql não foi encontrado.",
-        ));
-    }
 
     let project_dir = project_dir();
     ctx.progress(
@@ -1450,16 +1476,16 @@ fn restore_backup_steps(
     validate_project_path(&project_dir)?;
 
     ctx.progress(
-        "Parando containers",
-        "Parando app, Adminer e Nginx antes do restore.",
+        "Parando serviços",
+        "Parando serviços antes da restauração.",
         40,
     );
     let compose =
         resolve_compose_command(use_sudo_docker, QUICK_TIMEOUT, Some(ctx.job.cancel_flag()))?;
-    restore_env_file(temp_dir.path(), &project_dir)?;
+    prepare_project_files(&project_dir)?;
     ctx.run_optional(
-        "Parando containers",
-        "Parando serviços que usam o banco.",
+        "Parando serviços",
+        "Parando serviços que usam os dados locais.",
         45,
         compose.command(
             &project_dir,
@@ -1476,67 +1502,14 @@ fn restore_backup_steps(
     );
 
     ensure_postgres_for_maintenance(ctx, &compose, &project_dir, 55)?;
-    ctx.run_required(
-        "Restaurando dados",
-        "Limpando schema público antes de restaurar o dump.",
-        70,
-        compose.command(
-            &project_dir,
-            [
-                "--env-file",
-                ".env.docker-local",
-                "exec",
-                "-T",
-                "postgres",
-                "psql",
-                "-U",
-                "meg",
-                "-d",
-                "meg_pocket",
-                "-c",
-                "DROP SCHEMA public CASCADE; CREATE SCHEMA public;",
-            ],
-        ),
-        MEDIUM_TIMEOUT,
-    )?;
-    ctx.run_required_with_files(
-        "Restaurando dados",
-        "Restaurando dump do banco a partir do backup.",
-        75,
-        compose.command(
-            &project_dir,
-            [
-                "--env-file",
-                ".env.docker-local",
-                "exec",
-                "-T",
-                "postgres",
-                "psql",
-                "-U",
-                "meg",
-                "-d",
-                "meg_pocket",
-            ],
-        ),
-        LONG_TIMEOUT,
-        Some(&dump_file),
-        None,
-    )?;
+    restore_database_file(ctx, &compose, &project_dir, &backup_file, 70)?;
 
     ctx.progress(
-        "Aplicando arquivos",
-        "Aplicando arquivos locais do backup.",
-        82,
-    );
-    restore_storage_with_rollback(ctx, &compose, temp_dir.path(), &project_dir)?;
-
-    ctx.progress(
-        "Subindo containers",
-        "Subindo containers depois da restauração.",
+        "Iniciando M&G Pocket",
+        "Reiniciando o sistema depois da restauração.",
         90,
     );
     start_app_steps(ctx, use_sudo_docker)?;
-    temp_dir.cleanup();
     Ok(())
 }
 
@@ -1558,7 +1531,7 @@ fn reset_local_data_steps(
         "info",
     );
     match ensure_postgres_for_maintenance(ctx, &compose, &project_dir, 25)
-        .and_then(|_| create_backup_archive(ctx, &compose, &project_dir, 28, 32, 36))
+        .and_then(|_| create_database_backup_file(ctx, &compose, &project_dir, 28, 36))
     {
         Ok(path) => ctx.log(
             "Backup automático",
@@ -1576,8 +1549,8 @@ fn reset_local_data_steps(
     }
 
     ctx.run_required(
-        "Parando containers",
-        "Parando containers e removendo volumes do projeto.",
+        "Parando serviços",
+        "Parando serviços e removendo dados locais do projeto.",
         60,
         compose.command(
             &project_dir,
@@ -1605,7 +1578,7 @@ fn reset_local_data_steps(
             .join(".seed-inicial-concluido"),
     )?;
 
-    install_project_steps(ctx, use_sudo_docker, false)?;
+    install_project_steps(ctx, use_sudo_docker, false, false, false)?;
     Ok(())
 }
 
@@ -1636,8 +1609,8 @@ fn remove_local_project_steps(
     match (mode, compose) {
         ("complete", Ok(compose)) => {
             ctx.run_required(
-                "Parando containers",
-                "Remoção completa: removendo containers, volumes e redes do projeto.",
+                "Parando serviços",
+                "Remoção completa: removendo serviços e dados locais do projeto.",
                 55,
                 compose_down_command(&compose, &safe_project_dir, true),
                 LONG_TIMEOUT,
@@ -1646,8 +1619,8 @@ fn remove_local_project_steps(
         ("complete", Err(error)) => return Err(error),
         (_, Ok(compose)) => {
             ctx.run_optional(
-                "Parando containers",
-                "Remoção segura: parando containers e preservando volumes Docker.",
+                "Parando serviços",
+                "Remoção segura: parando serviços e preservando dados locais quando possível.",
                 55,
                 compose_down_command(&compose, &safe_project_dir, false),
                 MEDIUM_TIMEOUT,
@@ -1655,9 +1628,9 @@ fn remove_local_project_steps(
         }
         (_, Err(error)) => {
             ctx.log(
-                "Parando containers",
+                "Parando serviços",
                 &format!(
-                    "Não foi possível validar Docker Compose. Removendo apenas a pasta local: {}",
+                    "Não foi possível validar as ferramentas locais. Removendo apenas a pasta local: {}",
                     error.friendly_message()
                 ),
                 "error",
@@ -1681,7 +1654,7 @@ fn ensure_postgres_for_maintenance(
     progress: u8,
 ) -> LauncherResult<()> {
     ctx.run_required(
-        "Verificando containers",
+        "Verificando serviços",
         "Subindo Postgres para operação local.",
         progress,
         compose.command(
@@ -1693,20 +1666,22 @@ fn ensure_postgres_for_maintenance(
     wait_for_postgres(ctx, compose, project_dir)
 }
 
-fn create_backup_archive(
+fn create_database_backup_file(
     ctx: &mut NativeJob<'_, '_>,
     compose: &ComposeCommand,
     project_dir: &Path,
     export_progress: u8,
-    files_progress: u8,
-    archive_progress: u8,
+    done_progress: u8,
 ) -> LauncherResult<PathBuf> {
-    let mut temp_dir = TempDirGuard::new("mg-pocket-backup")?;
-    let dump_file = temp_dir.path().join(BACKUP_SQL_FILE);
+    let destination_dir = backup_dir()?;
+    fs::create_dir_all(&destination_dir).map_err(|error| {
+        LauncherError::technical("Não foi possível criar pasta de backups", error)
+    })?;
+    let backup_file = destination_dir.join(default_backup_file_name());
 
     ctx.run_required_with_files(
-        "Exportando dados",
-        "Exportando banco de dados local.",
+        "Exportando banco",
+        "Salvando uma cópia dos dados do M&G Pocket.",
         export_progress,
         compose.command(
             project_dir,
@@ -1725,232 +1700,111 @@ fn create_backup_archive(
         ),
         LONG_TIMEOUT,
         None,
-        Some(&dump_file),
+        Some(&backup_file),
     )?;
 
     ctx.progress(
-        "Preparando arquivos",
-        "Copiando arquivos locais para pasta temporária.",
-        files_progress,
+        "Backup concluído",
+        &format!("Backup do banco salvo em {}", backup_file.display()),
+        done_progress,
     );
-    let env_file = project_dir.join(".env.docker-local");
-    if env_file.is_file() {
-        copy_file_retry(&env_file, &temp_dir.path().join(BACKUP_ENV_FILE))?;
-    }
-
-    let uploads_archive = temp_dir.path().join(BACKUP_UPLOADS_FILE);
-    let output = run_streaming_command_with_files(
-        ctx.app,
-        ctx.job.job_id(),
-        ctx.job.action(),
-        "Preparando arquivos",
-        files_progress,
-        compose.command(
-            project_dir,
-            [
-                "--env-file",
-                ".env.docker-local",
-                "run",
-                "--rm",
-                "--no-deps",
-                "maintenance",
-                "tar",
-                "-C",
-                "/app/uploads",
-                "-cf",
-                "-",
-                ".",
-            ],
-        ),
-        LONG_TIMEOUT,
-        ctx.job.cancel_flag(),
-        None,
-        Some(&uploads_archive),
-    )
-    .map_err(|error| process_error_to_launcher("Preparando arquivos", error))?;
-    ctx.append_output(&output);
-    if !output.success {
-        ctx.log(
-            "Preparando arquivos",
-            "Não foi possível exportar uploads pelo volume Docker. Tentando fallback legado.",
-            "error",
-        );
-        let _ = remove_file_if_exists(&uploads_archive);
-    }
-
-    let storage_public = project_dir.join("storage").join("local").join("public");
-    if storage_public.is_dir() {
-        let storage_target = temp_dir.path().join("storage").join("local").join("public");
-        copy_dir_retry(&storage_public, &storage_target)?;
-    }
-
-    let destination_dir = backup_dir()?;
-    fs::create_dir_all(&destination_dir).map_err(|error| {
-        LauncherError::technical("Não foi possível criar pasta de backups", error)
-    })?;
-    let backup_file = destination_dir.join(default_backup_file_name());
-    archive_temp_dir(ctx, temp_dir.path(), &backup_file, archive_progress)?;
-    temp_dir.cleanup();
     ctx.log(
         "Backup concluído",
-        &format!("Backup salvo em {}", backup_file.display()),
+        &format!("Backup do banco salvo em {}", backup_file.display()),
         "info",
     );
     Ok(backup_file)
 }
 
-fn archive_temp_dir(
+fn restore_database_file(
     ctx: &mut NativeJob<'_, '_>,
-    temp_dir: &Path,
+    compose: &ComposeCommand,
+    project_dir: &Path,
     backup_file: &Path,
     progress: u8,
 ) -> LauncherResult<()> {
-    #[cfg(target_os = "windows")]
-    {
-        ctx.run_required(
-            "Salvando backup",
-            "Compactando backup em arquivo .zip.",
-            progress,
-            NativeCommand::new("powershell.exe").args(vec![
-                "-NoProfile".to_string(),
-                "-Command".to_string(),
-                format!(
-                    "Compress-Archive -Path '{}' -DestinationPath '{}' -Force",
-                    powershell_escape(&temp_dir.join("*")),
-                    powershell_escape(backup_file)
-                ),
-            ]),
-            LONG_TIMEOUT,
-        )?;
-    }
+    let extension = backup_file
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
 
-    #[cfg(not(target_os = "windows"))]
-    {
-        ctx.run_required(
-            "Salvando backup",
-            "Compactando backup em arquivo .tar.gz.",
-            progress,
-            NativeCommand::new("tar").args(vec![
-                "-czf".to_string(),
-                path_string(backup_file),
-                "-C".to_string(),
-                path_string(temp_dir),
-                ".".to_string(),
-            ]),
-            LONG_TIMEOUT,
-        )?;
-    }
-
-    Ok(())
-}
-
-fn extract_backup_archive(
-    ctx: &mut NativeJob<'_, '_>,
-    backup_file: &Path,
-    temp_dir: &Path,
-) -> LauncherResult<()> {
-    #[cfg(target_os = "windows")]
-    {
-        ctx.run_required(
-            "Extraindo backup",
-            "Extraindo arquivo .zip.",
-            25,
-            NativeCommand::new("powershell.exe").args(vec![
-                "-NoProfile".to_string(),
-                "-Command".to_string(),
-                format!(
-                    "Expand-Archive -Path '{}' -DestinationPath '{}' -Force",
-                    powershell_escape(backup_file),
-                    powershell_escape(temp_dir)
-                ),
-            ]),
-            LONG_TIMEOUT,
-        )?;
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        ctx.run_required(
-            "Extraindo backup",
-            "Extraindo arquivo .tar.gz.",
-            25,
-            NativeCommand::new("tar").args(vec![
-                "-xzf".to_string(),
-                path_string(backup_file),
-                "-C".to_string(),
-                path_string(temp_dir),
-            ]),
-            LONG_TIMEOUT,
-        )?;
-    }
-
-    Ok(())
-}
-
-fn restore_env_file(temp_dir: &Path, project_dir: &Path) -> LauncherResult<()> {
-    let backup_env = temp_dir.join(BACKUP_ENV_FILE);
-    if backup_env.is_file() {
-        copy_file_retry(&backup_env, &project_dir.join(".env.docker-local"))?;
-    } else {
-        prepare_project_files(project_dir)?;
-    }
-    Ok(())
-}
-
-fn restore_storage_with_rollback(
-    ctx: &mut NativeJob<'_, '_>,
-    compose: &ComposeCommand,
-    temp_dir: &Path,
-    project_dir: &Path,
-) -> LauncherResult<()> {
-    let uploads_archive = temp_dir.join(BACKUP_UPLOADS_FILE);
-    if uploads_archive.is_file() {
+    if extension == "dump" {
         ctx.run_required_with_files(
-            "Aplicando arquivos",
-            "Restaurando volume persistente de uploads.",
-            84,
+            "Restaurando banco",
+            "Restaurando backup do banco.",
+            progress,
             compose.command(
                 project_dir,
                 [
                     "--env-file",
                     ".env.docker-local",
-                    "run",
-                    "--rm",
-                    "--no-deps",
-                    "maintenance",
-                    "sh",
-                    "-lc",
-                    "rm -rf /app/uploads/* /app/uploads/.[!.]* /app/uploads/..?* 2>/dev/null || true; mkdir -p /app/uploads; tar -C /app/uploads -xf -",
+                    "exec",
+                    "-T",
+                    "postgres",
+                    "pg_restore",
+                    "--clean",
+                    "--if-exists",
+                    "--no-owner",
+                    "-U",
+                    "meg",
+                    "-d",
+                    "meg_pocket",
                 ],
             ),
             LONG_TIMEOUT,
-            Some(&uploads_archive),
+            Some(backup_file),
             None,
         )?;
         return Ok(());
     }
 
-    let backup_storage = temp_dir.join("storage").join("local").join("public");
-    if !backup_storage.is_dir() {
-        return Ok(());
-    }
-
-    let current_storage = project_dir.join("storage").join("local").join("public");
-    let rollback_storage = temp_dir.join("storage-rollback-public");
-    if current_storage.exists() {
-        rename_retry(&current_storage, &rollback_storage)?;
-    }
-
-    let result = copy_dir_retry(&backup_storage, &current_storage);
-    if let Err(error) = result {
-        let _ = remove_dir_retry(&current_storage);
-        if rollback_storage.exists() {
-            let _ = rename_retry(&rollback_storage, &current_storage);
-        }
-        return Err(error);
-    }
-
-    let _ = remove_dir_retry(&rollback_storage);
+    ctx.run_required(
+        "Restaurando banco",
+        "Limpando os dados atuais antes de restaurar o backup.",
+        progress,
+        compose.command(
+            project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "exec",
+                "-T",
+                "postgres",
+                "psql",
+                "-U",
+                "meg",
+                "-d",
+                "meg_pocket",
+                "-c",
+                "DROP SCHEMA public CASCADE; CREATE SCHEMA public;",
+            ],
+        ),
+        MEDIUM_TIMEOUT,
+    )?;
+    ctx.run_required_with_files(
+        "Restaurando banco",
+        "Restaurando backup do banco.",
+        progress.saturating_add(5).min(95),
+        compose.command(
+            project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "exec",
+                "-T",
+                "postgres",
+                "psql",
+                "-U",
+                "meg",
+                "-d",
+                "meg_pocket",
+            ],
+        ),
+        LONG_TIMEOUT,
+        Some(backup_file),
+        None,
+    )?;
     Ok(())
 }
 
@@ -1992,6 +1846,81 @@ fn compose_build_app_command(
         command.env("NEXT_REACT_COMPILER", "false")
     } else {
         command
+    }
+}
+
+fn pull_ready_images(
+    ctx: &mut NativeJob<'_, '_>,
+    compose: &ComposeCommand,
+    project_dir: &Path,
+    progress: u8,
+) -> LauncherResult<()> {
+    ctx.run_required(
+        "Baixando versão pronta",
+        "Baixando ou atualizando a versão pronta do M&G Pocket.",
+        progress,
+        compose.command(
+            project_dir,
+            [
+                "--env-file",
+                ".env.docker-local",
+                "pull",
+                "app",
+                "maintenance",
+            ],
+        ),
+        LONG_TIMEOUT,
+    )?;
+    Ok(())
+}
+
+fn build_local_images(
+    ctx: &mut NativeJob<'_, '_>,
+    compose: &ComposeCommand,
+    project_dir: &Path,
+    light_build: bool,
+    no_cache: bool,
+    progress: u8,
+) -> LauncherResult<()> {
+    require_local_build_compose(project_dir)?;
+    let mut args = vec![
+        "--env-file".to_string(),
+        ".env.docker-local".to_string(),
+        "build".to_string(),
+    ];
+    if no_cache {
+        args.push("--no-cache".to_string());
+    }
+    args.extend(["app".to_string(), "maintenance".to_string()]);
+
+    let command = compose.local_build_command(project_dir, args);
+    let command = if light_build {
+        command.env("NEXT_REACT_COMPILER", "false")
+    } else {
+        command
+    };
+
+    ctx.run_required(
+        "Construindo localmente",
+        if no_cache {
+            "Reconstruindo imagens locais sem cache. Isso pode demorar em computadores mais fracos."
+        } else {
+            "Construindo imagens locais. Isso pode demorar em computadores mais fracos."
+        },
+        progress,
+        command,
+        LONG_TIMEOUT,
+    )?;
+    Ok(())
+}
+
+fn require_local_build_compose(project_dir: &Path) -> LauncherResult<()> {
+    if project_dir.join("docker-compose.local-build.yml").is_file() {
+        Ok(())
+    } else {
+        Err(LauncherError::friendly(
+            "Arquivo de build local não encontrado. Atualize o projeto antes de usar esta opção avançada.",
+        ))
     }
 }
 
@@ -2578,7 +2507,7 @@ fn cleanup_legacy_app_compose_project(
         .cwd(project_dir);
     ctx.run_optional(
         "Preparando Docker",
-        "Removendo containers legados do projeto antigo, se existirem.",
+        "Removendo serviços legados do projeto antigo, se existirem.",
         72,
         command,
         MEDIUM_TIMEOUT,
@@ -2604,15 +2533,15 @@ fn stop_compose_project(
 
     if required {
         ctx.run_required(
-            "Parando containers",
-            "Parando containers e redes do projeto.",
+            "Parando serviços",
+            "Parando serviços locais do projeto.",
             70,
             command,
             LONG_TIMEOUT,
         )?;
     } else {
         ctx.run_optional(
-            "Parando containers legados",
+            "Parando serviços legados",
             "Parando stack legada, se existir.",
             75,
             command,
@@ -2668,14 +2597,13 @@ fn wait_for_app_alive(
     compose: &ComposeCommand,
     project_dir: &Path,
 ) -> LauncherResult<()> {
-    ctx.progress(
-        "Aguardando app",
-        "Validando /api/health sem depender do banco.",
-        88,
+    ctx.progress("Aguardando app", "Validando se o aplicativo respondeu.", 88);
+    let result = retry_step(
+        ctx,
+        Duration::from_secs(120),
+        Duration::from_secs(2),
+        || app_healthcheck_success(ctx, compose, project_dir, "/api/health"),
     );
-    let result = retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
-        app_healthcheck_success(ctx, compose, project_dir, "/api/health")
-    });
 
     if result.is_ok() {
         return Ok(());
@@ -2683,7 +2611,7 @@ fn wait_for_app_alive(
 
     log_service_tail(ctx, compose, project_dir, "app", "Aguardando app");
     Err(LauncherError::friendly(
-        "O aplicativo não respondeu ao healthcheck. Veja os logs do app.",
+        "O M&G Pocket ainda não respondeu. Veja os detalhes técnicos.",
     ))
 }
 
@@ -2694,7 +2622,7 @@ fn warn_if_database_unavailable(
 ) {
     ctx.progress(
         "Validando banco",
-        "Consultando /api/health/db pelo container app.",
+        "Validando conexão do aplicativo com os dados.",
         90,
     );
 
@@ -2704,13 +2632,13 @@ fn warn_if_database_unavailable(
     .is_ok();
 
     if connected {
-        ctx.log("Validando banco", "Banco conectado via /api/health/db.", "info");
+        ctx.log("Validando banco", "Banco conectado.", "info");
         return;
     }
 
     ctx.log(
         "Validando banco",
-        "O aplicativo iniciou, mas ainda não conseguiu conectar ao banco. Aguarde alguns segundos ou teste /api/health/db.",
+        "O aplicativo iniciou, mas ainda não conseguiu conectar aos dados. Aguarde alguns segundos e tente novamente.",
         "error",
     );
     log_compose_service_status(ctx, compose, project_dir, "postgres", "Validando banco");
@@ -2833,7 +2761,6 @@ fn run_seed_if_needed(
                 ".env.docker-local",
                 "run",
                 "--rm",
-                "--build",
                 "maintenance",
                 "npm",
                 "run",
@@ -2882,33 +2809,41 @@ fn validate_site(ctx: &mut NativeJob<'_, '_>) -> LauncherResult<()> {
     let app_url = format!("http://localhost:{app_port}");
     let adminer_url = format!("http://localhost:{adminer_port}");
     ctx.progress(
-        "Validando site/Adminer",
-        &format!("Validando proxy local em {app_url}."),
+        "Validando acesso local",
+        &format!("Validando acesso local em {app_url}."),
         95,
     );
     retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
         check_http_path(app_port, "/healthz", PORT_TIMEOUT)
     })
-    .map_err(|_| LauncherError::friendly("O proxy local não iniciou. Verifique se a porta já está em uso."))?;
-
-    retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
-        check_http_path(app_port, "/api/health", PORT_TIMEOUT)
-    })
     .map_err(|_| {
-        LauncherError::friendly(
-            format!("O aplicativo não respondeu em {app_url}/api/health. Veja os logs do app."),
+        LauncherError::new(
+            "Não conseguimos abrir o M&G Pocket agora. Algum serviço ainda pode estar iniciando ou outro programa pode estar usando o endereço local.",
+            "O proxy local não iniciou. Verifique se a porta já está em uso.",
         )
+    })?;
+
+    retry_step(
+        ctx,
+        Duration::from_secs(120),
+        Duration::from_secs(2),
+        || check_http_path(app_port, "/api/health", PORT_TIMEOUT),
+    )
+    .map_err(|_| {
+        LauncherError::friendly(format!(
+            "O aplicativo não respondeu em {app_url}. Veja os detalhes técnicos."
+        ))
     })?;
 
     if check_local_port(adminer_port, PORT_TIMEOUT) {
         ctx.log(
-            "Validando site/Adminer",
+            "Validando acesso local",
             &format!("Adminer respondeu em {adminer_url}."),
             "info",
         );
     } else {
         ctx.log(
-            "Validando site/Adminer",
+            "Validando acesso local",
             "Adminer não respondeu agora. O site pode funcionar sem o Adminer.",
             "info",
         );
@@ -4207,48 +4142,8 @@ fn backup_dir() -> LauncherResult<PathBuf> {
     ))
 }
 
-struct TempDirGuard {
-    path: PathBuf,
-    cleanup: bool,
-}
-
-impl TempDirGuard {
-    fn new(prefix: &str) -> LauncherResult<Self> {
-        let path = env::temp_dir().join(format!("{prefix}-{}", timestamp_nanos()));
-        fs::create_dir_all(&path).map_err(|error| {
-            LauncherError::technical("Não foi possível criar pasta temporária", error)
-        })?;
-        Ok(Self {
-            path,
-            cleanup: true,
-        })
-    }
-
-    fn path(&self) -> &Path {
-        &self.path
-    }
-
-    fn cleanup(&mut self) {
-        if self.cleanup {
-            let _ = remove_dir_retry(&self.path);
-            self.cleanup = false;
-        }
-    }
-}
-
-impl Drop for TempDirGuard {
-    fn drop(&mut self) {
-        self.cleanup();
-    }
-}
-
 fn default_backup_file_name() -> String {
-    let suffix = timestamp_nanos();
-    if cfg!(target_os = "windows") {
-        format!("mg-pocket-backup-{suffix}.zip")
-    } else {
-        format!("mg-pocket-backup-{suffix}.tar.gz")
-    }
+    format!("meg-pocket-db-{}.sql", backup_timestamp())
 }
 
 fn validate_backup_file(path: &Path) -> LauncherResult<()> {
@@ -4267,12 +4162,39 @@ fn validate_backup_file(path: &Path) -> LauncherResult<()> {
 }
 
 fn backup_extension_valid(path: &Path) -> bool {
-    let text = path.to_string_lossy().to_ascii_lowercase();
-    if cfg!(target_os = "windows") {
-        text.ends_with(".zip")
-    } else {
-        text.ends_with(".tar.gz") || text.ends_with(".tgz")
-    }
+    path.extension()
+        .and_then(|value| value.to_str())
+        .map(|extension| {
+            extension.eq_ignore_ascii_case("sql") || extension.eq_ignore_ascii_case("dump")
+        })
+        .unwrap_or(false)
+}
+
+fn backup_timestamp() -> String {
+    let seconds = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs() as i64)
+        .unwrap_or(0);
+    let days = seconds.div_euclid(86_400);
+    let seconds_of_day = seconds.rem_euclid(86_400);
+    let (year, month, day) = civil_from_days(days);
+    let hour = seconds_of_day / 3_600;
+    let minute = (seconds_of_day % 3_600) / 60;
+    format!("{year:04}-{month:02}-{day:02}-{hour:02}{minute:02}")
+}
+
+fn civil_from_days(days_since_unix_epoch: i64) -> (i64, i64, i64) {
+    let z = days_since_unix_epoch + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = mp + if mp < 10 { 3 } else { -9 };
+    let year = y + if month <= 2 { 1 } else { 0 };
+    (year, month, day)
 }
 
 fn validate_project_delete_path(path: &Path) -> LauncherResult<PathBuf> {
@@ -4319,57 +4241,11 @@ fn validate_project_delete_path(path: &Path) -> LauncherResult<PathBuf> {
     Ok(resolved)
 }
 
-fn copy_file_retry(source: &Path, destination: &Path) -> LauncherResult<()> {
-    retry_io("copiar arquivo", || {
-        if let Some(parent) = destination.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::copy(source, destination).map(|_| ())
-    })
-}
-
-fn copy_dir_retry(source: &Path, destination: &Path) -> LauncherResult<()> {
-    if !source.is_dir() {
-        return Ok(());
-    }
-    retry_io("copiar pasta", || copy_dir_recursive(source, destination))
-}
-
-fn copy_dir_recursive(source: &Path, destination: &Path) -> std::io::Result<()> {
-    fs::create_dir_all(destination)?;
-    for entry in fs::read_dir(source)? {
-        let entry = entry?;
-        let source_path = entry.path();
-        let destination_path = destination.join(entry.file_name());
-        if entry.file_type()?.is_dir() {
-            copy_dir_recursive(&source_path, &destination_path)?;
-        } else {
-            if let Some(parent) = destination_path.parent() {
-                fs::create_dir_all(parent)?;
-            }
-            fs::copy(&source_path, &destination_path)?;
-        }
-    }
-    Ok(())
-}
-
 fn remove_dir_retry(path: &Path) -> LauncherResult<()> {
     if !path.exists() {
         return Ok(());
     }
     retry_io("remover pasta", || fs::remove_dir_all(path))
-}
-
-fn rename_retry(source: &Path, destination: &Path) -> LauncherResult<()> {
-    if let Some(parent) = destination.parent() {
-        fs::create_dir_all(parent).map_err(|error| {
-            LauncherError::technical("Não foi possível preparar destino", error)
-        })?;
-    }
-    if destination.exists() {
-        remove_dir_retry(destination)?;
-    }
-    retry_io("mover pasta", || fs::rename(source, destination))
 }
 
 fn remove_file_if_exists(path: &Path) -> LauncherResult<()> {
@@ -4893,15 +4769,15 @@ NEXTAUTH_URL="http://localhost:3000"
     }
 
     #[test]
-    fn backup_extension_matches_current_platform() {
-        if cfg!(target_os = "windows") {
-            assert!(backup_extension_valid(Path::new("backup.zip")));
-            assert!(!backup_extension_valid(Path::new("backup.tar.gz")));
-        } else {
-            assert!(backup_extension_valid(Path::new("backup.tar.gz")));
-            assert!(backup_extension_valid(Path::new("backup.tgz")));
-            assert!(!backup_extension_valid(Path::new("backup.zip")));
-        }
+    fn backup_extension_accepts_database_backups_only() {
+        assert!(backup_extension_valid(Path::new(
+            "meg-pocket-db-2026-05-22-1200.sql"
+        )));
+        assert!(backup_extension_valid(Path::new(
+            "meg-pocket-db-2026-05-22-1200.dump"
+        )));
+        assert!(!backup_extension_valid(Path::new("backup.zip")));
+        assert!(!backup_extension_valid(Path::new("backup.tar.gz")));
     }
 
     #[test]
@@ -4939,9 +4815,38 @@ NEXTAUTH_URL="http://localhost:3000"
 
         let repair_light = compose_build_app_command(&compose, project, true, true);
         assert!(repair_light.args.iter().any(|arg| arg == "--no-cache"));
-        assert!(repair_light.envs.iter().any(|(key, value)| {
-            key == "NEXT_REACT_COMPILER" && value == "false"
-        }));
+        assert!(repair_light
+            .envs
+            .iter()
+            .any(|(key, value)| { key == "NEXT_REACT_COMPILER" && value == "false" }));
+    }
+
+    #[test]
+    fn local_build_compose_command_uses_override_file() {
+        let compose = ComposeCommand {
+            program: "docker".to_string(),
+            prefix: vec!["compose".to_string()],
+        };
+        let command = compose.local_build_command(
+            Path::new("/tmp/mg-pocket/app"),
+            [
+                "--env-file",
+                ".env.docker-local",
+                "build",
+                "app",
+                "maintenance",
+            ],
+        );
+
+        assert!(command
+            .args
+            .windows(2)
+            .any(|args| args == ["-f", "docker-compose.yml"]));
+        assert!(command
+            .args
+            .windows(2)
+            .any(|args| args == ["-f", "docker-compose.local-build.yml"]));
+        assert!(command.args.iter().any(|arg| arg == "maintenance"));
     }
 
     fn planned_fast_diagnostic_commands_for_test() -> Vec<String> {
