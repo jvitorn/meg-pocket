@@ -2,13 +2,14 @@ import {
   Activity,
   Archive,
   BookOpen,
-  Database,
   ExternalLink,
   HardDrive,
+  HelpCircle,
   Play,
   RefreshCw,
   RotateCcw,
   ScrollText,
+  Settings,
   ShieldCheck,
   Square,
   Trash2,
@@ -60,9 +61,11 @@ const initialSteps: ProgressStep[] = [
   { id: "doctor", label: "Diagnóstico", state: "pending" },
   { id: "docker", label: "Docker", state: "pending" },
   { id: "permission", label: "Permissão", state: "pending" },
-  { id: "project", label: "Projeto", state: "pending" },
+  { id: "project", label: "Versão pronta", state: "pending" },
   { id: "online", label: "Validação", state: "pending" },
 ];
+
+const FIRST_STEPS_STORAGE_KEY = "mg-pocket-launcher-hide-first-steps";
 
 function boolLabel(value: boolean, yes = "sim", no = "não") {
   return value ? yes : no;
@@ -119,14 +122,7 @@ function progressCopy(busy: string | null) {
     case "prepare":
       return {
         title: "Preparando ambiente",
-        detail: "Validando Docker, permissões, banco de dados e aplicação.",
-        step: "Iniciando",
-        progress: 5,
-      };
-    case "Instalar/Atualizar":
-      return {
-        title: "Instalando ou atualizando",
-        detail: "Baixando arquivos, preparando containers e aplicando banco de dados.",
+        detail: "Baixando a versão pronta, configurando os dados iniciais e validando o acesso.",
         step: "Iniciando",
         progress: 5,
       };
@@ -140,15 +136,15 @@ function progressCopy(busy: string | null) {
     case "diagnose":
       return {
         title: "Diagnosticando",
-        detail: "Lendo o estado do sistema e dos containers locais.",
+        detail: "Verificando se o computador está pronto para abrir o M&G Pocket.",
         step: "Diagnóstico",
         progress: 10,
       };
     case "Logs":
       return {
-        title: "Carregando logs",
-        detail: "Buscando as últimas mensagens dos containers.",
-        step: "Logs",
+        title: "Carregando detalhes técnicos",
+        detail: "Buscando as últimas mensagens técnicas.",
+        step: "Detalhes",
         progress: 10,
       };
     case null:
@@ -255,7 +251,13 @@ export default function App() {
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [restorePath, setRestorePath] = useState("");
   const [repairOpen, setRepairOpen] = useState(false);
-  const [lightBuild, setLightBuild] = useState(false);
+  const [localBuild, setLocalBuild] = useState(false);
+  const [localBuildNoCache, setLocalBuildNoCache] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [helpTopic, setHelpTopic] = useState<"firstSteps" | "commonProblems" | "backup" | "technical" | "about" | null>(
+    null,
+  );
+  const [hideFirstSteps, setHideFirstSteps] = useState(false);
   const [dependencyPrompt, setDependencyPrompt] = useState<DependencyStatus | null>(null);
   const [pendingDependencyAction, setPendingDependencyAction] = useState<PendingDependencyAction | null>(null);
   const [dependencyShowCommands, setDependencyShowCommands] = useState(false);
@@ -275,8 +277,13 @@ export default function App() {
   const isBusy = busy !== null || jobStatus === "running";
   const dockerOptions = useMemo(() => ({ useSudoDocker: sudoDockerThisSession }), [sudoDockerThisSession]);
   const buildOptions = useMemo(
-    () => ({ useSudoDocker: sudoDockerThisSession, lightBuild }),
-    [lightBuild, sudoDockerThisSession],
+    () => ({
+      useSudoDocker: sudoDockerThisSession,
+      lightBuild: true,
+      localBuild,
+      noCache: localBuild ? localBuildNoCache : false,
+    }),
+    [localBuild, localBuildNoCache, sudoDockerThisSession],
   );
 
   const setStep = (id: string, state: ProgressStep["state"]) => {
@@ -346,13 +353,18 @@ export default function App() {
       if (eventName === "launcher://job-error") {
         setJobEvent(payload);
         setJobStatus("error");
+        setError("Não foi possível concluir. Use Ver detalhes técnicos para investigar o que aconteceu.");
         updateLogBuffer((current) => appendLogLine(current, payload), true);
         return;
       }
 
       if (eventName === "launcher://job-finished") {
         setJobEvent(payload);
-        setJobStatus(payload.level === "error" ? "error" : payload.level === "cancelled" ? "cancelled" : "success");
+        const nextStatus = payload.level === "error" ? "error" : payload.level === "cancelled" ? "cancelled" : "success";
+        setJobStatus(nextStatus);
+        if (nextStatus === "error") {
+          setError((current) => current || "Não foi possível concluir. Use Ver detalhes técnicos para investigar o que aconteceu.");
+        }
       }
     };
 
@@ -409,6 +421,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (window.localStorage.getItem(FIRST_STEPS_STORAGE_KEY) !== "true") {
+      setHelpTopic("firstSteps");
+    }
+  }, []);
+
+  useEffect(() => {
     if (isBusy || dockerPermissionPromptDismissed || dockerPermissionPrompt) return;
     if (needsDockerPermissionDecision(status, sudoDockerThisSession)) {
       setDockerPermissionPrompt({ resumeAction: null });
@@ -428,9 +446,14 @@ export default function App() {
     } catch (err) {
       updateLogBuffer((current) => appendOutput(current, `Erro em ${label}`, errorMessage(err)), true);
       const message = friendlyActionError(label, err);
-      setJobEvent(localJobEvent(label, "error", message));
-      setJobStatus("error");
-      setError(message);
+      if (message.toLocaleLowerCase().includes("cancelada")) {
+        setJobEvent(localJobEvent(label, "cancelled", "Cancelado"));
+        setJobStatus("cancelled");
+      } else {
+        setJobEvent(localJobEvent(label, "error", message));
+        setJobStatus("error");
+        setError(message);
+      }
     } finally {
       setBusy(null);
     }
@@ -484,7 +507,7 @@ export default function App() {
 
   const installOrUpdateProject = async () => {
     if (isBusy) return;
-    setBusy("Instalar/Atualizar");
+    setBusy("prepare");
     setJobStatus("idle");
     setError("");
     setNotice("");
@@ -497,11 +520,11 @@ export default function App() {
       await refreshQuickStatus();
     } catch (err) {
       updateLogBuffer(
-        (current) => appendOutput(current, "Erro ao instalar/atualizar M&G Pocket", errorMessage(err)),
+        (current) => appendOutput(current, "Erro ao preparar ambiente", errorMessage(err)),
         true,
       );
-      const message = friendlyActionError("Instalar/Atualizar M&G Pocket", err);
-      setJobEvent(localJobEvent("Instalar/Atualizar M&G Pocket", "error", message));
+      const message = friendlyActionError("Preparar Ambiente", err);
+      setJobEvent(localJobEvent("Preparar Ambiente", "error", message));
       setJobStatus("error");
       setError(message);
     } finally {
@@ -565,13 +588,22 @@ export default function App() {
       currentStatus = await doctor();
       setStatus(currentStatus);
       if (!currentStatus.appOnline) {
-        throw new Error("O app ainda não respondeu em http://localhost:3000. Veja os logs para detalhes.");
+        throw new Error(
+          "O M&G Pocket foi preparado, mas ainda não conseguimos abrir a página. Tente novamente em alguns segundos ou use Reparar instalação.",
+        );
       }
       setStep("online", "done");
+      const readyMessage = "Ambiente pronto. Você já pode abrir o M&G Pocket.";
+      setJobEvent(localJobEvent("Preparar Ambiente", "success", readyMessage));
+      setJobStatus("success");
+      setNotice(readyMessage);
     } catch (err) {
       setSteps((current) => current.map((step) => (step.state === "running" ? { ...step, state: "error" } : step)));
       updateLogBuffer((current) => appendOutput(current, "Erro ao preparar ambiente", errorMessage(err)), true);
-      setError(friendlyActionError("Preparar ambiente", err));
+      const message = friendlyActionError("Preparar Ambiente", err);
+      setJobEvent(localJobEvent("Preparar Ambiente", "error", message));
+      setJobStatus("error");
+      setError(message);
     } finally {
       setBusy(null);
     }
@@ -596,6 +628,49 @@ export default function App() {
     await runAction("Reparar instalação", () => repairInstallation(buildOptions));
   };
 
+  const startAndOpenPocket = async () => {
+    if (isBusy) return;
+    setBusy("Iniciar M&G Pocket");
+    setJobStatus("idle");
+    setError("");
+    setNotice("");
+    try {
+      await startApp(dockerOptions);
+      const nextStatus = await refreshQuickStatus();
+      if (nextStatus?.appOnline === false) {
+        throw new Error(
+          "O M&G Pocket ainda não está pronto para abrir. Tente iniciar novamente ou use Reparar instalação.",
+        );
+      }
+      setNotice("M&G Pocket iniciado. Abrindo no navegador...");
+      await openSite();
+    } catch (err) {
+      updateLogBuffer((current) => appendOutput(current, "Erro ao iniciar M&G Pocket", errorMessage(err)), true);
+      const message = friendlyActionError("Iniciar M&G Pocket", err);
+      setJobEvent(localJobEvent("Iniciar M&G Pocket", "error", message));
+      setJobStatus("error");
+      setError(message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const openPocket = async () => {
+    if (isBusy) return;
+    setError("");
+    const nextStatus = status?.appOnline ? status : await refreshQuickStatus();
+    if (!nextStatus?.appOnline) {
+      setError("O M&G Pocket ainda não está pronto para abrir. Tente iniciar novamente ou use Reparar instalação.");
+      return;
+    }
+
+    try {
+      await openSite();
+    } catch (err) {
+      setError(friendlyActionError("Abrir M&G Pocket", err));
+    }
+  };
+
   const removeProject = async () => {
     const mode = removeOpen;
     if (!mode) return;
@@ -606,7 +681,7 @@ export default function App() {
   };
 
   const restoreData = async () => {
-    const backupPath = window.prompt("Caminho do backup .tar.gz");
+    const backupPath = window.prompt("Caminho do backup do banco (.sql ou .dump)");
     if (!backupPath) return;
     setRestorePath(backupPath);
     setRestoreOpen(true);
@@ -661,7 +736,7 @@ export default function App() {
       }
     } catch (err) {
       updateLogBuffer((current) => appendOutput(current, "Erro ao instalar dependências do sistema", String(err)), true);
-      setError("Não consegui instalar as dependências automaticamente. Veja os detalhes em Ver Logs e tente a instalação manual.");
+      setError("Não consegui instalar as dependências automaticamente. Veja os detalhes técnicos e tente a instalação manual.");
     } finally {
       setBusy(null);
     }
@@ -729,7 +804,7 @@ export default function App() {
     setJobStatus("idle");
     setBusy(null);
     setNotice(
-      "Status: aguardando nova sessão. Salve seus arquivos, saia da sessão do Linux e entre novamente. Depois abra o launcher e clique em Instalar/Atualizar M&G Pocket.",
+      "Status: aguardando nova sessão. Salve seus arquivos, saia da sessão do Linux e entre novamente. Depois abra o launcher e clique em Preparar Ambiente.",
     );
   };
 
@@ -747,6 +822,7 @@ export default function App() {
       if (cancelled) {
         setJobEvent(localJobEvent(jobEvent?.action || "Operação", "cancelled", "Cancelamento solicitado."));
         setJobStatus("cancelled");
+        setBusy(null);
       }
     } catch (err) {
       setError(friendlyActionError("Cancelar operação", err));
@@ -754,8 +830,12 @@ export default function App() {
   };
 
   const statusItems = useMemo(() => {
-    const empty: StatusItem[] = [{ label: "Status", value: "pronto para diagnosticar", tone: "idle" }];
-    if (!status) return { environment: empty, docker: empty, project: empty, diagnostics: empty };
+    const empty: StatusItem[] = [{ label: "Status", value: "aguardando", tone: "idle" }];
+    if (!status) return { environment: empty, docker: empty, project: empty, diagnostics: empty, technical: empty };
+
+    const okOrAttention = (value: boolean, waiting = false) =>
+      value ? "Tudo pronto" : waiting ? "Aguardando" : "Precisa de atenção";
+    const okTone = (value: boolean, waiting = false): StatusItem["tone"] => (value ? "ok" : waiting ? "warn" : "bad");
 
     const environment: StatusItem[] = [
       { label: "Sistema", value: friendlyOs(status.os), tone: status.os === "unknown" ? "warn" : "ok" },
@@ -771,35 +851,46 @@ export default function App() {
     }
 
     const docker: StatusItem[] = [
-      { label: "Docker instalado", value: boolLabel(status.dockerInstalled), tone: tone(status.dockerInstalled) },
-      { label: "Docker rodando", value: boolLabel(status.dockerRunning), tone: tone(status.dockerRunning) },
-      { label: "Docker Compose", value: boolLabel(status.dockerComposeInstalled), tone: tone(status.dockerComposeInstalled) },
+      { label: "Docker", value: status.dockerRunning ? "OK" : status.dockerInstalled ? "precisa abrir" : "não encontrado", tone: status.dockerRunning ? "ok" : "warn" },
       {
         label: "Permissão",
-        value: status.dockerPermissionOk ? "ok" : sudoDockerThisSession ? "sudo nesta sessão" : status.sudoDockerWorks ? "aguardando sessão" : "bloqueada",
+        value: status.dockerPermissionOk ? "OK" : sudoDockerThisSession ? "OK nesta sessão" : status.sudoDockerWorks ? "aguardando" : "precisa atenção",
         tone: status.dockerPermissionOk ? "ok" : status.sudoDockerWorks ? "warn" : "bad",
       },
+      { label: "Preparação", value: status.projectInstalled ? "preparado" : "não preparado", tone: status.projectInstalled ? "ok" : "warn" },
     ];
 
     const project: StatusItem[] = [
-      { label: "Projeto instalado", value: boolLabel(status.projectInstalled), tone: tone(status.projectInstalled) },
-      { label: "Versão local", value: status.projectVersion || "desconhecida", tone: "idle" },
-      { label: "Site", value: status.appOnline ? "online" : "offline", tone: tone(status.appOnline) },
-      { label: "Adminer", value: status.adminerOnline ? "online" : "offline", tone: status.adminerOnline ? "ok" : "warn" },
+      { label: "Projeto", value: status.projectInstalled ? "preparado" : "não preparado", tone: status.projectInstalled ? "ok" : "warn" },
+      { label: "Banco de dados", value: okOrAttention(Boolean(status.databaseConnected), status.projectInstalled && !status.databaseConnected), tone: okTone(Boolean(status.databaseConnected), status.projectInstalled && !status.databaseConnected) },
+      { label: "Aplicativo", value: okOrAttention(status.appOnline, status.projectInstalled && !status.appOnline), tone: okTone(status.appOnline, status.projectInstalled && !status.appOnline) },
+      { label: "Acesso local", value: okOrAttention(Boolean(status.nginxOnline && status.appOnline), status.projectInstalled && !status.appOnline), tone: okTone(Boolean(status.nginxOnline && status.appOnline), status.projectInstalled && !status.appOnline) },
     ];
 
     const diagnostics: StatusItem[] = [
+      { label: "Docker", value: status.dockerRunning ? "OK" : status.dockerInstalled ? "precisa abrir" : "não encontrado", tone: status.dockerRunning ? "ok" : "warn" },
+      { label: "Projeto", value: status.projectInstalled ? "preparado" : "não preparado", tone: status.projectInstalled ? "ok" : "warn" },
+      { label: "Banco de dados", value: okOrAttention(Boolean(status.databaseConnected), status.projectInstalled), tone: okTone(Boolean(status.databaseConnected), status.projectInstalled) },
+      { label: "Aplicativo", value: okOrAttention(status.appOnline, status.projectInstalled), tone: okTone(status.appOnline, status.projectInstalled) },
+      { label: "Acesso local", value: okOrAttention(Boolean(status.nginxOnline && status.appOnline), status.projectInstalled), tone: okTone(Boolean(status.nginxOnline && status.appOnline), status.projectInstalled) },
+      { label: "Backup", value: status.projectInstalled ? "disponível" : "não disponível", tone: status.projectInstalled ? "ok" : "warn" },
+    ];
+
+    const technical: StatusItem[] = [
       { label: "Git instalado", value: boolLabel(Boolean(status.gitInstalled)), tone: status.gitInstalled ? "ok" : "warn" },
-      { label: "Banco conectado", value: boolLabel(Boolean(status.databaseConnected)), tone: status.databaseConnected ? "ok" : "warn" },
+      { label: "Docker instalado", value: boolLabel(status.dockerInstalled), tone: tone(status.dockerInstalled) },
+      { label: "Docker Compose", value: boolLabel(status.dockerComposeInstalled), tone: tone(status.dockerComposeInstalled) },
       { label: "Containers ativos", value: boolLabel(Boolean(status.containersActive)), tone: status.containersActive ? "ok" : "warn" },
       { label: "Nginx", value: status.nginxOnline ? "ok" : "offline", tone: status.nginxOnline ? "ok" : "warn" },
       { label: "Uploads", value: status.uploadsServed ? "ok" : status.uploadsDirectoryOk ? "pasta ok" : "verificar", tone: status.uploadsServed ? "ok" : "warn" },
       { label: "Assets Next", value: status.nextAssetsOnline ? "ok" : "verificar", tone: status.nextAssetsOnline ? "ok" : "warn" },
-      { label: "Porta 3000", value: status.port3000Available ? "livre" : "em uso", tone: status.port3000Available || status.appOnline ? "ok" : "warn" },
+      { label: "Porta local", value: status.port3000Available ? "livre" : "em uso", tone: status.port3000Available || status.appOnline ? "ok" : "warn" },
       { label: "Portas 80/443/5432", value: [status.port80Available, status.port443Available, status.port5432Available].every(Boolean) ? "livres" : "em uso", tone: [status.port80Available, status.port443Available, status.port5432Available].every(Boolean) ? "ok" : "warn" },
+      { label: "Versão local", value: status.projectVersion || "desconhecida", tone: "idle" },
+      { label: "Caminho", value: status.projectPath || "desconhecido", tone: "idle" },
     ];
 
-    return { environment, docker, project, diagnostics };
+    return { environment, docker, project, diagnostics, technical };
   }, [status, sudoDockerThisSession]);
 
   const showLinuxInstallDocker = status?.os === "linux" && status.supported && !status.dockerInstalled;
@@ -807,21 +898,115 @@ export default function App() {
   const activeProgress =
     jobStatus !== "idle" && jobEvent
       ? {
-          title: jobEvent.action,
-          detail: jobEvent.message || "Operação em andamento.",
-          step: jobEvent.step,
+          title:
+            jobStatus === "success"
+              ? "Concluído"
+              : jobStatus === "error"
+                ? "Não foi possível concluir"
+                : jobStatus === "cancelled"
+                  ? "Cancelado"
+                  : jobEvent.action,
+          detail:
+            jobStatus === "error"
+              ? error || jobEvent.message || "Não foi possível concluir esta ação."
+              : jobEvent.message || "Operação em andamento.",
+          step:
+            jobStatus === "success"
+              ? "Concluído"
+              : jobStatus === "error"
+                ? "Erro"
+                : jobStatus === "cancelled"
+                  ? "Cancelado"
+                  : jobEvent.step,
           progress: Math.max(0, Math.min(100, jobEvent.progress)),
         }
       : progressCopy(busy);
+
+  const closeHelp = () => {
+    if (helpTopic === "firstSteps" && hideFirstSteps) {
+      window.localStorage.setItem(FIRST_STEPS_STORAGE_KEY, "true");
+    }
+    setHelpTopic(null);
+  };
+
+  const helpContent = () => {
+    if (helpTopic === "commonProblems") {
+      return (
+        <>
+          <p>Se algo não abrir, tente primeiro Iniciar M&G Pocket novamente.</p>
+          <p>Se continuar com problema, use Reparar instalação para baixar novamente a versão pronta e reiniciar os serviços locais.</p>
+        </>
+      );
+    }
+    if (helpTopic === "backup") {
+      return (
+        <>
+          <p>Backup salva apenas uma cópia do banco de dados do M&G Pocket.</p>
+          <p>Restaurar um backup substitui os dados atuais pelos dados salvos naquela cópia. Faça isso apenas se tiver certeza.</p>
+        </>
+      );
+    }
+    if (helpTopic === "technical") {
+      return (
+        <>
+          <p>Os detalhes técnicos ficam nos painéis expansíveis e nos logs.</p>
+          <p>Use esta área quando precisar investigar Docker Compose, containers, Nginx, portas, healthcheck, caminho local e versão da imagem.</p>
+        </>
+      );
+    }
+    if (helpTopic === "about") {
+      return (
+        <>
+          <p>O M&G Pocket Launcher prepara e abre o M&G Pocket neste computador.</p>
+          <p>O modo recomendado baixa uma versão pronta para evitar compilação local.</p>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <p>Bem-vindo ao M&G Pocket</p>
+        <p>Este aplicativo ajuda você a preparar e abrir o M&G Pocket no seu computador.</p>
+        <ol>
+          <li>Clique em Preparar Ambiente.</li>
+          <li>Aguarde enquanto o launcher baixa a versão pronta do M&G Pocket e configura tudo.</li>
+          <li>Quando terminar, clique em Abrir M&G Pocket.</li>
+          <li>Ao final da sessão, clique em Parar.</li>
+        </ol>
+        <p>
+          Preparar Ambiente baixa a versão pronta, configura o banco de dados e deixa tudo pronto para uso. Iniciar M&G
+          Pocket liga os serviços locais e abre o sistema no navegador quando estiver pronto.
+        </p>
+        <p>Backup salva uma cópia dos dados do banco. Restaurar backup recupera os dados a partir de uma cópia anterior.</p>
+        <label className="help-checkbox">
+          <input
+            type="checkbox"
+            checked={hideFirstSteps}
+            onChange={(event) => setHideFirstSteps(event.target.checked)}
+          />
+          <span>Não mostrar novamente</span>
+        </label>
+      </>
+    );
+  };
+
+  const helpTitle = {
+    firstSteps: "Primeiros passos",
+    commonProblems: "Problemas comuns",
+    backup: "Backup e restauração",
+    technical: "Detalhes técnicos",
+    about: "Sobre o M&G Pocket",
+  }[helpTopic || "firstSteps"];
 
   return (
     <AppShell>
       <section className="hero-band">
         <div>
           <p className="eyebrow">grimório local</p>
-          <h2>Prepare e controle o M&G Pocket neste computador</h2>
+          <h2>Preparar Ambiente</h2>
           <p>
-            Diagnóstico, Docker, projeto local, logs e backups em uma única janela.
+            Prepara o M&G Pocket neste computador. O launcher baixa uma versão pronta do sistema, configura os dados
+            iniciais e deixa tudo pronto para uso.
           </p>
         </div>
         <ActionButton
@@ -831,25 +1016,42 @@ export default function App() {
           onClick={() => void prepareEnvironment()}
           variant="primary"
         >
-          Preparar ambiente
+          Preparar Ambiente
         </ActionButton>
       </section>
 
-      {error ? <div className="message message--error">{error}</div> : null}
+      {error ? (
+        <div className="message message--error">
+          <span>{error}</span>
+          {jobStatus === "error" && !isBusy ? (
+            <span className="message__actions">
+              <button type="button" onClick={() => void prepareEnvironment()}>
+                Tentar novamente
+              </button>
+              <button type="button" onClick={() => setRepairOpen(true)}>
+                Reparar instalação
+              </button>
+              <button type="button" onClick={() => void loadLogs()}>
+                Ver detalhes técnicos
+              </button>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {notice ? <div className="message message--warn">{notice}</div> : null}
       {status?.requiresRelogin && !sudoDockerThisSession ? (
         <div className="message message--warn">
-          Salve seus arquivos, saia da sessão do Linux e entre novamente. Depois abra o launcher e clique em Instalar/Atualizar M&G Pocket.
+          Salve seus arquivos, saia da sessão do Linux e entre novamente. Depois abra o launcher e clique em Preparar Ambiente.
         </div>
       ) : null}
       {status?.appOnline && status.databaseConnected === false ? (
         <div className="message message--warn">
-          O aplicativo iniciou, mas ainda não conseguiu conectar ao banco. Aguarde alguns segundos ou teste /api/health/db.
+          O M&G Pocket iniciou, mas os dados ainda podem estar carregando. Aguarde alguns segundos e tente abrir novamente.
         </div>
       ) : null}
       {status?.projectInstalled && status.nginxOnline === false ? (
         <div className="message message--warn">
-          O proxy local não iniciou. Verifique se a porta já está em uso.
+          Não conseguimos abrir o M&G Pocket agora. Algum serviço ainda pode estar iniciando ou outro programa pode estar usando o endereço local.
         </div>
       ) : null}
       {showWindowsDockerGuide ? (
@@ -898,22 +1100,69 @@ export default function App() {
         <StatusCard title="Diagnóstico" icon={<Activity size={20} />} items={statusItems.diagnostics} />
       </div>
 
+      <details className="technical-details">
+        <summary>
+          <Settings size={18} aria-hidden="true" />
+          Detalhes técnicos
+        </summary>
+        <StatusCard title="Detalhes técnicos" icon={<Settings size={20} />} items={statusItems.technical} />
+      </details>
+
       <StepProgress steps={steps} />
 
-      <section className="advanced-panel" aria-label="Opções avançadas">
-        <label className="advanced-toggle">
-          <input
-            type="checkbox"
-            checked={lightBuild}
-            disabled={isBusy}
-            onChange={(event) => setLightBuild(event.target.checked)}
-          />
-          <span>
-            <strong>Modo de build leve</strong>
-            <small>Desativa o React Compiler nos builds Docker locais.</small>
-          </span>
-        </label>
-      </section>
+      <details
+        className="advanced-panel"
+        aria-label="Opções avançadas"
+        open={advancedOpen}
+        onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
+      >
+        <summary>
+          <Settings size={18} aria-hidden="true" />
+          Opções avançadas
+        </summary>
+        <div className="advanced-options">
+          <label className="advanced-toggle">
+            <input
+              type="radio"
+              name="install-mode"
+              checked={!localBuild}
+              disabled={isBusy}
+              onChange={() => setLocalBuild(false)}
+            />
+            <span>
+              <strong>Baixar versão pronta</strong>
+              <small>Recomendado. Baixa uma versão já preparada do M&G Pocket e evita compilar o sistema no seu computador.</small>
+            </span>
+          </label>
+          <label className="advanced-toggle">
+            <input
+              type="radio"
+              name="install-mode"
+              checked={localBuild}
+              disabled={isBusy}
+              onChange={() => setLocalBuild(true)}
+            />
+            <span>
+              <strong>Construir localmente</strong>
+              <small>Avançado. Use apenas para desenvolvimento ou reparo. Pode demorar bastante em computadores mais fracos.</small>
+            </span>
+          </label>
+          {localBuild ? (
+            <label className="advanced-toggle advanced-toggle--compact">
+              <input
+                type="checkbox"
+                checked={localBuildNoCache}
+                disabled={isBusy}
+                onChange={(event) => setLocalBuildNoCache(event.target.checked)}
+              />
+              <span>
+                <strong>Reconstruir sem cache</strong>
+                <small>Força uma recompilação completa no computador.</small>
+              </span>
+            </label>
+          ) : null}
+        </div>
+      </details>
 
       <section className="actions-panel" aria-label="Ações principais">
         {showLinuxInstallDocker ? (
@@ -935,18 +1184,10 @@ export default function App() {
         <ActionButton icon={<RefreshCw size={18} />} disabled={isBusy} loading={busy === "diagnose"} onClick={diagnose}>
           Diagnosticar
         </ActionButton>
-        <ActionButton
-          icon={<Database size={18} />}
-          disabled={isBusy}
-          loading={busy === "Instalar/Atualizar"}
-          onClick={installOrUpdateProject}
-        >
-          Instalar/Atualizar M&G Pocket
-        </ActionButton>
         <ActionButton icon={<Wrench size={18} />} disabled={isBusy} onClick={() => setRepairOpen(true)} variant="ghost">
           Reparar instalação
         </ActionButton>
-        <ActionButton icon={<Play size={18} />} disabled={isBusy} onClick={() => runAction("Iniciar", () => startApp(dockerOptions))}>
+        <ActionButton icon={<Play size={18} />} disabled={isBusy} onClick={startAndOpenPocket}>
           Iniciar M&G Pocket
         </ActionButton>
         <ActionButton icon={<Square size={18} />} disabled={isBusy} onClick={() => runAction("Parar", () => stopApp(dockerOptions))}>
@@ -955,14 +1196,14 @@ export default function App() {
         <ActionButton icon={<RotateCcw size={18} />} disabled={isBusy} onClick={() => runAction("Reiniciar", () => restartApp(dockerOptions))}>
           Reiniciar
         </ActionButton>
-        <ActionButton icon={<ExternalLink size={18} />} disabled={isBusy || !status?.appOnline} onClick={() => void openSite()}>
-          Abrir Site
+        <ActionButton icon={<ExternalLink size={18} />} disabled={isBusy} onClick={openPocket} variant={status?.appOnline ? "primary" : "secondary"}>
+          Abrir M&G Pocket
         </ActionButton>
         <ActionButton icon={<ExternalLink size={18} />} disabled={isBusy || !status?.adminerOnline} onClick={() => void openAdminer()}>
           Abrir Adminer
         </ActionButton>
         <ActionButton icon={<ScrollText size={18} />} disabled={busy === "Logs"} loading={busy === "Logs"} onClick={loadLogs}>
-          Ver Logs
+          Ver detalhes técnicos
         </ActionButton>
         <ActionButton icon={<Archive size={18} />} disabled={isBusy} onClick={() => runAction("Backup", () => backup(dockerOptions))}>
           Backup
@@ -981,6 +1222,30 @@ export default function App() {
         </ActionButton>
       </section>
 
+      <section className="help-panel" aria-label="Ajuda">
+        <div className="help-panel__header">
+          <HelpCircle size={20} aria-hidden="true" />
+          <h2>Ajuda</h2>
+        </div>
+        <div className="help-panel__actions">
+          <button type="button" onClick={() => setHelpTopic("firstSteps")}>
+            Primeiros passos
+          </button>
+          <button type="button" onClick={() => setHelpTopic("commonProblems")}>
+            Problemas comuns
+          </button>
+          <button type="button" onClick={() => setHelpTopic("backup")}>
+            Backup e restauração
+          </button>
+          <button type="button" onClick={() => setHelpTopic("technical")}>
+            Detalhes técnicos
+          </button>
+          <button type="button" onClick={() => setHelpTopic("about")}>
+            Sobre o M&G Pocket
+          </button>
+        </div>
+      </section>
+
       <LogPanel logs={logs} onRefresh={loadLogs} loading={busy === "Logs"} />
 
       <ConfirmDialog
@@ -995,7 +1260,13 @@ export default function App() {
       <ConfirmDialog
         open={restoreOpen}
         title="Restaurar backup"
-        description={`Esta ação substituirá os dados locais atuais pelo backup: ${restorePath}`}
+        description={
+          <>
+            <p>Restaurar um backup vai substituir os dados atuais do M&G Pocket pelos dados salvos naquela cópia.</p>
+            <p>Faça isso apenas se tiver certeza.</p>
+            <p>{restorePath}</p>
+          </>
+        }
         confirmationText="RESTAURAR"
         confirmLabel="Restaurar"
         onCancel={() => setRestoreOpen(false)}
@@ -1006,11 +1277,20 @@ export default function App() {
         title="Reparar instalação"
         description={
           <>
-            <p>Essa opção reconstrói a imagem do aplicativo do zero.</p>
-            <p>Ela é mais lenta e deve ser usada apenas se a instalação normal falhar.</p>
+            {localBuild ? (
+              <>
+                <p>Esta opção recompila o M&G Pocket neste computador.</p>
+                <p>Use apenas se você estiver desenvolvendo o projeto ou se a versão pronta não funcionar.</p>
+              </>
+            ) : (
+              <p>
+                Vamos tentar corrigir a instalação baixando novamente a versão pronta do M&G Pocket e reiniciando os
+                serviços locais.
+              </p>
+            )}
           </>
         }
-        confirmLabel="Reconstruir do zero"
+        confirmLabel={localBuild ? "Reconstruir localmente" : "Reparar instalação"}
         cancelLabel="Cancelar"
         confirmVariant="primary"
         onCancel={() => setRepairOpen(false)}
@@ -1022,13 +1302,13 @@ export default function App() {
         description={
           removeOpen === "complete" ? (
             <>
-              <p>Esta ação para os containers, remove containers, volumes e redes do projeto e apaga a pasta local.</p>
+              <p>Esta ação para os serviços locais do projeto e apaga a pasta local.</p>
               <p>Docker, Git, winget e dependências globais não serão removidos.</p>
             </>
           ) : (
             <>
-              <p>Esta ação para os containers e apaga a pasta local do projeto.</p>
-              <p>Volumes Docker, dados externos e backups serão preservados quando possível.</p>
+              <p>Esta ação para os serviços locais e apaga a pasta local do projeto.</p>
+              <p>Dados externos e backups serão preservados quando possível.</p>
             </>
           )
         }
@@ -1182,9 +1462,18 @@ export default function App() {
         actions={[
           { label: "Sair e entrar depois", onClick: deferRelogin, variant: "primary" },
           { label: "Continuar com sudo nesta sessão", onClick: continueWithSudoDocker },
-          { label: "Ver Logs", onClick: () => void loadLogs() },
+          { label: "Ver detalhes técnicos", onClick: () => void loadLogs() },
           { label: "Cancelar", onClick: cancelDockerPermissionFlow },
         ]}
+      />
+      <ConfirmDialog
+        open={helpTopic !== null}
+        title={helpTitle}
+        description={helpContent()}
+        confirmLabel="Fechar"
+        confirmVariant="primary"
+        onCancel={closeHelp}
+        onConfirm={closeHelp}
       />
     </AppShell>
   );

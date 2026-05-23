@@ -1,18 +1,17 @@
 # Guia de Instalação Fácil — M&G Pocket
 
-Este guia é para rodar o M&G Pocket no próprio computador sem configurar ambiente de programação.
+Este guia é para quem quer usar o M&G Pocket no próprio computador sem configurar ambiente de programação.
 
-## Opção Recomendada: Launcher Visual
+## Caminho Recomendado: Launcher Visual
 
-1. Acesse a página de Releases do GitHub.
-2. Baixe o M&G Pocket Launcher para seu sistema.
-3. Abra o launcher.
-4. Clique em **Preparar ambiente**.
-5. No Linux, se Docker não estiver instalado, o launcher poderá instalar automaticamente em distros suportadas.
-6. Aguarde o processo terminar.
-7. Clique em **Abrir Site**.
+1. Baixe o M&G Pocket Launcher na página de Releases.
+2. Abra o launcher.
+3. Clique em **Preparar Ambiente**.
+4. Aguarde enquanto o launcher baixa a versão pronta do M&G Pocket e configura os dados iniciais.
+5. Quando aparecer **Ambiente pronto**, clique em **Abrir M&G Pocket**.
+6. Ao terminar de usar, clique em **Parar**.
 
-O launcher prepara Docker, projeto local, banco, migrations, seed inicial e serviços Docker Compose.
+O launcher evita compilar o sistema no seu computador. Isso deixa a preparação mais leve em máquinas simples.
 
 ## Linux Com Download Rápido
 
@@ -20,119 +19,58 @@ O launcher prepara Docker, projeto local, banco, migrations, seed inicial e serv
 curl -fsSL https://raw.githubusercontent.com/jvitorn/meg-pocket/master/installers/bootstrap/linux.sh | bash
 ```
 
-Esse comando baixa e abre o launcher. A instalação do Docker e do M&G Pocket será feita dentro do launcher.
-
-O bootstrap não instala Docker, não baixa o projeto web e não roda Docker Compose.
-
-## Linux Suportado Automaticamente
-
-- Ubuntu
-- Debian
-- derivados de Ubuntu/Debian
-- Arch Linux
-- Manjaro
-- EndeavourOS
-- derivados de Arch
-
-Outras distros exigem instalação manual do Docker. Depois de instalar Docker manualmente, volte ao launcher e clique em **Preparar ambiente**.
-
-## Linux — AppImage Abriu Em Branco
-
-Em alguns ambientes Linux com Wayland/WebKitGTK, o AppImage pode abrir em branco.
-
-Teste pelo terminal:
-
-```bash
-WEBKIT_DISABLE_COMPOSITING_MODE=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
-```
-
-Se continuar:
-
-```bash
-WEBKIT_DISABLE_DMABUF_RENDERER=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
-```
-
-Ou:
-
-```bash
-GDK_BACKEND=x11 WEBKIT_DISABLE_COMPOSITING_MODE=1 ./mg-pocket-launcher_1.1.0_amd64.AppImage
-```
-
-No Arch Linux, garanta dependências comuns:
-
-```bash
-sudo pacman -S webkit2gtk-4.1 gtk3 glib2 libayatana-appindicator librsvg fuse2
-```
+Esse comando baixa e abre o launcher. A preparação do M&G Pocket acontece dentro da interface visual.
 
 ## Windows
 
 Baixe o instalador `.exe` do M&G Pocket Launcher pela página de Releases.
 
-No Windows, o launcher detecta `winget`, Git for Windows, Docker Desktop, Docker CLI, Docker Compose, PowerShell e WSL2 quando necessário.
+No Windows, mantenha o Docker Desktop instalado e aberto. Se o launcher oferecer instalação guiada de dependências, confirme apenas se quiser que ele prepare essas ferramentas automaticamente.
 
-Se Git ou Docker Desktop estiverem ausentes e `winget` existir, o launcher oferece instalação guiada com confirmação:
+## O Que Cada Botão Faz
 
-```powershell
-winget install -e --id Git.Git
-winget install -e --id Docker.DockerDesktop
-```
+**Preparar Ambiente** prepara o M&G Pocket neste computador.
 
-Depois de instalar Docker Desktop, abra o Docker Desktop e aguarde o Docker Engine iniciar. Se o Windows pedir reinicialização, reinicie antes de voltar ao launcher.
+**Iniciar M&G Pocket** liga os serviços locais e abre o sistema no navegador quando estiver pronto.
 
-## Onde Ficam Os Arquivos
+**Abrir M&G Pocket** abre o sistema no navegador.
 
-Projeto web no Linux:
+**Parar** encerra os serviços locais quando você terminar de usar.
 
-```text
-~/.local/share/mg-pocket/app
-```
+**Backup** salva uma cópia dos dados do banco.
 
-Configurações:
+**Restaurar backup** recupera os dados a partir de uma cópia anterior.
 
-```text
-~/.config/mg-pocket
-```
+**Reparar instalação** baixa novamente a versão pronta e tenta corrigir uma instalação com problema.
 
-Backups:
+**Diagnóstico** ajuda a entender o que aconteceu se algo não abrir corretamente.
+
+## Backups
+
+Os backups ficam, por padrão, em:
 
 ```text
 ~/Documentos/MG Pocket/backups
 ```
 
-Se `~/Documentos` não existir, o launcher usa `~/Documents/MG Pocket/backups`. Se essa pasta também não existir, usa `~/.local/share/mg-pocket/backups`.
-
-## Instalação Manual Avançada
-
-Para desenvolvedores:
-
-```bash
-git clone https://github.com/jvitorn/meg-pocket.git
-cd meg-pocket
-cp .env.example .env.docker-local
-docker compose --env-file .env.docker-local build app
-docker compose --env-file .env.docker-local up -d postgres
-docker compose --env-file .env.docker-local run --rm --build maintenance npm run db:setup
-docker compose --env-file .env.docker-local run --rm --build maintenance npm run db:seed
-docker compose --env-file .env.docker-local up -d app nginx
-```
-
-Acesse:
+Se essa pasta não existir, o launcher tenta:
 
 ```text
-http://localhost:3000
+~/Documents/MG Pocket/backups
+~/.local/share/mg-pocket/backups
 ```
 
-Adminer:
+No Windows, os backups ficam em:
 
 ```text
-http://localhost:8081
+Documentos/MG Pocket/backups
 ```
 
-## Scripts Antigos
+O backup salva apenas os dados do banco do M&G Pocket.
 
-Os scripts antigos em `installers/` foram mantidos como wrappers de compatibilidade.
+## Se Algo Não Abrir
 
-- `instalar-mg-pocket-linux-mac.sh` agora abre o fluxo do launcher no Linux; macOS não tem artefatos publicados nesta fase.
-- `iniciar-mg-pocket-linux-mac.sh` chama `installers/linux/start.sh` no Linux.
-- `parar-mg-pocket-linux-mac.sh` chama `installers/linux/stop.sh` no Linux.
-- Os `.bat` do Windows chamam os scripts PowerShell novos.
+1. Aguarde alguns segundos e clique em **Abrir M&G Pocket**.
+2. Se ainda não abrir, clique em **Iniciar M&G Pocket**.
+3. Se continuar com problema, clique em **Reparar instalação**.
+4. Use **Ajuda > Detalhes técnicos** somente se precisar investigar o erro.

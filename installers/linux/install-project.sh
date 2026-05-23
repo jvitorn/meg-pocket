@@ -76,8 +76,8 @@ mkdir -p storage/local/public public/uploads installers
 ensure_env_file "$project_path"
 cleanup_legacy_app_compose_project
 
-info "Construindo imagem do M&G Pocket. A primeira execução pode levar alguns minutos..."
-run_compose --env-file .env.docker-local build app
+info "Baixando versão pronta do M&G Pocket..."
+run_compose --env-file .env.docker-local pull app maintenance
 
 info "Subindo Postgres..."
 run_compose --env-file .env.docker-local up -d postgres
@@ -86,7 +86,7 @@ info "Aguardando Postgres ficar pronto..."
 wait_for_postgres 60 || fail "o banco de dados não ficou pronto a tempo."
 
 info "Aplicando migrations e preparando Prisma..."
-run_compose --env-file .env.docker-local run --rm --build maintenance npm run db:setup
+run_compose --env-file .env.docker-local run --rm maintenance npm run db:setup
 
 seed_status="$(seed_ready || true)"
 seed_marker="installers/.seed-inicial-concluido"
@@ -96,26 +96,26 @@ if [ -f "$seed_marker" ] || [ "$seed_status" = "1" ]; then
   touch "$seed_marker"
 else
   info "Executando seed inicial com os dados essenciais do RPG..."
-  run_compose --env-file .env.docker-local run --rm --build maintenance npm run db:seed
+  run_compose --env-file .env.docker-local run --rm maintenance npm run db:seed
   touch "$seed_marker"
 fi
 
-info "Subindo app e Nginx..."
+info "Iniciando M&G Pocket..."
 run_compose --env-file .env.docker-local up -d app nginx
 start_optional_adminer
 
 info "Validando conexão do app com o banco de dados..."
 wait_for_app_alive 60 || {
   run_compose --env-file .env.docker-local logs --tail=100 app || true
-  fail "O aplicativo não respondeu ao healthcheck. Veja os logs do app."
+  fail "O M&G Pocket ainda não respondeu. Veja os detalhes técnicos."
 }
 warn_if_database_unavailable
 
-info "Validando http://localhost:3000/api/health..."
+info "Validando acesso local..."
 if wait_for_url "http://localhost:3000/api/health" 60 2; then
   info "M&G Pocket instalado e online em http://localhost:3000"
 else
-  fail "O proxy local não iniciou. Verifique se a porta já está em uso."
+  fail "Não conseguimos abrir o M&G Pocket agora. Algum serviço ainda pode estar iniciando ou outro programa pode estar usando o endereço local."
 fi
 
 info "Validação automatizada completa fica reservada ao ambiente de desenvolvimento/CI para poupar esta máquina."

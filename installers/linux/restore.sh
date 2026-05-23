@@ -8,7 +8,7 @@ source "$SCRIPT_DIR/lib.sh"
 backup_file="${1:-}"
 confirm="${2:-}"
 
-[ -n "$backup_file" ] || fail "informe o caminho do backup: restore.sh <arquivo.tar.gz>"
+[ -n "$backup_file" ] || fail "informe o caminho do backup: restore.sh <arquivo.sql>"
 [ -f "$backup_file" ] || fail "backup não encontrado: $backup_file"
 
 if [ "$confirm" != "--yes" ]; then
@@ -24,32 +24,23 @@ project_path="$(project_dir)"
 "$SCRIPT_DIR/ensure-docker-running.sh"
 
 cd "$project_path"
-tmp_dir="$(mktemp -d)"
-tar -xzf "$backup_file" -C "$tmp_dir"
-
-if [ -f "$tmp_dir/env.docker-local" ]; then
-  cp "$tmp_dir/env.docker-local" .env.docker-local
-else
-  ensure_env_file "$project_path"
-fi
+ensure_env_file "$project_path"
 
 run_compose --env-file .env.docker-local stop app adminer nginx >/dev/null 2>&1 || true
 run_compose --env-file .env.docker-local up -d postgres
 wait_for_postgres 60 || fail "Postgres não ficou pronto para restore."
 
-if [ -f "$tmp_dir/postgres.sql" ]; then
-  run_compose --env-file .env.docker-local exec -T postgres psql -U meg -d meg_pocket -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-  run_compose --env-file .env.docker-local exec -T postgres psql -U meg -d meg_pocket < "$tmp_dir/postgres.sql"
-else
-  fail "backup não contém postgres.sql."
-fi
-
-if [ -d "$tmp_dir/storage/local/public" ]; then
-  rm -rf storage/local/public
-  mkdir -p storage/local
-  cp -a "$tmp_dir/storage/local/public" storage/local/public
-fi
-
-rm -rf "$tmp_dir"
+case "$backup_file" in
+  *.sql)
+    run_compose --env-file .env.docker-local exec -T postgres psql -U meg -d meg_pocket -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+    run_compose --env-file .env.docker-local exec -T postgres psql -U meg -d meg_pocket < "$backup_file"
+    ;;
+  *.dump)
+    run_compose --env-file .env.docker-local exec -T postgres pg_restore --clean --if-exists --no-owner -U meg -d meg_pocket < "$backup_file"
+    ;;
+  *)
+    fail "formato de backup inválido. Use .sql ou .dump."
+    ;;
+esac
 "$SCRIPT_DIR/start.sh"
 info "Backup restaurado."

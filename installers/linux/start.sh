@@ -19,12 +19,12 @@ run_compose --env-file .env.docker-local up -d postgres app nginx
 start_optional_adminer
 wait_for_app_alive 60 || {
   run_compose --env-file .env.docker-local logs --tail=100 app || true
-  fail "O aplicativo não respondeu ao healthcheck. Veja os logs do app."
+  fail "O M&G Pocket ainda não respondeu. Veja os detalhes técnicos."
 }
 warn_if_database_unavailable
 
 if wait_for_url "http://localhost:3000/api/health" 60 2; then
   info "M&G Pocket iniciado em http://localhost:3000"
 else
-  fail "O proxy local não iniciou. Verifique se a porta já está em uso."
+  fail "Não conseguimos abrir o M&G Pocket agora. Algum serviço ainda pode estar iniciando ou outro programa pode estar usando o endereço local."
 fi

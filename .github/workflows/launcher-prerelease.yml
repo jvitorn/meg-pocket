@@ -3,9 +3,9 @@ name: Build Launcher Pre-release
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Tag da pre-release. Ex: v1.1.0-beta.1"
-        required: false
+      version:
+        description: "Versão da pre-release. Ex: v1.1.0-beta.1"
+        required: true
         type: string
       draft:
         description: "Criar como draft release"
@@ -17,10 +17,6 @@ on:
         required: false
         default: true
         type: boolean
-  push:
-    tags:
-      - "v*"
-      - "launcher-v*"
 
 permissions:
   contents: write
@@ -44,22 +40,20 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Resolve release metadata
         id: release
         shell: bash
         env:
-          INPUT_TAG: ${{ github.event.inputs.tag }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
           INPUT_DRAFT: ${{ github.event.inputs.draft }}
           INPUT_PRERELEASE: ${{ github.event.inputs.prerelease }}
         run: |
-          if [ -n "${INPUT_TAG}" ]; then
-            tag="${INPUT_TAG}"
-          elif [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            tag="${GITHUB_REF#refs/tags/}"
+          if [[ "${INPUT_VERSION}" == v* ]]; then
+            tag="${INPUT_VERSION}"
           else
-            tag="launcher-dev-${GITHUB_RUN_NUMBER}"
+            tag="v${INPUT_VERSION}"
           fi
 
           draft="${INPUT_DRAFT:-true}"
@@ -70,7 +64,7 @@ jobs:
           echo "prerelease=${prerelease}" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
@@ -78,6 +72,17 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust and Tauri
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            launcher/src-tauri/target
+          key: tauri-${{ runner.os }}-${{ hashFiles('launcher/src-tauri/Cargo.lock', 'launcher/package-lock.json') }}
+          restore-keys: |
+            tauri-${{ runner.os }}-
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -98,11 +103,15 @@ jobs:
 
       - name: Install launcher dependencies
         working-directory: launcher
-        run: npm ci
+        run: npm install
 
       - name: Fix and validate Tauri icons
         working-directory: launcher
         run: npm run fix:icons
+
+      - name: Run launcher tests
+        working-directory: launcher
+        run: npm run test
 
       - name: Build launcher frontend
         working-directory: launcher
@@ -111,10 +120,6 @@ jobs:
       - name: Check Tauri Rust backend
         working-directory: launcher/src-tauri
         run: cargo check
-
-      - name: Run launcher tests
-        working-directory: launcher
-        run: npm test
 
       - name: Build Tauri bundles
         uses: tauri-apps/tauri-action@v0.6.2
@@ -139,11 +144,48 @@ jobs:
           prerelease: ${{ steps.release.outputs.prerelease }}
           args: ${{ matrix.args }}
 
+      - name: Prepare friendly artifact names
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          bundle_dir="launcher/src-tauri/target/release/bundle"
+
+          if [ "${{ matrix.name }}" = "Linux" ]; then
+            appimage="$(find "$bundle_dir" -type f -name '*.AppImage' | head -n 1 || true)"
+            deb="$(find "$bundle_dir" -type f -name '*.deb' | head -n 1 || true)"
+            rpm="$(find "$bundle_dir" -type f -name '*.rpm' | head -n 1 || true)"
+            [ -n "$appimage" ] && cp "$appimage" release-assets/MG-Pocket-Launcher-Linux.AppImage
+            [ -n "$deb" ] && cp "$deb" release-assets/MG-Pocket-Launcher-Linux.deb
+            [ -n "$rpm" ] && cp "$rpm" release-assets/MG-Pocket-Launcher-Linux.rpm
+          else
+            setup="$(find "$bundle_dir" -type f -iname '*.exe' | head -n 1 || true)"
+            [ -n "$setup" ] && cp "$setup" release-assets/MG-Pocket-Launcher-Windows-Setup.exe
+          fi
+
+          if ! find release-assets -type f | grep -q .; then
+            echo "Nenhum artefato amigável encontrado para ${{ matrix.name }}."
+            find "$bundle_dir" -type f || true
+            exit 1
+          fi
+
+      - name: Attach friendly artifacts to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ steps.release.outputs.tag }}" release-assets/* --clobber
+
       - name: Generate checksums
-        run: node scripts/generate-launcher-checksums.mjs "checksums-${{ matrix.artifactName }}.txt" --allow-empty
+        shell: bash
+        run: |
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum release-assets/* > "checksums-${{ matrix.artifactName }}.txt"
+          else
+            shasum -a 256 release-assets/* > "checksums-${{ matrix.artifactName }}.txt"
+          fi
 
       - name: Upload checksums artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifactName }}
           path: checksums-${{ matrix.artifactName }}.txt

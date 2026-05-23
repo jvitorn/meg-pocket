@@ -188,7 +188,7 @@ ensure_docker_permission_or_explicit_sudo() {
   fi
 
   if sudo_docker_info_works_no_prompt; then
-    fail "Permissão do Docker ainda não está ativa. Salve seus arquivos, saia da sessão do Linux e entre novamente. Depois abra o launcher e clique em Instalar/Atualizar M&G Pocket. Se preferir continuar temporariamente, escolha a opção de usar sudo nesta sessão no launcher."
+    fail "Permissão do Docker ainda não está ativa. Salve seus arquivos, saia da sessão do Linux e entre novamente. Depois abra o launcher e clique em Preparar Ambiente. Se preferir continuar temporariamente, escolha a opção de usar sudo nesta sessão no launcher."
   fi
 
   fail "Docker não está acessível para seu usuário. Use o fluxo de permissões do launcher antes de continuar."
@@ -299,7 +299,7 @@ start_optional_adminer() {
   fi
 
   info "Adminer não foi iniciado automaticamente, provavelmente porque a porta 8081 já está em uso."
-  info "O M&G Pocket pode continuar funcionando sem o Adminer. Se quiser usar o Adminer do launcher, libere a porta 8081 e clique em Instalar/Atualizar novamente."
+  info "O M&G Pocket pode continuar funcionando sem o Adminer. Se quiser usar o Adminer do launcher, libere a porta 8081 e clique em Preparar Ambiente novamente."
   return 0
 }
 
