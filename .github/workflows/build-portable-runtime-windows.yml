@@ -1,0 +1,194 @@
+name: Build Portable Runtime Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release/runtime version. Example: v1.1.0"
+        required: true
+        type: string
+      postgres_zip_url:
+        description: "Windows x64 PostgreSQL portable ZIP URL with bin/ and required DLLs. TODO: set official/trusted source."
+        required: false
+        type: string
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-portable-runtime:
+    name: Windows x64 Portable Runtime
+    runs-on: windows-latest
+
+    env:
+      NODE_VERSION: "22.13.0"
+      NGINX_VERSION: "1.27.4"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve release metadata
+        id: release
+        shell: pwsh
+        run: |
+          $version = "${{ github.event.inputs.version }}"
+          if (-not $version) { $version = "${{ github.ref_name }}" }
+          if (-not $version.StartsWith("v")) { $version = "v$version" }
+          "tag=$version" >> $env:GITHUB_OUTPUT
+          "plain=$($version.TrimStart('v'))" >> $env:GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next standalone
+        env:
+          NEXT_REACT_COMPILER: "false"
+        run: npm run build
+
+      - name: Prepare runtime tree
+        shell: pwsh
+        run: |
+          $root = Join-Path $PWD "portable-runtime"
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          New-Item -ItemType Directory -Force -Path "$root/runtime/node", "$root/runtime/postgres", "$root/runtime/nginx", "$root/app", "$root/prisma", "$root/scripts", "$root/templates" | Out-Null
+
+          Copy-Item -Recurse -Force ".next/standalone/*" "$root/app/"
+          New-Item -ItemType Directory -Force -Path "$root/app/.next" | Out-Null
+          Copy-Item -Recurse -Force ".next/static" "$root/app/.next/static"
+          Copy-Item -Recurse -Force "public" "$root/app/public"
+
+          Copy-Item -Force "prisma/schema.prisma" "$root/prisma/schema.prisma"
+          Copy-Item -Recurse -Force "prisma/migrations" "$root/prisma/migrations"
+          Copy-Item -Recurse -Force "prisma/seeds" "$root/prisma/seeds"
+
+          Copy-Item -Force "scripts/run-sql-file.mjs" "$root/scripts/run-sql-file.mjs"
+          Copy-Item -Force "scripts/portable-db-setup.mjs" "$root/scripts/portable-db-setup.mjs"
+          Copy-Item -Recurse -Force "scripts/lib" "$root/scripts/lib"
+          Copy-Item -Recurse -Force "launcher/portable/templates/*" "$root/templates/"
+
+      - name: Add portable Node.js
+        shell: pwsh
+        run: |
+          $zip = "node-v$env:NODE_VERSION-win-x64.zip"
+          Invoke-WebRequest "https://nodejs.org/dist/v$env:NODE_VERSION/$zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath node-dist -Force
+          Copy-Item -Recurse -Force "node-dist/node-v$env:NODE_VERSION-win-x64/*" "portable-runtime/runtime/node/"
+
+      - name: Add portable Nginx
+        shell: pwsh
+        run: |
+          $zip = "nginx-$env:NGINX_VERSION.zip"
+          Invoke-WebRequest "https://nginx.org/download/$zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath nginx-dist -Force
+          Copy-Item -Recurse -Force "nginx-dist/nginx-$env:NGINX_VERSION/*" "portable-runtime/runtime/nginx/"
+          New-Item -ItemType Directory -Force -Path "portable-runtime/runtime/nginx/logs", "portable-runtime/runtime/nginx/temp" | Out-Null
+
+      - name: Add portable PostgreSQL
+        shell: pwsh
+        env:
+          INPUT_POSTGRES_ZIP_URL: ${{ github.event.inputs.postgres_zip_url }}
+          VAR_POSTGRES_ZIP_URL: ${{ vars.POSTGRES_WINDOWS_ZIP_URL }}
+        run: |
+          $url = $env:INPUT_POSTGRES_ZIP_URL
+          if (-not $url) { $url = $env:VAR_POSTGRES_ZIP_URL }
+          if (-not $url) {
+            Write-Error "TODO: configure postgres_zip_url input or vars.POSTGRES_WINDOWS_ZIP_URL with a trusted Windows x64 PostgreSQL ZIP that includes bin/*.exe and DLLs."
+            exit 1
+          }
+          Invoke-WebRequest $url -OutFile postgres.zip
+          Expand-Archive postgres.zip -DestinationPath postgres-dist -Force
+          $bin = Get-ChildItem postgres-dist -Recurse -Directory | Where-Object { Test-Path (Join-Path $_.FullName "postgres.exe") } | Select-Object -First 1
+          if (-not $bin) { Write-Error "postgres.exe not found in PostgreSQL ZIP"; exit 1 }
+          $postgresRoot = Split-Path $bin.FullName -Parent
+          Copy-Item -Recurse -Force "$postgresRoot/*" "portable-runtime/runtime/postgres/"
+
+      - name: Validate required files
+        shell: pwsh
+        run: |
+          $required = @(
+            "runtime/node/node.exe",
+            "runtime/postgres/bin/postgres.exe",
+            "runtime/postgres/bin/pg_ctl.exe",
+            "runtime/postgres/bin/initdb.exe",
+            "runtime/postgres/bin/psql.exe",
+            "runtime/postgres/bin/pg_dump.exe",
+            "runtime/postgres/bin/pg_restore.exe",
+            "runtime/postgres/bin/createdb.exe",
+            "runtime/nginx/nginx.exe",
+            "app/server.js",
+            "app/.next",
+            "app/public",
+            "prisma/schema.prisma",
+            "prisma/migrations",
+            "prisma/seeds/generated/index.sql",
+            "scripts/run-sql-file.mjs",
+            "scripts/portable-db-setup.mjs"
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path (Join-Path "portable-runtime" $path))) {
+              Write-Error "Missing required portable runtime file: $path"
+              exit 1
+            }
+          }
+
+      - name: Package runtime and manifest
+        id: package
+        shell: pwsh
+        run: |
+          $plain = "${{ steps.release.outputs.plain }}"
+          $tag = "${{ steps.release.outputs.tag }}"
+          $file = "meg-pocket-portable-runtime-windows-x64-$tag.zip"
+          Compress-Archive -Path "portable-runtime/*" -DestinationPath $file -Force
+          $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLowerInvariant()
+          $size = (Get-Item $file).Length
+          $manifest = [ordered]@{
+            version = $plain
+            runtimeVersion = (Get-Date -Format "yyyy.MM.dd")
+            windows = @{
+              x64 = @{
+                file = $file
+                url = "https://github.com/${{ github.repository }}/releases/download/$tag/$file"
+                sha256 = $hash
+                sizeBytes = $size
+              }
+            }
+            requirements = @{
+              node = ">=22.12.0 <23"
+              postgres = "16.x"
+              nginx = "1.x"
+            }
+          } | ConvertTo-Json -Depth 8
+          $manifest | Out-File -Encoding utf8 portable-manifest.json
+          "file=$file" >> $env:GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-runtime-windows-x64
+          path: |
+            ${{ steps.package.outputs.file }}
+            portable-manifest.json
+          if-no-files-found: error
+
+      - name: Publish to release
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "${{ steps.release.outputs.tag }}" 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create "${{ steps.release.outputs.tag }}" --draft --title "M&G Pocket ${{ steps.release.outputs.tag }}"
+          }
+          gh release upload "${{ steps.release.outputs.tag }}" "${{ steps.package.outputs.file }}" portable-manifest.json --clobber

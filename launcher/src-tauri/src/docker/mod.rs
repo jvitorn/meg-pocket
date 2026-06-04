@@ -1,3 +1,9 @@
+pub mod backup;
+pub mod diagnose;
+pub mod install;
+pub mod maintenance;
+pub mod process;
+
 use std::{
     collections::{HashMap, VecDeque},
     env, fs,
@@ -295,14 +301,27 @@ impl<'app, 'manager> NativeJob<'app, 'manager> {
 
     fn started(&mut self, step: &str, message: &str, progress: u8) {
         self.current_step = step.to_string();
-        self.progress = progress;
+        self.progress = jobs::clamp_running_progress(progress);
         jobs::emit_started(self.app, &self.job, step, message, progress);
     }
 
     fn progress(&mut self, step: &str, message: &str, progress: u8) {
         self.current_step = step.to_string();
-        self.progress = progress.max(self.progress);
+        self.progress = jobs::clamp_running_progress(progress).max(self.progress);
         jobs::emit_progress(
+            self.app,
+            self.job.job_id(),
+            self.job.action(),
+            step,
+            message,
+            self.progress,
+        );
+    }
+
+    fn validation_progress(&mut self, step: &str, message: &str, progress: u8) {
+        self.current_step = step.to_string();
+        self.progress = jobs::clamp_finalizing_progress(progress).max(self.progress);
+        jobs::emit_finalizing_progress(
             self.app,
             self.job.job_id(),
             self.job.action(),
@@ -412,15 +431,12 @@ impl<'app, 'manager> NativeJob<'app, 'manager> {
     }
 
     fn finish_success(&mut self, step: &str, message: &str) -> CommandOutput {
-        self.progress(step, message, 100);
-        jobs::emit_finished(
+        jobs::finish_job_success(
             self.app,
             self.job.job_id(),
             self.job.action(),
             step,
             message,
-            100,
-            "success",
         );
 
         CommandOutput {
@@ -440,26 +456,21 @@ impl<'app, 'manager> NativeJob<'app, 'manager> {
             error.technical_message(),
             100,
         );
-        jobs::emit_finished(
+        jobs::finish_job_error(
             self.app,
             self.job.job_id(),
             self.job.action(),
             &self.current_step,
             &format!("Falhou na etapa: {}", self.current_step),
-            100,
-            "error",
         );
     }
 
     fn finish_cancelled(&mut self) {
-        jobs::emit_finished(
+        jobs::finish_job_cancelled(
             self.app,
             self.job.job_id(),
             self.job.action(),
             &self.current_step,
-            "Operação cancelada.",
-            100,
-            "cancelled",
         );
     }
 }
@@ -2808,10 +2819,10 @@ fn validate_site(ctx: &mut NativeJob<'_, '_>) -> LauncherResult<()> {
     let adminer_port = local_service_port("ADMINER_PORT", 8081, &project_dir);
     let app_url = format!("http://localhost:{app_port}");
     let adminer_url = format!("http://localhost:{adminer_port}");
-    ctx.progress(
+    ctx.validation_progress(
         "Validando acesso local",
         &format!("Validando acesso local em {app_url}."),
-        95,
+        96,
     );
     retry_step(ctx, Duration::from_secs(120), Duration::from_secs(2), || {
         check_http_path(app_port, "/healthz", PORT_TIMEOUT)
@@ -2834,6 +2845,12 @@ fn validate_site(ctx: &mut NativeJob<'_, '_>) -> LauncherResult<()> {
             "O aplicativo não respondeu em {app_url}. Veja os detalhes técnicos."
         ))
     })?;
+
+    ctx.validation_progress(
+        "Validando acesso local",
+        "Validando uploads e serviços finais.",
+        99,
+    );
 
     if check_local_port(adminer_port, PORT_TIMEOUT) {
         ctx.log(

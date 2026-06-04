@@ -1,0 +1,36 @@
+worker_processes 1;
+error_log ${LOGS_DIR}/nginx-error.log;
+pid ${LOGS_DIR}/nginx.pid;
+
+events {
+    worker_connections 256;
+}
+
+http {
+    access_log ${LOGS_DIR}/nginx-access.log;
+    include mime.types;
+    default_type application/octet-stream;
+    sendfile on;
+
+    server {
+        listen ${PUBLIC_PORT};
+        server_name localhost;
+
+        location = /healthz {
+            return 200 "ok\n";
+        }
+
+        location ^~ /uploads/ {
+            alias ${UPLOADS_DIR}/;
+            try_files $uri =404;
+        }
+
+        location / {
+            proxy_pass http://127.0.0.1:${NEXT_PORT};
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto http;
+        }
+    }
+}

@@ -3,6 +3,7 @@ import {
   Archive,
   BookOpen,
   ExternalLink,
+  FolderOpen,
   HardDrive,
   HelpCircle,
   Play,
@@ -30,7 +31,10 @@ import {
   listenLauncherJobEvent,
   type LauncherJobEventName,
   openAdminer,
+  openBackupsFolder,
+  openDataFolder,
   openDockerGuide,
+  openLogsFolder,
   openSite,
   quickDiagnose,
   readLogs,
@@ -59,10 +63,10 @@ import type {
 
 const initialSteps: ProgressStep[] = [
   { id: "doctor", label: "Diagnóstico", state: "pending" },
-  { id: "docker", label: "Docker", state: "pending" },
-  { id: "permission", label: "Permissão", state: "pending" },
-  { id: "project", label: "Versão pronta", state: "pending" },
-  { id: "online", label: "Validação", state: "pending" },
+  { id: "docker", label: "Runtime", state: "pending" },
+  { id: "permission", label: "Banco local", state: "pending" },
+  { id: "project", label: "Sistema", state: "pending" },
+  { id: "online", label: "Acesso", state: "pending" },
 ];
 
 const FIRST_STEPS_STORAGE_KEY = "mg-pocket-launcher-hide-first-steps";
@@ -231,6 +235,20 @@ function localJobEvent(action: string, status: Exclude<JobStatus, "idle" | "runn
     progress: 100,
     level: status,
   };
+}
+
+function launcherStatusLabel(status: SystemStatus | null, jobStatus: JobStatus, isBusy: boolean, error: string) {
+  if (error || jobStatus === "error") return "Erro";
+  if (isBusy || jobStatus === "running") return "Iniciando";
+  if (status?.appOnline) return "Pronto";
+  if (status?.projectInstalled) return "Parado";
+  return "Parado";
+}
+
+function primaryActionLabel(status: SystemStatus | null) {
+  if (status?.appOnline) return "Abrir M&G Pocket";
+  if (status?.projectInstalled) return "Iniciar M&G Pocket";
+  return "Preparar M&G Pocket";
 }
 
 export default function App() {
@@ -557,6 +575,28 @@ export default function App() {
 
       if (!(await checkDependenciesBefore("prepare"))) return;
 
+      if (currentStatus.runtimeMode === "portable") {
+        setStep("docker", "done");
+        setStep("permission", "running");
+        await runProjectInstall();
+        setStep("permission", "done");
+        setStep("project", "done");
+        setStep("online", "running");
+        currentStatus = await doctor();
+        setStatus(currentStatus);
+        if (!currentStatus.appOnline) {
+          throw new Error(
+            "O M&G Pocket foi preparado, mas ainda não conseguimos abrir a página. Tente novamente em alguns segundos ou use Reparar instalação.",
+          );
+        }
+        setStep("online", "done");
+        const readyMessage = "Ambiente pronto. Você já pode abrir o M&G Pocket.";
+        setJobEvent(localJobEvent("Preparar Ambiente", "success", readyMessage));
+        setJobStatus("success");
+        setNotice(readyMessage);
+        return;
+      }
+
       setStep("docker", "running");
       if (!currentStatus.dockerInstalled) {
         if (currentStatus.os === "linux" && currentStatus.supported) {
@@ -669,6 +709,18 @@ export default function App() {
     } catch (err) {
       setError(friendlyActionError("Abrir M&G Pocket", err));
     }
+  };
+
+  const runPrimaryAction = async () => {
+    if (status?.appOnline) {
+      await openPocket();
+      return;
+    }
+    if (status?.projectInstalled) {
+      await startAndOpenPocket();
+      return;
+    }
+    await prepareEnvironment();
   };
 
   const removeProject = async () => {
@@ -838,6 +890,8 @@ export default function App() {
     const okTone = (value: boolean, waiting = false): StatusItem["tone"] => (value ? "ok" : waiting ? "warn" : "bad");
 
     const environment: StatusItem[] = [
+      { label: "Status", value: launcherStatusLabel(status, jobStatus, isBusy, error), tone: error || jobStatus === "error" ? "bad" : status.appOnline ? "ok" : status.projectInstalled ? "warn" : "idle" },
+      { label: "Modo de execução", value: status.runtimeLabel || (status.runtimeMode === "portable" ? "Portátil" : "Docker"), tone: status.runtimeMode === "portable" ? "ok" : "idle" },
       { label: "Sistema", value: friendlyOs(status.os), tone: status.os === "unknown" ? "warn" : "ok" },
       { label: "Distro", value: status.distroName || "não aplicável", tone: status.os === "linux" ? "ok" : "idle" },
       { label: "Suporte automático", value: boolLabel(status.supported), tone: status.supported ? "ok" : "warn" },
@@ -891,10 +945,10 @@ export default function App() {
     ];
 
     return { environment, docker, project, diagnostics, technical };
-  }, [status, sudoDockerThisSession]);
+  }, [status, sudoDockerThisSession, jobStatus, isBusy, error]);
 
   const showLinuxInstallDocker = status?.os === "linux" && status.supported && !status.dockerInstalled;
-  const showWindowsDockerGuide = status?.os === "windows" && !status.dockerInstalled;
+  const showWindowsDockerGuide = status?.os === "windows" && !status.dockerInstalled && status.runtimeMode !== "portable";
   const activeProgress =
     jobStatus !== "idle" && jobEvent
       ? {
@@ -1001,22 +1055,24 @@ export default function App() {
   return (
     <AppShell>
       <section className="hero-band">
-        <div>
-          <p className="eyebrow">grimório local</p>
-          <h2>Preparar Ambiente</h2>
-          <p>
-            Prepara o M&G Pocket neste computador. O launcher baixa uma versão pronta do sistema, configura os dados
-            iniciais e deixa tudo pronto para uso.
-          </p>
+        <div className="hero-band__content">
+          <p className="eyebrow">M&G Pocket Launcher</p>
+          <h2>Sistema local para mestres de RPG</h2>
+          <div className="launcher-summary" aria-label="Status do launcher">
+            <span>{launcherStatusLabel(status, jobStatus, isBusy, error)}</span>
+            <span>Modo de execução: {status?.runtimeLabel || (status?.runtimeMode === "portable" ? "Portátil" : "Docker")}</span>
+            <span>{status?.appUrl || "Endereço local ainda não preparado"}</span>
+          </div>
         </div>
         <ActionButton
-          icon={<Wrench size={18} />}
+          icon={status?.appOnline ? <ExternalLink size={22} /> : status?.projectInstalled ? <Play size={22} /> : <Wrench size={22} />}
           loading={busy === "prepare"}
           disabled={isBusy}
-          onClick={() => void prepareEnvironment()}
+          onClick={() => void runPrimaryAction()}
           variant="primary"
+          ariaLabel={!status?.projectInstalled && !status?.appOnline ? "Preparar Ambiente" : undefined}
         >
-          Preparar Ambiente
+          {primaryActionLabel(status)}
         </ActionButton>
       </section>
 
@@ -1204,6 +1260,15 @@ export default function App() {
         </ActionButton>
         <ActionButton icon={<ScrollText size={18} />} disabled={busy === "Logs"} loading={busy === "Logs"} onClick={loadLogs}>
           Ver detalhes técnicos
+        </ActionButton>
+        <ActionButton icon={<FolderOpen size={18} />} disabled={isBusy} onClick={() => void openDataFolder()}>
+          Abrir pasta de dados
+        </ActionButton>
+        <ActionButton icon={<FolderOpen size={18} />} disabled={isBusy} onClick={() => void openBackupsFolder()}>
+          Abrir pasta de backups
+        </ActionButton>
+        <ActionButton icon={<FolderOpen size={18} />} disabled={isBusy} onClick={() => void openLogsFolder()}>
+          Abrir logs técnicos
         </ActionButton>
         <ActionButton icon={<Archive size={18} />} disabled={isBusy} onClick={() => runAction("Backup", () => backup(dockerOptions))}>
           Backup

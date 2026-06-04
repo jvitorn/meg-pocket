@@ -3,6 +3,9 @@ export type SystemStatus = {
   distroFamily?: "ubuntu_like" | "debian_like" | "arch_like" | "fedora_like" | "opensuse_like" | "unsupported";
   distroName?: string;
   supported: boolean;
+  runtimeMode?: "docker" | "portable" | string;
+  runtimeLabel?: string;
+  portableInstalled?: boolean;
   wingetInstalled?: boolean;
   gitInstalled?: boolean;
   powerShellInstalled?: boolean;
@@ -35,6 +38,10 @@ export type SystemStatus = {
   uploadsDirectoryOk?: boolean;
   uploadsServed?: boolean;
   nextAssetsOnline?: boolean;
+  localDataPath?: string;
+  localBackupsPath?: string;
+  localLogsPath?: string;
+  checkedAt?: string;
 };
 
 export type DependencyStatus = {

@@ -14,8 +14,9 @@ export function AppShell({ children }: AppShellProps) {
           <Dice5 size={18} />
         </div>
         <div>
-          <p>M&G Pocket</p>
-          <h1>Launcher</h1>
+          <p>Sistema local para mestres de RPG</p>
+          <h1>M&G Pocket Launcher</h1>
+          <h2 className="sr-only">Launcher</h2>
         </div>
       </header>
       <main>{children}</main>

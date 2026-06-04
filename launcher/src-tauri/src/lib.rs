@@ -1,16 +1,18 @@
 mod errors;
 mod installers;
+mod docker;
 mod jobs;
-mod native;
 mod paths;
+mod portable;
+mod runtime;
 mod scripts;
 
-use std::process::Command;
+use std::{path::Path, process::Command};
 
 use errors::{LauncherError, LauncherResult};
 use jobs::JobManager;
 use scripts::CommandOutput;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 fn command_result<T>(result: LauncherResult<T>) -> Result<T, String> {
     result.map_err(|error| error.friendly_message().to_string())
@@ -18,13 +20,13 @@ fn command_result<T>(result: LauncherResult<T>) -> Result<T, String> {
 
 #[tauri::command(async)]
 fn doctor(app: AppHandle, jobs: State<'_, JobManager>) -> Result<String, String> {
-    command_result(native::doctor(&app, &jobs))
+    command_result(runtime::doctor(&app, &jobs))
 }
 
 #[tauri::command]
 #[allow(non_snake_case)]
 fn quickDiagnose() -> Result<String, String> {
-    command_result(native::quick_diagnose())
+    command_result(runtime::quick_diagnose())
 }
 
 #[tauri::command(async)]
@@ -33,7 +35,7 @@ fn installDockerLinux(
     app: AppHandle,
     jobs: State<'_, JobManager>,
 ) -> Result<CommandOutput, String> {
-    command_result(native::install_docker_linux(&app, &jobs))
+    command_result(docker::install_docker_linux(&app, &jobs))
 }
 
 #[tauri::command]
@@ -41,7 +43,7 @@ fn installDockerLinux(
 fn checkSystemDependencies(app: AppHandle, jobs: State<'_, JobManager>) -> Result<String, String> {
     let _ = app;
     let _ = jobs;
-    command_result(native::check_system_dependencies())
+    command_result(runtime::check_system_dependencies())
 }
 
 #[tauri::command(async)]
@@ -50,7 +52,7 @@ fn installSystemDependencies(
     app: AppHandle,
     jobs: State<'_, JobManager>,
 ) -> Result<CommandOutput, String> {
-    command_result(native::install_system_dependencies(&app, &jobs))
+    command_result(docker::install_system_dependencies(&app, &jobs))
 }
 
 #[tauri::command(async)]
@@ -59,7 +61,7 @@ fn ensureDockerRunning(
     app: AppHandle,
     jobs: State<'_, JobManager>,
 ) -> Result<CommandOutput, String> {
-    command_result(native::ensure_docker_running(&app, &jobs))
+    command_result(docker::ensure_docker_running(&app, &jobs))
 }
 
 #[tauri::command(async)]
@@ -68,7 +70,7 @@ fn ensureDockerPermission(
     app: AppHandle,
     jobs: State<'_, JobManager>,
 ) -> Result<CommandOutput, String> {
-    command_result(native::ensure_docker_permission(&app, &jobs))
+    command_result(docker::ensure_docker_permission(&app, &jobs))
 }
 
 #[tauri::command(rename_all = "camelCase", async)]
@@ -81,7 +83,7 @@ fn installProject(
     local_build: Option<bool>,
     no_cache: Option<bool>,
 ) -> Result<CommandOutput, String> {
-    command_result(native::install_project(
+    command_result(runtime::install_project(
         &app,
         &jobs,
         use_sudo_docker.unwrap_or(false),
@@ -101,7 +103,7 @@ fn repairInstallation(
     local_build: Option<bool>,
     no_cache: Option<bool>,
 ) -> Result<CommandOutput, String> {
-    command_result(native::repair_installation(
+    command_result(runtime::repair_installation(
         &app,
         &jobs,
         use_sudo_docker.unwrap_or(false),
@@ -118,7 +120,7 @@ fn startApp(
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
 ) -> Result<CommandOutput, String> {
-    command_result(native::start_app(
+    command_result(runtime::start_app(
         &app,
         &jobs,
         use_sudo_docker.unwrap_or(false),
@@ -132,7 +134,7 @@ fn stopApp(
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
 ) -> Result<CommandOutput, String> {
-    command_result(native::stop_app(
+    command_result(runtime::stop_app(
         &app,
         &jobs,
         use_sudo_docker.unwrap_or(false),
@@ -146,7 +148,7 @@ fn restartApp(
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
 ) -> Result<CommandOutput, String> {
-    command_result(native::restart_app(
+    command_result(runtime::restart_app(
         &app,
         &jobs,
         use_sudo_docker.unwrap_or(false),
@@ -160,7 +162,7 @@ fn readLogs(
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
 ) -> Result<String, String> {
-    command_result(native::read_logs(
+    command_result(runtime::read_logs(
         &app,
         &jobs,
         use_sudo_docker.unwrap_or(false),
@@ -170,7 +172,7 @@ fn readLogs(
 #[tauri::command]
 #[allow(non_snake_case)]
 fn cancelCurrentJob(jobs: State<'_, JobManager>) -> Result<bool, String> {
-    command_result(native::cancel_current_job(&jobs))
+    command_result(runtime::cancel_current_job(&jobs))
 }
 
 #[tauri::command(rename_all = "camelCase", async)]
@@ -179,7 +181,7 @@ fn backup(
     jobs: State<'_, JobManager>,
     use_sudo_docker: Option<bool>,
 ) -> Result<CommandOutput, String> {
-    command_result(native::backup(
+    command_result(runtime::backup(
         &app,
         &jobs,
         use_sudo_docker.unwrap_or(false),
@@ -199,7 +201,7 @@ fn restoreBackup(
         return Err("Restore exige confirmação explícita.".to_string());
     }
 
-    command_result(native::restore_backup(
+    command_result(runtime::restore_backup(
         &app,
         &jobs,
         backupPath,
@@ -220,7 +222,7 @@ fn resetLocalData(
         return Err("Reset local exige confirmação explícita.".to_string());
     }
 
-    command_result(native::reset_local_data(
+    command_result(runtime::reset_local_data(
         &app,
         &jobs,
         confirmed,
@@ -245,7 +247,7 @@ fn removeLocalProject(
         return Err("Modo de remoção inválido.".to_string());
     }
 
-    command_result(native::remove_local_project(
+    command_result(docker::remove_local_project(
         &app,
         &jobs,
         mode,
@@ -315,13 +317,13 @@ fn is_allowed_localhost_url(url: &str) -> bool {
 #[tauri::command]
 #[allow(non_snake_case)]
 fn openSite() -> Result<(), String> {
-    command_result(open_allowed_url(&native::local_site_url()))
+    command_result(open_allowed_url(&runtime::local_site_url()))
 }
 
 #[tauri::command]
 #[allow(non_snake_case)]
 fn openAdminer() -> Result<(), String> {
-    command_result(open_allowed_url(&native::local_adminer_url()))
+    command_result(open_allowed_url(&runtime::local_adminer_url()))
 }
 
 #[tauri::command]
@@ -332,9 +334,83 @@ fn openDockerGuide() -> Result<(), String> {
     ))
 }
 
+fn open_folder(path: &Path) -> LauncherResult<()> {
+    if !path.exists() {
+        std::fs::create_dir_all(path).map_err(|error| {
+            LauncherError::technical("Não foi possível criar pasta local", error)
+        })?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        for opener in ["xdg-open", "gio", "sensible-browser"] {
+            let mut command = Command::new(opener);
+            if opener == "gio" {
+                command.arg("open");
+            }
+            scripts::sanitize_child_environment(&mut command);
+            if command.arg(path).spawn().is_ok() {
+                return Ok(());
+            }
+        }
+        Err(LauncherError::friendly(
+            "Não encontrei um abridor de pastas no Linux.",
+        ))
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer.exe")
+            .arg(path)
+            .spawn()
+            .map(|_| ())
+            .map_err(|error| LauncherError::technical("Não foi possível abrir pasta", error))
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(path)
+            .spawn()
+            .map(|_| ())
+            .map_err(|error| LauncherError::technical("Não foi possível abrir pasta", error))
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "windows", target_os = "macos")))]
+    {
+        Err(LauncherError::friendly(
+            "Sistema não suportado para abrir pasta.",
+        ))
+    }
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+fn openDataFolder() -> Result<(), String> {
+    command_result(paths::mg_pocket_data_content_dir().and_then(|path| open_folder(&path)))
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+fn openBackupsFolder() -> Result<(), String> {
+    command_result(paths::mg_pocket_backups_dir().and_then(|path| open_folder(&path)))
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+fn openLogsFolder() -> Result<(), String> {
+    command_result(paths::mg_pocket_logs_dir().and_then(|path| open_folder(&path)))
+}
+
 pub fn run() {
     tauri::Builder::default()
         .manage(JobManager::default())
+        .setup(|app| {
+            let lock = paths::acquire_instance_lock()
+                .map_err(|error| Box::<dyn std::error::Error>::from(error.friendly_message().to_string()))?;
+            app.manage(lock);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             doctor,
             quickDiagnose,
@@ -351,6 +427,9 @@ pub fn run() {
             openSite,
             openAdminer,
             openDockerGuide,
+            openDataFolder,
+            openBackupsFolder,
+            openLogsFolder,
             readLogs,
             backup,
             restoreBackup,
