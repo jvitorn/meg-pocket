@@ -64,7 +64,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Build portable runtime package
+      - name: Build portable runtime package with shared core
         id: package
         shell: pwsh
         env:
@@ -81,7 +81,7 @@ jobs:
           if (-not $postgresZipUrl) { $postgresZipUrl = $env:VAR_POSTGRES_ZIP_URL }
           if ($postgresZipUrl) { $scriptArgs += @("-PostgresZipUrl", $postgresZipUrl) }
 
-          & ./scripts/build-portable-runtime-windows.ps1 @scriptArgs
+          & ./scripts/portable-runtime/build-core-windows.ps1 @scriptArgs
 
           $zipFile = "portable-runtime-dist/meg-pocket-portable-runtime-windows-x64-${{ steps.release.outputs.version }}.zip"
           $manifestFile = "portable-runtime-dist/portable-manifest.json"

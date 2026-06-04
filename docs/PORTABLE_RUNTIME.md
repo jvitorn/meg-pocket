@@ -28,6 +28,24 @@ Existem três artefatos separados:
 O ZIP portátil não vai para GHCR agora. Como ele é baixado diretamente pelo
 launcher e validado por SHA-256, Release Asset é o caminho mais simples.
 
+## Separação De Responsabilidades
+
+O build do runtime portátil tem três níveis:
+
+- Core compartilhado: `scripts/portable-runtime/build-core-windows.ps1`.
+  Monta `portable-runtime/`, roda o build do Next quando necessário, copia o
+  app standalone, Prisma, scripts e templates, baixa/cacheia Node.js, Nginx e
+  PostgreSQL, valida os arquivos obrigatórios, gera o ZIP, calcula SHA-256 e
+  escreve `portable-manifest.json`.
+- Wrapper local: `scripts/build-portable-runtime-windows.ps1`. Existe para ser
+  amigável no terminal local e apenas chama o core compartilhado.
+- Workflow publicador: `.github/workflows/build-portable-runtime-windows.yml`.
+  Chama o core compartilhado, publica os artifacts do job e cria/atualiza a
+  release técnica do runtime.
+
+O YAML não duplica a lógica pesada de montagem. Essa lógica fica somente no
+core compartilhado.
+
 ## Release Técnica
 
 O workflow `.github/workflows/build-portable-runtime-windows.yml` publica a
@@ -64,7 +82,7 @@ MG_POCKET_PORTABLE_MANIFEST_FILE
 Use o script local para montar o runtime sem gastar minutos do GitHub Actions:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/build-portable-runtime-windows.ps1 -Version v1.1.0 -SkipPublish
+powershell -ExecutionPolicy Bypass -File scripts/build-portable-runtime-windows.ps1 -Version v1.1.0
 ```
 
 Saídas locais:
@@ -80,7 +98,7 @@ O cache `.local-cache/portable-runtime/` guarda os ZIPs baixados de Node.js,
 Nginx e PostgreSQL. Depois de popular o cache uma vez, rode:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/build-portable-runtime-windows.ps1 -Version v1.1.0 -SkipBuild -SkipDownload -SkipPublish
+powershell -ExecutionPolicy Bypass -File scripts/build-portable-runtime-windows.ps1 -Version v1.1.0 -SkipBuild -SkipDownload
 ```
 
 Parâmetros principais:
@@ -90,7 +108,8 @@ Parâmetros principais:
 - `PostgresZipUrl`: URL opcional para substituir o ZIP PostgreSQL padrão.
 - `SkipBuild`: reutiliza o build existente em `.next/standalone`.
 - `SkipDownload`: usa apenas binários já presentes no cache local.
-- `SkipPublish`: aceito para o fluxo local; o script nunca publica assets.
+- `SkipPublish`: aceito pelo wrapper local por compatibilidade; o wrapper nunca
+  publica assets e não repassa publicação ao core.
 - `RuntimeTagPrefix`: prefixo da release técnica, padrão `portable-runtime`.
 
 Por padrão, o script usa PostgreSQL 16.14 Windows x64 publicado pela EDB. Se
@@ -114,8 +133,8 @@ version: v1.1.0
 runtime_tag_prefix: portable-runtime
 ```
 
-O workflow chama `scripts/build-portable-runtime-windows.ps1`, faz upload dos
-artefatos como artifact do job e publica os assets na release
+O workflow chama `scripts/portable-runtime/build-core-windows.ps1`, faz upload
+dos artefatos como artifact do job e publica os assets na release
 `portable-runtime-v1.1.0`.
 
 O workflow também roda em push de tags técnicas:
