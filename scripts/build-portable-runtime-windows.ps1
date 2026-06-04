@@ -417,6 +417,7 @@ Write-Host "Output directory: $OutputRoot"
 
 $buildDirs = @($OutputRoot, $CacheRoot)
 New-Item -ItemType Directory -Force -Path $buildDirs | Out-Null
+Remove-PathIfExists $RuntimeRoot
 Remove-PathIfExists $WorkRoot
 Remove-PathIfExists $ZipPath
 Remove-PathIfExists $ManifestPath
