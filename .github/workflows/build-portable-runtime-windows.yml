@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       postgres_zip_url:
-        description: "Windows x64 PostgreSQL portable ZIP URL with bin/ and required DLLs. TODO: set official/trusted source."
+        description: "Optional Windows x64 PostgreSQL ZIP override. Defaults to EDB PostgreSQL 16.14 binaries."
         required: false
         type: string
   push:
@@ -26,6 +26,8 @@ jobs:
     env:
       NODE_VERSION: "22.13.0"
       NGINX_VERSION: "1.27.4"
+      POSTGRES_VERSION: "16.14"
+      POSTGRES_WINDOWS_X64_BINARIES_URL: "https://get.enterprisedb.com/postgresql/postgresql-16.14-1-windows-x64-binaries.zip"
 
     steps:
       - name: Checkout
@@ -102,15 +104,28 @@ jobs:
         run: |
           $url = $env:INPUT_POSTGRES_ZIP_URL
           if (-not $url) { $url = $env:VAR_POSTGRES_ZIP_URL }
+          if (-not $url) { $url = $env:POSTGRES_WINDOWS_X64_BINARIES_URL }
           if (-not $url) {
-            Write-Error "TODO: configure postgres_zip_url input or vars.POSTGRES_WINDOWS_ZIP_URL with a trusted Windows x64 PostgreSQL ZIP that includes bin/*.exe and DLLs."
+            Write-Error "Configure postgres_zip_url input, vars.POSTGRES_WINDOWS_ZIP_URL, or POSTGRES_WINDOWS_X64_BINARIES_URL with a Windows x64 PostgreSQL ZIP that includes bin/*.exe and DLLs."
             exit 1
           }
-          Invoke-WebRequest $url -OutFile postgres.zip
+
+          Write-Host "Using PostgreSQL $env:POSTGRES_VERSION Windows x64 binaries: $url"
+          Invoke-WebRequest -Uri $url -OutFile postgres.zip
+          $zipFile = Get-Item postgres.zip
+          if ($zipFile.Length -le 0) {
+            Write-Error "Downloaded PostgreSQL ZIP is empty."
+            exit 1
+          }
+
           Expand-Archive postgres.zip -DestinationPath postgres-dist -Force
-          $bin = Get-ChildItem postgres-dist -Recurse -Directory | Where-Object { Test-Path (Join-Path $_.FullName "postgres.exe") } | Select-Object -First 1
-          if (-not $bin) { Write-Error "postgres.exe not found in PostgreSQL ZIP"; exit 1 }
-          $postgresRoot = Split-Path $bin.FullName -Parent
+          $postgresExe = Get-ChildItem postgres-dist -Recurse -File -Filter "postgres.exe" | Where-Object { $_.DirectoryName -match '[\\/]bin$' } | Select-Object -First 1
+          if (-not $postgresExe) {
+            Write-Error "postgres.exe not found in a bin/ directory inside PostgreSQL ZIP."
+            exit 1
+          }
+
+          $postgresRoot = Split-Path $postgresExe.DirectoryName -Parent
           Copy-Item -Recurse -Force "$postgresRoot/*" "portable-runtime/runtime/postgres/"
 
       - name: Validate required files

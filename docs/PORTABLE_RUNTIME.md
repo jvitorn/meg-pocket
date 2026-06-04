@@ -14,8 +14,9 @@ No modo portátil, o launcher usa `AppData/Local/MG Pocket` para `runtime/`,
 ## Publicação do Runtime
 
 O workflow `.github/workflows/build-portable-runtime-windows.yml` monta o ZIP
-Windows x64 e o `portable-manifest.json`. Para publicar de verdade, falta
-definir a fonte confiável do PostgreSQL portátil Windows x64 em:
+Windows x64 e o `portable-manifest.json`. Por padrão, ele baixa os binários
+Windows x64 do PostgreSQL 16.14 publicados pela EDB. Se precisar trocar a
+origem, informe uma URL alternativa em:
 
 - input `postgres_zip_url`, ou
 - variável de repositório `POSTGRES_WINDOWS_ZIP_URL`.
@@ -25,7 +26,8 @@ Essa fonte precisa entregar `bin/postgres.exe`, `pg_ctl.exe`, `initdb.exe`,
 
 ## TODOs Intencionais
 
-- Decidir e fixar a fonte do PostgreSQL portátil Windows x64.
+- Revalidar e atualizar a URL dos binários EDB quando subir a versão do
+  PostgreSQL portátil.
 - Validar o ZIP portátil em uma máquina Windows real.
 - Implementar rollback completo de update portátil.
 - Implementar assinatura de código do launcher/instalador Windows.
