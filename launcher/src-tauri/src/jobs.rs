@@ -14,6 +14,7 @@ pub const JOB_PROGRESS: &str = "launcher://job-progress";
 pub const JOB_LOG: &str = "launcher://job-log";
 pub const JOB_ERROR: &str = "launcher://job-error";
 pub const JOB_FINISHED: &str = "launcher://job-finished";
+const RUNNING_PROGRESS_MAX: u8 = 95;
 
 #[derive(Clone, Serialize)]
 pub struct LauncherJobEvent {
@@ -136,7 +137,7 @@ pub fn emit_started(app: &AppHandle, job: &JobGuard<'_>, step: &str, message: &s
         job.action(),
         step,
         message,
-        progress,
+        clamp_running_progress(progress),
         "info",
     );
 }
@@ -156,7 +157,7 @@ pub fn emit_progress(
         action,
         step,
         message,
-        progress,
+        clamp_running_progress(progress),
         "info",
     );
 }
@@ -184,6 +185,66 @@ pub fn emit_error(
     emit(
         app, JOB_ERROR, job_id, action, step, message, progress, "error",
     );
+}
+
+pub fn emit_finalizing_progress(
+    app: &AppHandle,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    message: &str,
+    progress: u8,
+) {
+    emit(
+        app,
+        JOB_PROGRESS,
+        job_id,
+        action,
+        step,
+        message,
+        clamp_finalizing_progress(progress),
+        "info",
+    );
+}
+
+pub fn finish_job_success(
+    app: &AppHandle,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    message: &str,
+) {
+    emit_finished(app, job_id, action, step, message, 100, "success");
+}
+
+pub fn finish_job_error(
+    app: &AppHandle,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    message: &str,
+) {
+    emit_finished(app, job_id, action, step, message, 100, "error");
+}
+
+pub fn finish_job_cancelled(app: &AppHandle, job_id: &str, action: &str, step: &str) {
+    emit_finished(
+        app,
+        job_id,
+        action,
+        step,
+        "Operação cancelada.",
+        100,
+        "cancelled",
+    );
+}
+
+pub fn clamp_running_progress(progress: u8) -> u8 {
+    progress.min(RUNNING_PROGRESS_MAX)
+}
+
+pub fn clamp_finalizing_progress(progress: u8) -> u8 {
+    progress.clamp(96, 99)
 }
 
 pub fn emit_finished(

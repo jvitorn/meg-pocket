@@ -8,6 +8,7 @@ type ActionButtonProps = {
   loading?: boolean;
   variant?: "primary" | "secondary" | "danger" | "ghost";
   title?: string;
+  ariaLabel?: string;
 };
 
 export function ActionButton({
@@ -18,9 +19,11 @@ export function ActionButton({
   loading = false,
   variant = "secondary",
   title,
+  ariaLabel,
 }: ActionButtonProps) {
   return (
     <button
+      aria-label={ariaLabel}
       className={`action-button action-button--${variant}`}
       disabled={disabled || loading}
       onClick={onClick}

@@ -14,7 +14,7 @@
 
 body {
   margin: 0;
-  min-width: 900px;
+  min-width: 320px;
   min-height: 100vh;
   background:
     linear-gradient(135deg, rgba(75, 42, 28, 0.34), rgba(18, 24, 31, 0.94)),
@@ -98,6 +98,12 @@ main {
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.32);
 }
 
+.hero-band__content {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
 .hero-band h2 {
   margin: 5px 0 8px;
   max-width: 680px;
@@ -105,10 +111,28 @@ main {
   line-height: 1.1;
 }
 
-.hero-band p:last-child {
-  margin: 0;
-  max-width: 700px;
-  color: #ddcfb8;
+.launcher-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 820px;
+}
+
+.launcher-summary span {
+  min-height: 32px;
+  padding: 7px 10px;
+  border: 1px solid rgba(134, 213, 196, 0.26);
+  border-radius: 8px;
+  color: #e7f8f3;
+  background: rgba(13, 25, 30, 0.46);
+  overflow-wrap: anywhere;
+}
+
+.hero-band > .action-button {
+  min-width: min(300px, 100%);
+  min-height: 62px;
+  padding: 14px 20px;
+  font-size: 1.04rem;
 }
 
 .message {
@@ -350,7 +374,7 @@ main {
 
 .actions-panel {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
   gap: 10px;
   margin-top: 16px;
 }
@@ -438,11 +462,17 @@ main {
   border-radius: 8px;
   border: 1px solid transparent;
   color: #f8efe2;
+  text-align: center;
   cursor: pointer;
   transition:
     transform 120ms ease,
     border-color 120ms ease,
     background 120ms ease;
+}
+
+.action-button span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .action-button:hover:not(:disabled) {
@@ -617,6 +647,54 @@ main {
 .confirm-dialog__description ol {
   margin: 8px 0 10px;
   padding-left: 22px;
+}
+
+@media (max-width: 960px) {
+  .app-shell {
+    padding: 16px;
+  }
+
+  .hero-band {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .hero-band > .action-button {
+    width: 100%;
+  }
+
+  .status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .actions-panel,
+  .advanced-options,
+  .step-progress {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header h1 {
+    font-size: 1.35rem;
+  }
+
+  .hero-band h2 {
+    font-size: 1.45rem;
+  }
+
+  .status-grid,
+  .actions-panel,
+  .advanced-options,
+  .step-progress {
+    grid-template-columns: 1fr;
+  }
+
+  .operation-progress div:first-child,
+  .message {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 .confirm-dialog__description code {

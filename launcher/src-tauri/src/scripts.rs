@@ -362,6 +362,7 @@ fn update_progress(
     next_progress: u8,
 ) {
     let current = progress.load(Ordering::Relaxed);
+    let next_progress = jobs::clamp_running_progress(next_progress);
     if next_progress < current {
         return;
     }

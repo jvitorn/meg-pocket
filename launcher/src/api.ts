@@ -89,6 +89,18 @@ export function openDockerGuide(): Promise<void> {
   return invoke<void>("openDockerGuide");
 }
 
+export function openDataFolder(): Promise<void> {
+  return invoke<void>("openDataFolder");
+}
+
+export function openBackupsFolder(): Promise<void> {
+  return invoke<void>("openBackupsFolder");
+}
+
+export function openLogsFolder(): Promise<void> {
+  return invoke<void>("openLogsFolder");
+}
+
 export function readLogs(options: DockerCommandOptions = {}): Promise<string> {
   return invoke<string>("readLogs", options);
 }
