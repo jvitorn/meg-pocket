@@ -34,28 +34,51 @@ jobs:
 
       - name: Resolve release metadata
         id: release
-        shell: pwsh
+        shell: bash
         env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
-          INPUT_RUNTIME_TAG_PREFIX: ${{ github.event.inputs.runtime_tag_prefix }}
+          INPUT_VERSION: ${{ github.event.inputs.version || '' }}
+          INPUT_RUNTIME_TAG_PREFIX: ${{ github.event.inputs.runtime_tag_prefix || 'portable-runtime' }}
         run: |
-          $prefix = $env:INPUT_RUNTIME_TAG_PREFIX
-          if (-not $prefix) { $prefix = "portable-runtime" }
+          set -euo pipefail
 
-          $version = $env:INPUT_VERSION
-          if (-not $version) { $version = "${{ github.ref_name }}" }
-          if ($version.StartsWith("$prefix-")) {
-            $version = $version.Substring($prefix.Length + 1)
-          }
-          if (-not $version.StartsWith("v")) { $version = "v$version" }
+          prefix="${INPUT_RUNTIME_TAG_PREFIX:-portable-runtime}"
+          prefix="${prefix%-}"
+          if [ -z "$prefix" ]; then
+            echo "::error::runtime_tag_prefix cannot be empty"
+            exit 1
+          fi
 
-          $runtimeTag = "$prefix-$version"
-          $plain = $version -replace '^v', ''
+          version="${INPUT_VERSION:-$GITHUB_REF_NAME}"
+          if [ -z "$version" ]; then
+            echo "::error::version is required"
+            exit 1
+          fi
 
-          "version=$version" >> $env:GITHUB_OUTPUT
-          "plain=$plain" >> $env:GITHUB_OUTPUT
-          "runtime_tag=$runtimeTag" >> $env:GITHUB_OUTPUT
-          "runtime_tag_prefix=$prefix" >> $env:GITHUB_OUTPUT
+          if [[ "$version" == "$prefix-"* ]]; then
+            version="${version#"$prefix-"}"
+          fi
+
+          if [[ "$version" != v* ]]; then
+            version="v$version"
+          fi
+
+          if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version '$version'. Expected vX.Y.Z."
+            exit 1
+          fi
+
+          runtime_tag="$prefix-$version"
+          plain="${version#v}"
+
+          {
+            echo "version=$version"
+            echo "plain=$plain"
+            echo "runtime_tag=$runtime_tag"
+            echo "runtime_tag_prefix=$prefix"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Portable runtime version: $version"
+          echo "Technical release tag: $runtime_tag"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -64,32 +87,276 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Build portable runtime package with shared core
-        id: package
-        shell: pwsh
+      - name: Install npm dependencies
+        shell: bash
+        run: npm ci
+
+      - name: Build Next standalone app
+        shell: bash
         env:
-          INPUT_POSTGRES_ZIP_URL: ${{ github.event.inputs.postgres_zip_url }}
-          VAR_POSTGRES_ZIP_URL: ${{ vars.POSTGRES_WINDOWS_ZIP_URL }}
+          NEXT_REACT_COMPILER: "false"
+        run: npm run build
+
+      - name: Build portable runtime package
+        id: package
+        shell: bash
+        env:
+          APP_VERSION: ${{ steps.release.outputs.version }}
+          PLAIN_VERSION: ${{ steps.release.outputs.plain }}
+          RUNTIME_TAG: ${{ steps.release.outputs.runtime_tag }}
+          INPUT_POSTGRES_ZIP_URL: ${{ github.event.inputs.postgres_zip_url || '' }}
+          VAR_POSTGRES_ZIP_URL: ${{ vars.POSTGRES_WINDOWS_ZIP_URL || '' }}
+          NODE_PORTABLE_VERSION: "22.13.0"
+          NGINX_VERSION: "1.27.4"
+          POSTGRES_VERSION: "16.14"
+          DEFAULT_POSTGRES_ZIP_URL: "https://get.enterprisedb.com/postgresql/postgresql-16.14-1-windows-x64-binaries.zip"
         run: |
-          $scriptArgs = @(
-            "-Version", "${{ steps.release.outputs.version }}",
-            "-OutputDir", "portable-runtime-dist",
-            "-RuntimeTagPrefix", "${{ steps.release.outputs.runtime_tag_prefix }}"
+          set -euo pipefail
+
+          output_dir="portable-runtime-dist"
+          runtime_dir="portable-runtime"
+          cache_dir=".local-cache/portable-runtime"
+          work_dir="$output_dir/work"
+          zip_name="meg-pocket-portable-runtime-windows-x64-$APP_VERSION.zip"
+          zip_path="$output_dir/$zip_name"
+          manifest_path="$output_dir/portable-manifest.json"
+
+          if command -v 7z >/dev/null 2>&1; then
+            seven_zip="$(command -v 7z)"
+          elif [ -x "/c/Program Files/7-Zip/7z.exe" ]; then
+            seven_zip="/c/Program Files/7-Zip/7z.exe"
+          elif [ -x "/c/Program Files (x86)/7-Zip/7z.exe" ]; then
+            seven_zip="/c/Program Files (x86)/7-Zip/7z.exe"
+          else
+            echo "::error::7-Zip was not found on the Windows runner"
+            exit 1
+          fi
+
+          require_path() {
+            local path_value="$1"
+            local description="$2"
+            if [ ! -e "$path_value" ]; then
+              echo "::error::Missing $description: $path_value"
+              exit 1
+            fi
+          }
+
+          copy_file() {
+            local source="$1"
+            local destination="$2"
+            require_path "$source" "file"
+            mkdir -p "$(dirname "$destination")"
+            cp -f "$source" "$destination"
+          }
+
+          copy_dir() {
+            local source="$1"
+            local destination="$2"
+            require_path "$source" "directory"
+            rm -rf "$destination"
+            mkdir -p "$(dirname "$destination")"
+            cp -a "$source" "$destination"
+          }
+
+          copy_dir_contents() {
+            local source="$1"
+            local destination="$2"
+            require_path "$source" "directory"
+            mkdir -p "$destination"
+            cp -a "$source"/. "$destination"/
+          }
+
+          download_zip() {
+            local name="$1"
+            local url="$2"
+            local cache_file="$3"
+
+            if [ -s "$cache_file" ]; then
+              echo "Using cached $name: $cache_file"
+              return
+            fi
+
+            echo "Downloading $name: $url"
+            mkdir -p "$(dirname "$cache_file")"
+            rm -f "$cache_file.tmp"
+            curl --fail --location --retry 5 --retry-delay 3 --connect-timeout 30 \
+              --output "$cache_file.tmp" "$url"
+
+            if [ ! -s "$cache_file.tmp" ]; then
+              echo "::error::Downloaded $name ZIP is empty: $cache_file"
+              exit 1
+            fi
+
+            mv "$cache_file.tmp" "$cache_file"
+          }
+
+          extract_zip() {
+            local zip_file="$1"
+            local destination="$2"
+            rm -rf "$destination"
+            mkdir -p "$destination"
+            "$seven_zip" x -y "-o$(cygpath -w "$destination")" "$(cygpath -w "$zip_file")" >/dev/null
+          }
+
+          postgres_zip_name_from_url() {
+            local url_without_query="${1%%\?*}"
+            local file_name="${url_without_query##*/}"
+            if [[ "$file_name" == *.zip ]]; then
+              echo "$file_name"
+            else
+              echo "postgresql-$POSTGRES_VERSION-windows-x64-binaries.zip"
+            fi
+          }
+
+          echo "Building portable runtime $RUNTIME_TAG"
+          echo "Using 7-Zip: $seven_zip"
+
+          rm -rf "$runtime_dir" "$work_dir" "$zip_path" "$manifest_path"
+          mkdir -p \
+            "$runtime_dir/runtime/node" \
+            "$runtime_dir/runtime/postgres" \
+            "$runtime_dir/runtime/nginx" \
+            "$runtime_dir/app" \
+            "$runtime_dir/prisma" \
+            "$runtime_dir/scripts" \
+            "$runtime_dir/templates" \
+            "$output_dir" \
+            "$cache_dir" \
+            "$work_dir"
+
+          copy_dir_contents ".next/standalone" "$runtime_dir/app"
+          mkdir -p "$runtime_dir/app/.next"
+          copy_dir ".next/static" "$runtime_dir/app/.next/static"
+          copy_dir "public" "$runtime_dir/app/public"
+
+          copy_file "prisma/schema.prisma" "$runtime_dir/prisma/schema.prisma"
+          copy_dir "prisma/migrations" "$runtime_dir/prisma/migrations"
+          copy_dir "prisma/seeds" "$runtime_dir/prisma/seeds"
+
+          copy_file "scripts/run-sql-file.mjs" "$runtime_dir/scripts/run-sql-file.mjs"
+          copy_file "scripts/portable-db-setup.mjs" "$runtime_dir/scripts/portable-db-setup.mjs"
+          copy_dir "scripts/lib" "$runtime_dir/scripts/lib"
+          copy_dir_contents "launcher/portable/templates" "$runtime_dir/templates"
+
+          node_zip_name="node-v$NODE_PORTABLE_VERSION-win-x64.zip"
+          node_zip="$cache_dir/$node_zip_name"
+          download_zip "Node.js" "https://nodejs.org/dist/v$NODE_PORTABLE_VERSION/$node_zip_name" "$node_zip"
+          extract_zip "$node_zip" "$work_dir/node-dist"
+          copy_dir_contents "$work_dir/node-dist/node-v$NODE_PORTABLE_VERSION-win-x64" "$runtime_dir/runtime/node"
+
+          nginx_zip_name="nginx-$NGINX_VERSION.zip"
+          nginx_zip="$cache_dir/$nginx_zip_name"
+          download_zip "Nginx" "https://nginx.org/download/$nginx_zip_name" "$nginx_zip"
+          extract_zip "$nginx_zip" "$work_dir/nginx-dist"
+          copy_dir_contents "$work_dir/nginx-dist/nginx-$NGINX_VERSION" "$runtime_dir/runtime/nginx"
+          mkdir -p "$runtime_dir/runtime/nginx/logs" "$runtime_dir/runtime/nginx/temp"
+
+          postgres_url="${INPUT_POSTGRES_ZIP_URL:-${VAR_POSTGRES_ZIP_URL:-$DEFAULT_POSTGRES_ZIP_URL}}"
+          postgres_zip_name="$(postgres_zip_name_from_url "$postgres_url")"
+          postgres_zip="$cache_dir/$postgres_zip_name"
+          download_zip "PostgreSQL" "$postgres_url" "$postgres_zip"
+          extract_zip "$postgres_zip" "$work_dir/postgres-dist"
+
+          postgres_exe="$(find "$work_dir/postgres-dist" -type f -path '*/bin/postgres.exe' -print -quit)"
+          if [ -z "$postgres_exe" ]; then
+            echo "::error::postgres.exe not found in a bin/ directory inside PostgreSQL ZIP"
+            exit 1
+          fi
+          postgres_root="$(dirname "$(dirname "$postgres_exe")")"
+          copy_dir_contents "$postgres_root" "$runtime_dir/runtime/postgres"
+
+          required_paths=(
+            "runtime/node/node.exe"
+            "runtime/postgres/bin/postgres.exe"
+            "runtime/postgres/bin/pg_ctl.exe"
+            "runtime/postgres/bin/initdb.exe"
+            "runtime/postgres/bin/psql.exe"
+            "runtime/postgres/bin/pg_dump.exe"
+            "runtime/postgres/bin/pg_restore.exe"
+            "runtime/postgres/bin/createdb.exe"
+            "runtime/nginx/nginx.exe"
+            "app/server.js"
+            "app/.next"
+            "app/public"
+            "prisma/schema.prisma"
+            "prisma/migrations"
+            "prisma/seeds/generated/index.sql"
+            "scripts/run-sql-file.mjs"
+            "scripts/portable-db-setup.mjs"
           )
 
-          $postgresZipUrl = $env:INPUT_POSTGRES_ZIP_URL
-          if (-not $postgresZipUrl) { $postgresZipUrl = $env:VAR_POSTGRES_ZIP_URL }
-          if ($postgresZipUrl) { $scriptArgs += @("-PostgresZipUrl", $postgresZipUrl) }
+          missing_paths=()
+          for required_path in "${required_paths[@]}"; do
+            if [ ! -e "$runtime_dir/$required_path" ]; then
+              missing_paths+=("$required_path")
+            fi
+          done
 
-          & ./scripts/portable-runtime/build-core-windows.ps1 @scriptArgs
+          if [ "${#missing_paths[@]}" -gt 0 ]; then
+            printf "::error::Missing required portable runtime files:\\n%s\\n" "${missing_paths[*]}"
+            exit 1
+          fi
 
-          $zipFile = "portable-runtime-dist/meg-pocket-portable-runtime-windows-x64-${{ steps.release.outputs.version }}.zip"
-          $manifestFile = "portable-runtime-dist/portable-manifest.json"
-          if (-not (Test-Path $zipFile)) { Write-Error "Missing runtime ZIP: $zipFile"; exit 1 }
-          if (-not (Test-Path $manifestFile)) { Write-Error "Missing portable manifest: $manifestFile"; exit 1 }
+          zip_abs="$PWD/$zip_path"
+          rm -f "$zip_path"
+          (
+            cd "$runtime_dir"
+            "$seven_zip" a -tzip "$(cygpath -w "$zip_abs")" . >/dev/null
+          )
 
-          "file=$zipFile" >> $env:GITHUB_OUTPUT
-          "manifest=$manifestFile" >> $env:GITHUB_OUTPUT
+          if [ ! -s "$zip_path" ]; then
+            echo "::error::Missing runtime ZIP: $zip_path"
+            exit 1
+          fi
+
+          sha256="$(sha256sum "$zip_path" | awk '{print $1}')"
+          size_bytes="$(wc -c < "$zip_path" | tr -d '[:space:]')"
+
+          export MANIFEST_PATH="$manifest_path"
+          export MANIFEST_VERSION="$PLAIN_VERSION"
+          export MANIFEST_RUNTIME_TAG="$RUNTIME_TAG"
+          export MANIFEST_REPOSITORY="${GITHUB_REPOSITORY:-jvitorn/meg-pocket}"
+          export MANIFEST_ZIP_NAME="$zip_name"
+          export MANIFEST_ZIP_SHA256="$sha256"
+          export MANIFEST_ZIP_SIZE="$size_bytes"
+
+          node <<'NODE'
+          const fs = require("node:fs");
+
+          const repository = process.env.MANIFEST_REPOSITORY || "jvitorn/meg-pocket";
+          const runtimeTag = process.env.MANIFEST_RUNTIME_TAG;
+          const zipName = process.env.MANIFEST_ZIP_NAME;
+          const manifest = {
+            version: process.env.MANIFEST_VERSION,
+            runtimeVersion: runtimeTag,
+            windows: {
+              x64: {
+                file: zipName,
+                url: `https://github.com/${repository}/releases/download/${runtimeTag}/${zipName}`,
+                sha256: process.env.MANIFEST_ZIP_SHA256,
+                sizeBytes: Number(process.env.MANIFEST_ZIP_SIZE),
+              },
+            },
+            requirements: {
+              node: ">=22.12.0 <23",
+              postgres: "16.x",
+              nginx: "1.x",
+            },
+          };
+
+          fs.writeFileSync(process.env.MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+          NODE
+
+          rm -rf "$work_dir"
+
+          require_path "$manifest_path" "portable manifest"
+          echo "Portable runtime ZIP: $zip_path"
+          echo "Portable manifest: $manifest_path"
+
+          {
+            echo "file=$zip_path"
+            echo "manifest=$manifest_path"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -102,19 +369,29 @@ jobs:
 
       - name: Publish to technical runtime release
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-        shell: pwsh
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUNTIME_TAG: ${{ steps.release.outputs.runtime_tag }}
+          APP_VERSION: ${{ steps.release.outputs.version }}
+          RUNTIME_ZIP: ${{ steps.package.outputs.file }}
+          RUNTIME_MANIFEST: ${{ steps.package.outputs.manifest }}
         run: |
-          $tag = "${{ steps.release.outputs.runtime_tag }}"
-          gh release view $tag 2>$null
-          if ($LASTEXITCODE -ne 0) {
-            $notes = @"
+          set -euo pipefail
+
+          notes_file="$(mktemp)"
+          cat > "$notes_file" <<'EOF'
           Release tecnica do runtime portatil Windows x64.
 
           Esta release contem apenas assets consumidos pelo launcher. A release final do launcher continua separada.
-          "@
-            gh release create $tag --title "M&G Pocket Portable Runtime ${{ steps.release.outputs.version }}" --latest=false --notes $notes
-          }
-          gh release upload $tag "${{ steps.package.outputs.file }}" "${{ steps.package.outputs.manifest }}" --clobber
-          gh release edit $tag --latest=false
+          EOF
+
+          if ! gh release view "$RUNTIME_TAG" >/dev/null 2>&1; then
+            gh release create "$RUNTIME_TAG" \
+              --title "M&G Pocket Portable Runtime $APP_VERSION" \
+              --latest=false \
+              --notes-file "$notes_file"
+          fi
+
+          gh release upload "$RUNTIME_TAG" "$RUNTIME_ZIP" "$RUNTIME_MANIFEST" --clobber
+          gh release edit "$RUNTIME_TAG" --latest=false
