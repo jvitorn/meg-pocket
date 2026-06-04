@@ -18,8 +18,8 @@ use crate::{
     },
 };
 
-const DEFAULT_MANIFEST_URL: &str =
-    "https://github.com/jvitorn/meg-pocket/releases/latest/download/portable-manifest.json";
+const PORTABLE_RUNTIME_RELEASE_PREFIX: &str = "portable-runtime";
+const PORTABLE_RUNTIME_RELEASES_BASE_URL: &str = "https://github.com/jvitorn/meg-pocket/releases/download";
 
 pub fn install_or_repair_runtime(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<()> {
     if !cfg!(target_os = "windows") {
@@ -83,8 +83,7 @@ fn load_manifest(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<PortableManife
         return parse_manifest(&text);
     }
 
-    let url = env::var("MG_POCKET_PORTABLE_MANIFEST_URL")
-        .unwrap_or_else(|_| DEFAULT_MANIFEST_URL.to_string());
+    let url = env::var("MG_POCKET_PORTABLE_MANIFEST_URL").unwrap_or_else(|_| default_manifest_url());
     let manifest_path = paths::mg_pocket_downloads_dir()?.join("portable-manifest.json");
     download_url_to_file(ctx, &url, &manifest_path).map_err(|error| {
         LauncherError::new(
@@ -102,6 +101,14 @@ fn parse_manifest(text: &str) -> LauncherResult<PortableManifest> {
         .map_err(|error| LauncherError::technical("Manifest portátil inválido", error))?;
     validate_asset(&manifest.windows.x64)?;
     Ok(manifest)
+}
+
+fn default_manifest_url() -> String {
+    format!(
+        "{}/{PORTABLE_RUNTIME_RELEASE_PREFIX}-v{}/portable-manifest.json",
+        PORTABLE_RUNTIME_RELEASES_BASE_URL,
+        paths::launcher_version()
+    )
 }
 
 fn validate_asset(asset: &ManifestAsset) -> LauncherResult<()> {
