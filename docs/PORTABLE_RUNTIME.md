@@ -37,9 +37,9 @@ O build do runtime portátil tem dois fluxos separados:
 - GitHub Actions: `.github/workflows/build-portable-runtime-windows.yml` é
   autônomo e não chama scripts PowerShell do repositório. Ele instala
   dependências, roda o build do Next, monta `portable-runtime/`, baixa Node.js,
-  Nginx e PostgreSQL, valida os arquivos obrigatórios, gera o ZIP, calcula
-  SHA-256, escreve `portable-manifest.json`, publica artifact e cria/atualiza a
-  release técnica.
+  baixa Nginx, instala PostgreSQL 16 pelo MSYS2, valida os arquivos
+  obrigatórios, gera o ZIP, calcula SHA-256, escreve `portable-manifest.json`,
+  publica artifact e cria/atualiza a release técnica.
 
 Os scripts PowerShell continuam existindo para o build local. O workflow não
 depende deles.
@@ -110,10 +110,11 @@ Parâmetros principais:
   publica assets e não repassa publicação ao core.
 - `RuntimeTagPrefix`: prefixo da release técnica, padrão `portable-runtime`.
 
-Por padrão, o script usa PostgreSQL 16.14 Windows x64 publicado pela EDB. Se
-precisar trocar a origem, informe `PostgresZipUrl` no script, o input
-`postgres_zip_url` no workflow, ou a variável de repositório
-`POSTGRES_WINDOWS_ZIP_URL`.
+Por padrão, o script local usa PostgreSQL 16.14 Windows x64 publicado pela EDB.
+No GitHub Actions, o workflow usa o pacote MSYS2
+`mingw-w64-ucrt-x86_64-postgresql-16` para evitar bloqueios de download da EDB
+nos runners. Se precisar trocar a origem no workflow, informe explicitamente o
+input `postgres_zip_url`.
 
 A fonte do PostgreSQL precisa entregar `bin/postgres.exe`, `pg_ctl.exe`,
 `initdb.exe`, `psql.exe`, `pg_dump.exe`, `pg_restore.exe`, `createdb.exe` e as

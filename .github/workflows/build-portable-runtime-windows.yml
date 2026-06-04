@@ -13,7 +13,7 @@ on:
         default: "portable-runtime"
         type: string
       postgres_zip_url:
-        description: "Optional Windows x64 PostgreSQL ZIP override. Defaults to EDB PostgreSQL 16.14 binaries."
+        description: "Optional Windows x64 PostgreSQL ZIP override. Defaults to MSYS2 PostgreSQL 16 binaries."
         required: false
         type: string
   push:
@@ -97,6 +97,14 @@ jobs:
           NEXT_REACT_COMPILER: "false"
         run: npm run build
 
+      - name: Setup MSYS2 PostgreSQL 16
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-postgresql-16
+
       - name: Build portable runtime package
         id: package
         shell: bash
@@ -105,11 +113,10 @@ jobs:
           PLAIN_VERSION: ${{ steps.release.outputs.plain }}
           RUNTIME_TAG: ${{ steps.release.outputs.runtime_tag }}
           INPUT_POSTGRES_ZIP_URL: ${{ github.event.inputs.postgres_zip_url || '' }}
-          VAR_POSTGRES_ZIP_URL: ${{ vars.POSTGRES_WINDOWS_ZIP_URL || '' }}
           NODE_PORTABLE_VERSION: "22.13.0"
           NGINX_VERSION: "1.27.4"
           POSTGRES_VERSION: "16.14"
-          DEFAULT_POSTGRES_ZIP_URL: "https://get.enterprisedb.com/postgresql/postgresql-16.14-1-windows-x64-binaries.zip"
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
         run: |
           set -euo pipefail
 
@@ -120,6 +127,9 @@ jobs:
           zip_name="meg-pocket-portable-runtime-windows-x64-$APP_VERSION.zip"
           zip_path="$output_dir/$zip_name"
           manifest_path="$output_dir/portable-manifest.json"
+          msys2_root="$(cygpath -u "$MSYS2_LOCATION")"
+          msys2_postgres_root="$msys2_root/ucrt64/opt/pg-16"
+          msys2_ucrt64_bin="$msys2_root/ucrt64/bin"
 
           if command -v 7z >/dev/null 2>&1; then
             seven_zip="$(command -v 7z)"
@@ -208,6 +218,23 @@ jobs:
             fi
           }
 
+          add_postgres_from_msys2() {
+            local postgres_root="$1"
+            local ucrt64_bin="$2"
+
+            require_path "$postgres_root/bin/postgres.exe" "MSYS2 PostgreSQL postgres.exe"
+            require_path "$postgres_root/share" "MSYS2 PostgreSQL share directory"
+            require_path "$ucrt64_bin" "MSYS2 UCRT64 bin directory"
+
+            copy_dir_contents "$postgres_root" "$runtime_dir/runtime/postgres"
+
+            # MSYS2 keeps PostgreSQL executables in /opt/pg-16/bin and shared
+            # runtime DLLs in /ucrt64/bin. Keeping those DLLs beside postgres.exe
+            # makes the extracted runtime independent from the runner install.
+            find "$ucrt64_bin" -maxdepth 1 -type f \( -iname '*.dll' \) \
+              -exec cp -f {} "$runtime_dir/runtime/postgres/bin/" \;
+          }
+
           echo "Building portable runtime $RUNTIME_TAG"
           echo "Using 7-Zip: $seven_zip"
 
@@ -251,19 +278,22 @@ jobs:
           copy_dir_contents "$work_dir/nginx-dist/nginx-$NGINX_VERSION" "$runtime_dir/runtime/nginx"
           mkdir -p "$runtime_dir/runtime/nginx/logs" "$runtime_dir/runtime/nginx/temp"
 
-          postgres_url="${INPUT_POSTGRES_ZIP_URL:-${VAR_POSTGRES_ZIP_URL:-$DEFAULT_POSTGRES_ZIP_URL}}"
-          postgres_zip_name="$(postgres_zip_name_from_url "$postgres_url")"
-          postgres_zip="$cache_dir/$postgres_zip_name"
-          download_zip "PostgreSQL" "$postgres_url" "$postgres_zip"
-          extract_zip "$postgres_zip" "$work_dir/postgres-dist"
+          if [ -n "$INPUT_POSTGRES_ZIP_URL" ]; then
+            postgres_zip_name="$(postgres_zip_name_from_url "$INPUT_POSTGRES_ZIP_URL")"
+            postgres_zip="$cache_dir/$postgres_zip_name"
+            download_zip "PostgreSQL" "$INPUT_POSTGRES_ZIP_URL" "$postgres_zip"
+            extract_zip "$postgres_zip" "$work_dir/postgres-dist"
 
-          postgres_exe="$(find "$work_dir/postgres-dist" -type f -path '*/bin/postgres.exe' -print -quit)"
-          if [ -z "$postgres_exe" ]; then
-            echo "::error::postgres.exe not found in a bin/ directory inside PostgreSQL ZIP"
-            exit 1
+            postgres_exe="$(find "$work_dir/postgres-dist" -type f -path '*/bin/postgres.exe' -print -quit)"
+            if [ -z "$postgres_exe" ]; then
+              echo "::error::postgres.exe not found in a bin/ directory inside PostgreSQL ZIP"
+              exit 1
+            fi
+            postgres_root="$(dirname "$(dirname "$postgres_exe")")"
+            copy_dir_contents "$postgres_root" "$runtime_dir/runtime/postgres"
+          else
+            add_postgres_from_msys2 "$msys2_postgres_root" "$msys2_ucrt64_bin"
           fi
-          postgres_root="$(dirname "$(dirname "$postgres_exe")")"
-          copy_dir_contents "$postgres_root" "$runtime_dir/runtime/postgres"
 
           required_paths=(
             "runtime/node/node.exe"
