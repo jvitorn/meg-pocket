@@ -57,7 +57,7 @@ function Assert-RequiredPath {
   )
 
   if (-not (Test-Path -LiteralPath $PathValue)) {
-    throw "Missing $Description: $PathValue"
+    throw "Missing ${Description}: $PathValue"
   }
 }
 
@@ -138,7 +138,7 @@ function Ensure-CachedZip {
   if (Test-Path -LiteralPath $CacheFile) {
     $existing = Get-Item -LiteralPath $CacheFile
     if ($existing.Length -gt 0) {
-      Write-Host "Using cached $Name: $CacheFile"
+      Write-Host "Using cached ${Name}: $CacheFile"
       return $CacheFile
     }
     Remove-Item -LiteralPath $CacheFile -Force
@@ -148,7 +148,7 @@ function Ensure-CachedZip {
     throw "Missing cached $Name at $CacheFile. Run once without -SkipDownload to populate .local-cache/portable-runtime/."
   }
 
-  Write-Host "Downloading $Name: $Url"
+  Write-Host "Downloading ${Name}: $Url"
   Invoke-WebRequest -Uri $Url -OutFile $CacheFile
   $downloaded = Get-Item -LiteralPath $CacheFile
   if ($downloaded.Length -le 0) {
