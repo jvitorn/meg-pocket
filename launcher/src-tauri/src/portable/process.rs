@@ -8,6 +8,7 @@ use std::{
 use crate::{
     errors::{LauncherError, LauncherResult},
     paths,
+    scripts,
     portable::{
         diagnose, install, nginx, node, postgres,
         types::{PortableRuntimeConfig, ProcessInfo, ProcessRegistry, unix_timestamp_string},
@@ -99,6 +100,7 @@ fn start_nginx(ctx: &mut PortableJob<'_, '_>, _config: &PortableRuntimeConfig) -
     command.arg("-c").arg(paths::mg_pocket_config_dir()?.join("nginx.conf"));
     command.arg("-p").arg(paths::mg_pocket_runtime_dir()?.join("nginx"));
     command.current_dir(paths::mg_pocket_runtime_dir()?.join("nginx"));
+    scripts::prepare_child_command(&mut command);
     command.stdout(Stdio::null()).stderr(Stdio::null());
     ctx.progress("Iniciando sistema", "Iniciando Nginx portátil.", 75);
     command
@@ -128,9 +130,9 @@ fn kill_pid_if_owned(pid: u32, expected_path: &Path) -> LauncherResult<()> {
     }
 
     if cfg!(target_os = "windows") {
-        let _ = Command::new("taskkill")
-            .args(["/PID", &pid.to_string(), "/T", "/F"])
-            .status();
+        let mut command = Command::new("taskkill");
+        scripts::prepare_child_command(&mut command);
+        let _ = command.args(["/PID", &pid.to_string(), "/T", "/F"]).status();
     } else {
         let _ = Command::new("kill").args(["-TERM", &pid.to_string()]).status();
     }
@@ -139,7 +141,9 @@ fn kill_pid_if_owned(pid: u32, expected_path: &Path) -> LauncherResult<()> {
 
 fn pid_command_line(pid: u32) -> Option<String> {
     if cfg!(target_os = "windows") {
-        let output = Command::new("powershell.exe")
+        let mut command = Command::new("powershell.exe");
+        scripts::prepare_child_command(&mut command);
+        let output = command
             .args([
                 "-NoProfile",
                 "-Command",

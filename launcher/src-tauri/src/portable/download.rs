@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     env, fs,
     io::Read,
     path::{Path, PathBuf},
@@ -6,6 +7,7 @@ use std::{
     time::Duration,
 };
 
+use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
 use crate::{
@@ -19,7 +21,9 @@ use crate::{
 };
 
 const PORTABLE_RUNTIME_RELEASE_PREFIX: &str = "portable-runtime";
-const PORTABLE_RUNTIME_RELEASES_BASE_URL: &str = "https://github.com/jvitorn/meg-pocket/releases/download";
+const PORTABLE_MANIFEST_ASSET: &str = "portable-manifest.json";
+const GITHUB_RELEASES_API_URL: &str =
+    "https://api.github.com/repos/jvitorn/meg-pocket/releases?per_page=100";
 
 pub fn install_or_repair_runtime(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<()> {
     if !cfg!(target_os = "windows") {
@@ -83,7 +87,11 @@ fn load_manifest(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<PortableManife
         return parse_manifest(&text);
     }
 
-    let url = env::var("MG_POCKET_PORTABLE_MANIFEST_URL").unwrap_or_else(|_| default_manifest_url());
+    let url = env::var("MG_POCKET_PORTABLE_MANIFEST_URL")
+        .ok()
+        .filter(|url| !url.trim().is_empty())
+        .map(Ok)
+        .unwrap_or_else(|| latest_runtime_manifest_url(ctx))?;
     let manifest_path = paths::mg_pocket_downloads_dir()?.join("portable-manifest.json");
     download_url_to_file(ctx, &url, &manifest_path).map_err(|error| {
         LauncherError::new(
@@ -91,9 +99,35 @@ fn load_manifest(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<PortableManife
             error.technical_message().to_string(),
         )
     })?;
-    let text = fs::read_to_string(manifest_path)
-        .map_err(|error| LauncherError::technical("Não foi possível ler manifest portátil", error))?;
+    let text = fs::read_to_string(manifest_path).map_err(|error| {
+        LauncherError::technical("Não foi possível ler manifest portátil", error)
+    })?;
     parse_manifest(&text)
+}
+
+fn latest_runtime_manifest_url(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<String> {
+    let url = env::var("MG_POCKET_PORTABLE_RELEASES_URL")
+        .ok()
+        .filter(|url| !url.trim().is_empty())
+        .unwrap_or_else(default_releases_api_url);
+    let releases_path = paths::mg_pocket_downloads_dir()?.join("portable-releases.json");
+
+    ctx.progress(
+        "Baixando arquivos necessários",
+        "Consultando releases do runtime portátil.",
+        18,
+    );
+    download_url_to_file(ctx, &url, &releases_path).map_err(|error| {
+        LauncherError::new(
+            "Não foi possível consultar as releases do runtime portátil.",
+            error.technical_message().to_string(),
+        )
+    })?;
+
+    let text = fs::read_to_string(releases_path).map_err(|error| {
+        LauncherError::technical("Não foi possível ler releases portáteis", error)
+    })?;
+    resolve_latest_runtime_manifest_url(&text)
 }
 
 fn parse_manifest(text: &str) -> LauncherResult<PortableManifest> {
@@ -103,16 +137,115 @@ fn parse_manifest(text: &str) -> LauncherResult<PortableManifest> {
     Ok(manifest)
 }
 
-fn default_manifest_url() -> String {
-    format!(
-        "{}/{PORTABLE_RUNTIME_RELEASE_PREFIX}-v{}/portable-manifest.json",
-        PORTABLE_RUNTIME_RELEASES_BASE_URL,
-        paths::launcher_version()
-    )
+fn default_releases_api_url() -> String {
+    GITHUB_RELEASES_API_URL.to_string()
+}
+
+#[derive(Debug, Deserialize)]
+struct GithubRelease {
+    tag_name: String,
+    #[serde(default)]
+    draft: bool,
+    published_at: Option<String>,
+    created_at: Option<String>,
+    #[serde(default)]
+    assets: Vec<GithubReleaseAsset>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GithubReleaseAsset {
+    name: String,
+    browser_download_url: String,
+}
+
+fn resolve_latest_runtime_manifest_url(text: &str) -> LauncherResult<String> {
+    let releases = serde_json::from_str::<Vec<GithubRelease>>(text).map_err(|error| {
+        LauncherError::technical("Lista de releases do runtime inválida", error)
+    })?;
+    let release = latest_runtime_release(&releases).ok_or_else(|| {
+        LauncherError::friendly("Não encontrei nenhuma release técnica do runtime portátil.")
+    })?;
+    let asset = release
+        .assets
+        .iter()
+        .find(|asset| asset.name.eq_ignore_ascii_case(PORTABLE_MANIFEST_ASSET))
+        .ok_or_else(|| {
+            LauncherError::new(
+                format!(
+                    "A release {} não contém o manifest do runtime portátil.",
+                    release.tag_name
+                ),
+                format!(
+                    "Asset ausente em {}: {}",
+                    release.tag_name, PORTABLE_MANIFEST_ASSET
+                ),
+            )
+        })?;
+
+    if asset.browser_download_url.trim().is_empty() {
+        return Err(LauncherError::new(
+            format!(
+                "A release {} contém um manifest portátil sem URL de download.",
+                release.tag_name
+            ),
+            format!("browser_download_url vazio em {}", release.tag_name),
+        ));
+    }
+
+    Ok(asset.browser_download_url.clone())
+}
+
+fn latest_runtime_release(releases: &[GithubRelease]) -> Option<&GithubRelease> {
+    releases
+        .iter()
+        .filter(|release| !release.draft && runtime_release_version(&release.tag_name).is_some())
+        .max_by(|left, right| compare_runtime_releases(left, right))
+}
+
+fn compare_runtime_releases(left: &GithubRelease, right: &GithubRelease) -> Ordering {
+    release_sort_time(left)
+        .cmp(release_sort_time(right))
+        .then_with(|| {
+            runtime_release_version(&left.tag_name).cmp(&runtime_release_version(&right.tag_name))
+        })
+        .then_with(|| left.tag_name.cmp(&right.tag_name))
+}
+
+fn release_sort_time(release: &GithubRelease) -> &str {
+    release
+        .published_at
+        .as_deref()
+        .or(release.created_at.as_deref())
+        .unwrap_or("")
+}
+
+fn runtime_release_version(tag: &str) -> Option<Vec<u64>> {
+    let prefix = format!("{PORTABLE_RUNTIME_RELEASE_PREFIX}-v");
+    let suffix = tag.strip_prefix(&prefix)?;
+    let version = suffix
+        .split_once('-')
+        .map(|(version, _)| version)
+        .unwrap_or(suffix);
+    let parts = version
+        .split('.')
+        .map(|part| {
+            if part.is_empty() || !part.chars().all(|ch| ch.is_ascii_digit()) {
+                return None;
+            }
+            part.parse::<u64>().ok()
+        })
+        .collect::<Option<Vec<_>>>()?;
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts)
+    }
 }
 
 fn validate_asset(asset: &ManifestAsset) -> LauncherResult<()> {
-    if asset.url.trim().is_empty() || asset.sha256.trim().is_empty() || asset.file.trim().is_empty() {
+    if asset.url.trim().is_empty() || asset.sha256.trim().is_empty() || asset.file.trim().is_empty()
+    {
         return Err(LauncherError::friendly(
             "Manifest portátil não contém asset Windows x64 válido.",
         ));
@@ -125,7 +258,11 @@ fn validate_asset(asset: &ManifestAsset) -> LauncherResult<()> {
     Ok(())
 }
 
-fn download_url_to_file(ctx: &mut PortableJob<'_, '_>, url: &str, destination: &Path) -> LauncherResult<()> {
+fn download_url_to_file(
+    ctx: &mut PortableJob<'_, '_>,
+    url: &str,
+    destination: &Path,
+) -> LauncherResult<()> {
     if let Some(parent) = destination.parent() {
         fs::create_dir_all(parent).map_err(|error| {
             LauncherError::technical("Não foi possível criar pasta de downloads", error)
@@ -140,7 +277,7 @@ fn download_url_to_file(ctx: &mut PortableJob<'_, '_>, url: &str, destination: &
             "Bypass",
             "-Command",
             &format!(
-                "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri '{}' -OutFile '{}'",
+                "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UserAgent 'mg-pocket-launcher' -Uri '{}' -OutFile '{}'",
                 powershell_escape(url),
                 powershell_escape_path(destination)
             ),
@@ -148,11 +285,19 @@ fn download_url_to_file(ctx: &mut PortableJob<'_, '_>, url: &str, destination: &
         command
     } else {
         let mut command = Command::new("curl");
-        command.args(["-fL", url, "-o"]);
+        command.args(["-fL", "-A", "mg-pocket-launcher", url, "-o"]);
         command.arg(destination);
         command
     };
-    super::run_command(ctx, "Baixando arquivos necessários", "Baixando arquivo.", 40, &mut command, Duration::from_secs(20 * 60)).map(|_| ())
+    super::run_command(
+        ctx,
+        "Baixando arquivos necessários",
+        "Baixando arquivo.",
+        40,
+        &mut command,
+        Duration::from_secs(20 * 60),
+    )
+    .map(|_| ())
 }
 
 fn validate_sha256(path: &Path, expected: &str) -> LauncherResult<bool> {
@@ -180,8 +325,9 @@ fn validate_sha256(path: &Path, expected: &str) -> LauncherResult<bool> {
 fn extract_zip(ctx: &mut PortableJob<'_, '_>, zip_path: &Path) -> LauncherResult<PathBuf> {
     let tmp = paths::mg_pocket_tmp_dir()?.join(format!("portable-runtime-{}", std::process::id()));
     if tmp.exists() {
-        fs::remove_dir_all(&tmp)
-            .map_err(|error| LauncherError::technical("Não foi possível limpar tmp portátil", error))?;
+        fs::remove_dir_all(&tmp).map_err(|error| {
+            LauncherError::technical("Não foi possível limpar tmp portátil", error)
+        })?;
     }
     fs::create_dir_all(&tmp)
         .map_err(|error| LauncherError::technical("Não foi possível criar tmp portátil", error))?;
@@ -205,7 +351,14 @@ fn extract_zip(ctx: &mut PortableJob<'_, '_>, zip_path: &Path) -> LauncherResult
         command.arg("-q").arg(zip_path).arg("-d").arg(&tmp);
         command
     };
-    super::run_command(ctx, "Extraindo runtime", "Extraindo pacote.", 65, &mut command, Duration::from_secs(5 * 60))?;
+    super::run_command(
+        ctx,
+        "Extraindo runtime",
+        "Extraindo pacote.",
+        65,
+        &mut command,
+        Duration::from_secs(5 * 60),
+    )?;
 
     if tmp.join("runtime").is_dir() {
         return Ok(tmp);
@@ -247,7 +400,8 @@ fn copy_dir_all(source: &Path, destination: &Path) -> LauncherResult<()> {
     for entry in fs::read_dir(source)
         .map_err(|error| LauncherError::technical("Não foi possível ler pasta de origem", error))?
     {
-        let entry = entry.map_err(|error| LauncherError::technical("Não foi possível ler item", error))?;
+        let entry =
+            entry.map_err(|error| LauncherError::technical("Não foi possível ler item", error))?;
         let source_path = entry.path();
         let target_path = destination.join(entry.file_name());
         if source_path.is_dir() {
@@ -255,7 +409,9 @@ fn copy_dir_all(source: &Path, destination: &Path) -> LauncherResult<()> {
         } else {
             fs::copy(&source_path, &target_path)
                 .map(|_| ())
-                .map_err(|error| LauncherError::technical("Não foi possível copiar arquivo", error))?;
+                .map_err(|error| {
+                    LauncherError::technical("Não foi possível copiar arquivo", error)
+                })?;
         }
     }
     Ok(())
@@ -267,4 +423,100 @@ fn powershell_escape(value: &str) -> String {
 
 fn powershell_escape_path(path: &Path) -> String {
     powershell_escape(path.to_string_lossy().as_ref())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_lookup_uses_github_release_list_instead_of_launcher_version_tag() {
+        let url = default_releases_api_url();
+
+        assert_eq!(
+            url,
+            "https://api.github.com/repos/jvitorn/meg-pocket/releases?per_page=100"
+        );
+        assert!(!url.contains("portable-runtime-v"));
+    }
+
+    #[test]
+    fn resolves_latest_runtime_manifest_even_when_launcher_release_is_newer() {
+        let releases = r#"
+[
+  {
+    "tag_name": "v1.2.1",
+    "published_at": "2026-06-08T12:00:00Z",
+    "assets": [
+      {
+        "name": "mg-pocket-launcher_1.2.1_x64-setup.exe",
+        "browser_download_url": "https://example.test/launcher.exe"
+      }
+    ]
+  },
+  {
+    "tag_name": "portable-runtime-v1.0.0",
+    "published_at": "2026-05-06T12:00:00Z",
+    "assets": [
+      {
+        "name": "portable-manifest.json",
+        "browser_download_url": "https://example.test/runtime/v1.0.0/portable-manifest.json"
+      }
+    ]
+  },
+  {
+    "tag_name": "portable-runtime-v1.1.0",
+    "published_at": "2026-06-04T12:00:00Z",
+    "assets": [
+      {
+        "name": "meg-pocket-portable-runtime-windows-x64-v1.1.0.zip",
+        "browser_download_url": "https://example.test/runtime/v1.1.0/runtime.zip"
+      },
+      {
+        "name": "portable-manifest.json",
+        "browser_download_url": "https://example.test/runtime/v1.1.0/portable-manifest.json"
+      }
+    ]
+  }
+]
+"#;
+
+        assert_eq!(
+            resolve_latest_runtime_manifest_url(releases).unwrap(),
+            "https://example.test/runtime/v1.1.0/portable-manifest.json"
+        );
+    }
+
+    #[test]
+    fn latest_runtime_release_without_manifest_fails_instead_of_installing_older_runtime() {
+        let releases = r#"
+[
+  {
+    "tag_name": "portable-runtime-v1.0.0",
+    "published_at": "2026-05-06T12:00:00Z",
+    "assets": [
+      {
+        "name": "portable-manifest.json",
+        "browser_download_url": "https://example.test/runtime/v1.0.0/portable-manifest.json"
+      }
+    ]
+  },
+  {
+    "tag_name": "portable-runtime-v1.1.0",
+    "published_at": "2026-06-04T12:00:00Z",
+    "assets": [
+      {
+        "name": "meg-pocket-portable-runtime-windows-x64-v1.1.0.zip",
+        "browser_download_url": "https://example.test/runtime/v1.1.0/runtime.zip"
+      }
+    ]
+  }
+]
+"#;
+
+        let error = resolve_latest_runtime_manifest_url(releases).unwrap_err();
+
+        assert!(error.friendly_message().contains("portable-runtime-v1.1.0"));
+        assert!(error.technical_message().contains("portable-manifest.json"));
+    }
 }

@@ -4,6 +4,7 @@ mod docker;
 mod jobs;
 mod paths;
 mod portable;
+mod process_utils;
 mod runtime;
 mod scripts;
 
@@ -280,8 +281,10 @@ fn open_allowed_url(url: &str) -> LauncherResult<()> {
 
     #[cfg(target_os = "windows")]
     {
-        Command::new("cmd")
-            .args(["/C", "start", "", url])
+        let mut command = Command::new(process_utils::WINDOWS_GRAPHICAL_OPENER);
+        process_utils::hide_child_window(&mut command);
+        command
+            .arg(url)
             .spawn()
             .map(|_| ())
             .map_err(|error| LauncherError::technical("Não foi possível abrir URL", error))
@@ -360,7 +363,9 @@ fn open_folder(path: &Path) -> LauncherResult<()> {
 
     #[cfg(target_os = "windows")]
     {
-        Command::new("explorer.exe")
+        let mut command = Command::new(process_utils::WINDOWS_GRAPHICAL_OPENER);
+        process_utils::hide_child_window(&mut command);
+        command
             .arg(path)
             .spawn()
             .map(|_| ())

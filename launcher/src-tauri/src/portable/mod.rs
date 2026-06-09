@@ -302,7 +302,7 @@ pub(crate) fn run_command(
     timeout: Duration,
 ) -> LauncherResult<CommandOutput> {
     ctx.progress(step, message, progress);
-    scripts::sanitize_child_environment(command);
+    scripts::prepare_child_command(command);
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
     let display = format!("{command:?}");
     let mut child = command

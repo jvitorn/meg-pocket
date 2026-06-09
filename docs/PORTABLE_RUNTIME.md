@@ -61,11 +61,13 @@ meg-pocket-portable-runtime-windows-x64-v1.1.0.zip
 ```
 
 O `portable-manifest.json` aponta para o ZIP dentro dessa mesma release técnica
-e inclui `sha256` e `sizeBytes`. O launcher baixa esse manifest pela tag técnica
-baseada na própria versão do launcher:
+e inclui `sha256` e `sizeBytes`. Na primeira instalação ou reparo portátil, o
+launcher consulta a lista de releases do GitHub, filtra as tags técnicas
+`portable-runtime-v...`, escolhe a release runtime mais recente e baixa o asset
+`portable-manifest.json` dela:
 
 ```text
-https://github.com/jvitorn/meg-pocket/releases/download/portable-runtime-v1.1.0/portable-manifest.json
+https://api.github.com/repos/jvitorn/meg-pocket/releases?per_page=100
 ```
 
 Para testes, o launcher ainda aceita override por ambiente:

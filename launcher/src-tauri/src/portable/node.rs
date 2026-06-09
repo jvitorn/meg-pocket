@@ -15,7 +15,7 @@ pub fn next_command(config: &PortableRuntimeConfig) -> LauncherResult<Command> {
     let mut command = Command::new(node_exe()?);
     command.arg(paths::mg_pocket_app_dir()?.join("server.js"));
     command.current_dir(paths::mg_pocket_app_dir()?);
-    scripts::sanitize_child_environment(&mut command);
+    scripts::prepare_child_command(&mut command);
     command.env("PORT", config.next_port.to_string());
     command.env("HOSTNAME", "127.0.0.1");
     command.env(

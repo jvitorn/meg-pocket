@@ -4,6 +4,7 @@ use crate::{
     errors::{LauncherError, LauncherResult},
     paths,
     portable::{types::PortableRuntimeConfig, PortableJob},
+    scripts,
 };
 
 pub fn ensure_ready(ctx: &mut PortableJob<'_, '_>, config: &PortableRuntimeConfig) -> LauncherResult<u32> {
@@ -104,6 +105,7 @@ pub fn database_ready(config: &PortableRuntimeConfig) -> bool {
     command
         .args(["-h", "127.0.0.1", "-U", "meg", "-d", "meg_pocket", "-tAc", "SELECT 1", "-p"])
         .arg(config.postgres_port.to_string());
+    scripts::prepare_child_command(&mut command);
     command.output().map(|output| output.status.success()).unwrap_or(false)
 }
 

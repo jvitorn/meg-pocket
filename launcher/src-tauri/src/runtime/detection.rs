@@ -10,6 +10,7 @@ use crate::{
     errors::{LauncherError, LauncherResult},
     paths,
     runtime::types::RuntimeMode,
+    scripts,
 };
 
 const DOCKER_TIMEOUT: Duration = Duration::from_secs(3);
@@ -61,7 +62,9 @@ fn docker_healthy() -> bool {
 }
 
 fn command_success(program: &str, args: &[&str], timeout: Duration) -> bool {
-    let mut child = match Command::new(program)
+    let mut command = Command::new(program);
+    scripts::prepare_child_command(&mut command);
+    let mut child = match command
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
