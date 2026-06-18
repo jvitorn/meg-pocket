@@ -11,7 +11,14 @@ const LOG_LIMIT_BYTES: usize = 512 * 1024;
 pub fn read_logs() -> LauncherResult<String> {
     let logs_dir = paths::mg_pocket_logs_dir()?;
     let mut output = String::new();
-    for name in ["launcher.log", "app.log", "postgres.log", "nginx-access.log", "nginx-error.log"] {
+    for name in [
+        "launcher.log",
+        "app.log",
+        "postgres.log",
+        "postgres-control.log",
+        "nginx-access.log",
+        "nginx-error.log",
+    ] {
         let path = logs_dir.join(name);
         if !path.is_file() {
             continue;

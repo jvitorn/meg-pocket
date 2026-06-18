@@ -45,12 +45,21 @@ stdout/stderr por pipe. Isso evita travamento quando o `postgres.exe` iniciado
 em background herda handles de saída. O comando usado segue este formato:
 
 ```text
-pg_ctl.exe -D <data_dir> -l <postgres.log> -o "-p <porta> -h 127.0.0.1" -w -t 30 start
+pg_ctl.exe start -D <data_dir> -l <postgres.log> -o "-p <porta> -h 127.0.0.1" -w -t 30
 ```
 
 Depois do `pg_ctl`, o launcher valida readiness com `psql` e `SELECT 1` por até
-60 segundos. Se não responder, a etapa falha de forma explícita e os detalhes
-técnicos incluem as últimas linhas de `logs/postgres.log`.
+60 segundos. Antes de chamar `pg_ctl start`, o launcher também testa se
+`meg_pocket` já responde na porta configurada; se responder, o start é tratado
+como idempotente e `pg_ctl` não é chamado. Se `pg_ctl start` falhar, o launcher
+testa `psql SELECT 1` imediatamente e considera sucesso quando o banco já está
+pronto mesmo assim.
+
+O controle do start fica em `logs/postgres-control.log`, com comando executado,
+exit code, stdout/stderr do `pg_ctl` e as últimas linhas de
+`logs/postgres.log`. Se o start falhar e o readiness também falhar, a mensagem
+amigável é `Não foi possível iniciar o banco local.` e os detalhes técnicos
+apontam para `postgres.log` e `postgres-control.log`.
 
 Antes de iniciar, o launcher verifica os binários principais:
 
@@ -64,6 +73,30 @@ Se `data/postgres/postmaster.pid` existir, o launcher verifica se o processo
 ainda está vivo. PIDs stale são removidos com cuidado; PIDs ativos são
 reutilizados quando o PostgreSQL responde, ou parados antes de uma nova
 tentativa quando não há readiness.
+
+### Teste Manual No Windows PowerShell
+
+Use PowerShell, não CMD:
+
+```powershell
+$root = Join-Path $env:LOCALAPPDATA "MG Pocket"
+$pgbin = Join-Path $root "runtime\postgres\bin"
+$data = Join-Path $root "data\postgres"
+$log = Join-Path $root "logs\postgres-manual.log"
+
+& "$pgbin\postgres.exe" --version
+& "$pgbin\pg_ctl.exe" --version
+& "$pgbin\initdb.exe" --version
+& "$pgbin\psql.exe" --version
+Test-Path "$data\PG_VERSION"
+& "$pgbin\pg_ctl.exe" start -D "$data" -l "$log" -o "-p 54321 -h 127.0.0.1" -w -t 30
+```
+
+Para parar o PostgreSQL iniciado manualmente:
+
+```powershell
+& "$pgbin\pg_ctl.exe" stop -D "$data" -m fast
+```
 
 ## Artefatos
 

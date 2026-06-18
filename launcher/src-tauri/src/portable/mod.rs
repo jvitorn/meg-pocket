@@ -316,6 +316,7 @@ pub fn repair_installation(app: &AppHandle, job_manager: &JobManager) -> Launche
         "Vamos reparar os arquivos do M&G Pocket sem apagar seus dados.",
         |ctx| {
             let _ = process::stop(ctx);
+            postgres::prepare_for_repair(ctx)?;
             download::install_or_repair_runtime(ctx)?;
             validate_health(ctx)?;
             Ok(())
