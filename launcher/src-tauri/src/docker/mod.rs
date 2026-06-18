@@ -466,11 +466,12 @@ impl<'app, 'manager> NativeJob<'app, 'manager> {
     }
 
     fn finish_cancelled(&mut self) {
-        jobs::finish_job_cancelled(
+        jobs::finish_job_cancelled_at(
             self.app,
             self.job.job_id(),
             self.job.action(),
             &self.current_step,
+            self.progress,
         );
     }
 }

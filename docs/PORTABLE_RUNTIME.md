@@ -11,6 +11,60 @@ No modo portátil, o launcher usa `AppData/Local/MG Pocket` para `runtime/`,
 `downloads/` e `tmp/`. As pastas `data/postgres`, `data/uploads`,
 `backups` e `config/runtime.json` não são apagadas por reparo/update.
 
+## Fluxo De Preparação No Launcher
+
+A tela principal do launcher mostra cinco etapas de preparação:
+
+1. Diagnóstico
+2. Runtime
+3. Banco local
+4. Sistema
+5. Acesso
+
+O modo portátil não mostra Docker na visão principal. Detalhes como Docker,
+portas, paths, logs, diagnóstico completo e arquivos locais ficam no painel
+`Detalhes técnicos`.
+
+O progresso global é mapeado assim:
+
+- Diagnóstico: 0-10.
+- Runtime: 10-35.
+- Banco local: 35-60.
+- Sistema: 60-85.
+- Acesso: 85-100.
+
+Quando o usuário cancela uma preparação, o job e a etapa atual ficam em estado
+`cancelled`, a barra mantém o progresso real onde parou e a mensagem exibida é
+`Cancelado pelo usuário.`. O cancelamento não deve emitir 100% nem aparência de
+sucesso.
+
+## PostgreSQL Portátil
+
+O start do banco local usa `pg_ctl.exe` como comando de serviço, sem capturar
+stdout/stderr por pipe. Isso evita travamento quando o `postgres.exe` iniciado
+em background herda handles de saída. O comando usado segue este formato:
+
+```text
+pg_ctl.exe -D <data_dir> -l <postgres.log> -o "-p <porta> -h 127.0.0.1" -w -t 30 start
+```
+
+Depois do `pg_ctl`, o launcher valida readiness com `psql` e `SELECT 1` por até
+60 segundos. Se não responder, a etapa falha de forma explícita e os detalhes
+técnicos incluem as últimas linhas de `logs/postgres.log`.
+
+Antes de iniciar, o launcher verifica os binários principais:
+
+- `runtime/postgres/bin/postgres.exe`
+- `runtime/postgres/bin/pg_ctl.exe`
+- `runtime/postgres/bin/initdb.exe`
+- `runtime/postgres/bin/psql.exe`
+- `runtime/postgres/bin/createdb.exe`
+
+Se `data/postgres/postmaster.pid` existir, o launcher verifica se o processo
+ainda está vivo. PIDs stale são removidos com cuidado; PIDs ativos são
+reutilizados quando o PostgreSQL responde, ou parados antes de uma nova
+tentativa quando não há readiness.
+
 ## Artefatos
 
 Existem três artefatos separados:

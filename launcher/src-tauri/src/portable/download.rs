@@ -36,7 +36,7 @@ pub fn install_or_repair_runtime(ctx: &mut PortableJob<'_, '_>) -> LauncherResul
     ctx.progress(
         "Baixando arquivos necessários",
         "Buscando manifest do runtime portátil.",
-        15,
+        12,
     );
     let manifest = load_manifest(ctx)?;
     let asset = &manifest.windows.x64;
@@ -46,13 +46,13 @@ pub fn install_or_repair_runtime(ctx: &mut PortableJob<'_, '_>) -> LauncherResul
         ctx.progress(
             "Baixando arquivos necessários",
             &format!("Baixando runtime portátil ({attempt}/2)."),
-            30,
+            22,
         );
         download_url_to_file(ctx, &asset.url, &zip_path)?;
         ctx.progress(
             "Validando download",
             "Calculando SHA-256 do pacote baixado.",
-            55,
+            28,
         );
         if validate_sha256(&zip_path, &asset.sha256)? {
             break;
@@ -65,14 +65,14 @@ pub fn install_or_repair_runtime(ctx: &mut PortableJob<'_, '_>) -> LauncherResul
         let _ = fs::remove_file(&zip_path);
     }
 
-    ctx.progress("Extraindo runtime", "Extraindo pacote portátil.", 65);
+    ctx.progress("Extraindo runtime", "Extraindo pacote portátil.", 31);
     let extracted = extract_zip(ctx, &zip_path)?;
     install::validate_runtime_root(&extracted)?;
 
     ctx.progress(
         "Instalando runtime",
         "Substituindo arquivos do aplicativo sem apagar dados locais.",
-        75,
+        34,
     );
     replace_runtime_files(&extracted)?;
     install::configure_runtime(&manifest.version, &manifest.runtime_version)?;
@@ -115,7 +115,7 @@ fn latest_runtime_manifest_url(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<
     ctx.progress(
         "Baixando arquivos necessários",
         "Consultando releases do runtime portátil.",
-        18,
+        14,
     );
     download_url_to_file(ctx, &url, &releases_path).map_err(|error| {
         LauncherError::new(
@@ -293,7 +293,7 @@ fn download_url_to_file(
         ctx,
         "Baixando arquivos necessários",
         "Baixando arquivo.",
-        40,
+        24,
         &mut command,
         Duration::from_secs(20 * 60),
     )
@@ -355,7 +355,7 @@ fn extract_zip(ctx: &mut PortableJob<'_, '_>, zip_path: &Path) -> LauncherResult
         ctx,
         "Extraindo runtime",
         "Extraindo pacote.",
-        65,
+        32,
         &mut command,
         Duration::from_secs(5 * 60),
     )?;

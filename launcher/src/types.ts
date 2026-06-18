@@ -67,6 +67,19 @@ export type CommandOutput = {
 
 export type JobStatus = "idle" | "running" | "success" | "error" | "cancelled";
 
+export type LauncherStepStatus = "pending" | "running" | "success" | "error" | "cancelled";
+
+export type LauncherStep = {
+  id: "diagnostico" | "runtime" | "bancoLocal" | "sistema" | "acesso" | string;
+  title: string;
+  status: LauncherStepStatus;
+  progress: number;
+  message: string;
+  startedAt?: string;
+  finishedAt?: string;
+  error?: string;
+};
+
 export type LauncherJobEvent = {
   job_id: string;
   action: string;
@@ -74,12 +87,11 @@ export type LauncherJobEvent = {
   message: string;
   progress: number;
   level: "info" | "stdout" | "stderr" | "error" | "success" | string;
+  status?: JobStatus;
+  currentStepId?: LauncherStep["id"];
+  steps?: LauncherStep[];
 };
 
-export type StepState = "pending" | "running" | "done" | "error";
+export type StepState = LauncherStepStatus;
 
-export type ProgressStep = {
-  id: string;
-  label: string;
-  state: StepState;
-};
+export type ProgressStep = LauncherStep;

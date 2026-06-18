@@ -17,6 +17,21 @@ pub const JOB_FINISHED: &str = "launcher://job-finished";
 const RUNNING_PROGRESS_MAX: u8 = 95;
 
 #[derive(Clone, Serialize)]
+pub struct LauncherStep {
+    pub id: String,
+    pub title: String,
+    pub status: String,
+    pub progress: u8,
+    pub message: String,
+    #[serde(rename = "startedAt", skip_serializing_if = "Option::is_none")]
+    pub started_at: Option<String>,
+    #[serde(rename = "finishedAt", skip_serializing_if = "Option::is_none")]
+    pub finished_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
 pub struct LauncherJobEvent {
     pub job_id: String,
     pub action: String,
@@ -24,6 +39,11 @@ pub struct LauncherJobEvent {
     pub message: String,
     pub progress: u8,
     pub level: String,
+    pub status: String,
+    #[serde(rename = "currentStepId", skip_serializing_if = "Option::is_none")]
+    pub current_step_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub steps: Vec<LauncherStep>,
 }
 
 #[derive(Default)]
@@ -227,14 +247,20 @@ pub fn finish_job_error(
     emit_finished(app, job_id, action, step, message, 100, "error");
 }
 
-pub fn finish_job_cancelled(app: &AppHandle, job_id: &str, action: &str, step: &str) {
+pub fn finish_job_cancelled_at(
+    app: &AppHandle,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    progress: u8,
+) {
     emit_finished(
         app,
         job_id,
         action,
         step,
-        "Operação cancelada.",
-        100,
+        "Cancelado pelo usuário.",
+        clamp_cancelled_progress(progress),
         "cancelled",
     );
 }
@@ -245,6 +271,10 @@ pub fn clamp_running_progress(progress: u8) -> u8 {
 
 pub fn clamp_finalizing_progress(progress: u8) -> u8 {
     progress.clamp(96, 99)
+}
+
+pub fn clamp_cancelled_progress(progress: u8) -> u8 {
+    progress.min(RUNNING_PROGRESS_MAX)
 }
 
 pub fn emit_finished(
@@ -278,6 +308,197 @@ fn emit(
     progress: u8,
     level: &str,
 ) {
+    emit_with_steps(
+        app,
+        event,
+        job_id,
+        action,
+        step,
+        message,
+        progress,
+        level,
+        None,
+        Vec::new(),
+    );
+}
+
+pub fn emit_started_with_steps(
+    app: &AppHandle,
+    job: &JobGuard<'_>,
+    step: &str,
+    message: &str,
+    progress: u8,
+    current_step_id: Option<&str>,
+    steps: Vec<LauncherStep>,
+) {
+    emit_with_steps(
+        app,
+        JOB_STARTED,
+        job.job_id(),
+        job.action(),
+        step,
+        message,
+        clamp_running_progress(progress),
+        "info",
+        current_step_id,
+        steps,
+    );
+}
+
+pub fn emit_progress_with_steps(
+    app: &AppHandle,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    message: &str,
+    progress: u8,
+    current_step_id: Option<&str>,
+    steps: Vec<LauncherStep>,
+) {
+    emit_with_steps(
+        app,
+        JOB_PROGRESS,
+        job_id,
+        action,
+        step,
+        message,
+        clamp_running_progress(progress),
+        "info",
+        current_step_id,
+        steps,
+    );
+}
+
+pub fn emit_finalizing_progress_with_steps(
+    app: &AppHandle,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    message: &str,
+    progress: u8,
+    current_step_id: Option<&str>,
+    steps: Vec<LauncherStep>,
+) {
+    emit_with_steps(
+        app,
+        JOB_PROGRESS,
+        job_id,
+        action,
+        step,
+        message,
+        clamp_finalizing_progress(progress),
+        "info",
+        current_step_id,
+        steps,
+    );
+}
+
+pub fn emit_error_with_steps(
+    app: &AppHandle,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    message: &str,
+    progress: u8,
+    current_step_id: Option<&str>,
+    steps: Vec<LauncherStep>,
+) {
+    emit_with_steps(
+        app,
+        JOB_ERROR,
+        job_id,
+        action,
+        step,
+        message,
+        progress,
+        "error",
+        current_step_id,
+        steps,
+    );
+}
+
+pub fn finish_job_success_with_steps(
+    app: &AppHandle,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    message: &str,
+    current_step_id: Option<&str>,
+    steps: Vec<LauncherStep>,
+) {
+    emit_with_steps(
+        app,
+        JOB_FINISHED,
+        job_id,
+        action,
+        step,
+        message,
+        100,
+        "success",
+        current_step_id,
+        steps,
+    );
+}
+
+pub fn finish_job_error_with_steps(
+    app: &AppHandle,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    message: &str,
+    current_step_id: Option<&str>,
+    steps: Vec<LauncherStep>,
+) {
+    emit_with_steps(
+        app,
+        JOB_FINISHED,
+        job_id,
+        action,
+        step,
+        message,
+        100,
+        "error",
+        current_step_id,
+        steps,
+    );
+}
+
+pub fn finish_job_cancelled_with_steps(
+    app: &AppHandle,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    progress: u8,
+    current_step_id: Option<&str>,
+    steps: Vec<LauncherStep>,
+) {
+    emit_with_steps(
+        app,
+        JOB_FINISHED,
+        job_id,
+        action,
+        step,
+        "Cancelado pelo usuário.",
+        clamp_cancelled_progress(progress),
+        "cancelled",
+        current_step_id,
+        steps,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn emit_with_steps(
+    app: &AppHandle,
+    event: &str,
+    job_id: &str,
+    action: &str,
+    step: &str,
+    message: &str,
+    progress: u8,
+    level: &str,
+    current_step_id: Option<&str>,
+    steps: Vec<LauncherStep>,
+) {
     let payload = LauncherJobEvent {
         job_id: job_id.to_string(),
         action: action.to_string(),
@@ -285,8 +506,26 @@ fn emit(
         message: message.to_string(),
         progress,
         level: level.to_string(),
+        status: event_status(event, level).to_string(),
+        current_step_id: current_step_id.map(str::to_string),
+        steps,
     };
     let _ = app.emit(event, payload);
+}
+
+fn event_status(event: &str, level: &str) -> &'static str {
+    if event == JOB_FINISHED {
+        return match level {
+            "error" => "error",
+            "cancelled" => "cancelled",
+            _ => "success",
+        };
+    }
+    if event == JOB_ERROR {
+        "error"
+    } else {
+        "running"
+    }
 }
 
 fn timestamp_millis() -> u128 {
@@ -323,5 +562,11 @@ mod tests {
 
         assert_eq!(cancelled_id, job.job_id());
         assert!(job.is_cancelled());
+    }
+
+    #[test]
+    fn cancelled_progress_never_becomes_success_progress() {
+        assert_eq!(clamp_cancelled_progress(42), 42);
+        assert_eq!(clamp_cancelled_progress(100), RUNNING_PROGRESS_MAX);
     }
 }

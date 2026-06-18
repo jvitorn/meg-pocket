@@ -2,7 +2,7 @@ use std::{
     fs,
     path::Path,
     process::{Command, Stdio},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use crate::{
@@ -20,10 +20,26 @@ pub fn start(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<ProcessRegistry> {
     diagnose::validate_installation()?;
     let config = install::read_or_create_runtime_config()?;
     nginx::write_config(&config)?;
+    ctx.check_cancelled()?;
     let postgres_pid = postgres::ensure_ready(ctx, &config)?;
+    if let Err(error) = ctx.check_cancelled() {
+        let _ = postgres::stop_best_effort();
+        return Err(error);
+    }
 
     let next_pid = start_next(ctx, &config)?;
+    if let Err(error) = ctx.check_cancelled() {
+        let _ = kill_pid_if_owned(next_pid, &paths::mg_pocket_app_dir()?);
+        let _ = postgres::stop_best_effort();
+        return Err(error);
+    }
     let nginx_pid = start_nginx(ctx, &config)?;
+    if let Err(error) = ctx.check_cancelled() {
+        stop_nginx_best_effort();
+        let _ = kill_pid_if_owned(next_pid, &paths::mg_pocket_app_dir()?);
+        let _ = postgres::stop_best_effort();
+        return Err(error);
+    }
     let registry = ProcessRegistry {
         runtime_mode: "portable".to_string(),
         nginx: Some(ProcessInfo {
@@ -40,6 +56,7 @@ pub fn start(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<ProcessRegistry> {
         }),
         started_at: unix_timestamp_string(),
     };
+    ctx.progress("Sistema", "Registrando processos portáteis.", 84);
     write_registry(&registry)?;
     Ok(registry)
 }
@@ -88,7 +105,7 @@ fn start_next(ctx: &mut PortableJob<'_, '_>, config: &PortableRuntimeConfig) -> 
         .map_err(|error| LauncherError::technical("Não foi possível abrir app.log", error))?;
     let mut command = node::next_command(config)?;
     command.stdout(Stdio::from(log)).stderr(Stdio::from(err));
-    ctx.progress("Iniciando sistema", "Iniciando aplicativo Next portátil.", 65);
+    ctx.progress("Sistema", "Iniciando aplicativo local.", 66);
     command
         .spawn()
         .map(|child| child.id())
@@ -102,7 +119,7 @@ fn start_nginx(ctx: &mut PortableJob<'_, '_>, _config: &PortableRuntimeConfig) -
     command.current_dir(paths::mg_pocket_runtime_dir()?.join("nginx"));
     scripts::prepare_child_command(&mut command);
     command.stdout(Stdio::null()).stderr(Stdio::null());
-    ctx.progress("Iniciando sistema", "Iniciando Nginx portátil.", 75);
+    ctx.progress("Sistema", "Iniciando acesso local.", 78);
     command
         .spawn()
         .map(|child| child.id())
@@ -119,6 +136,57 @@ fn stop_nginx(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<()> {
     command.arg("-c").arg(paths::mg_pocket_config_dir()?.join("nginx.conf"));
     command.arg("-p").arg(paths::mg_pocket_runtime_dir()?.join("nginx"));
     super::run_command(ctx, "Parando serviços", "Parando Nginx portátil.", 45, &mut command, Duration::from_secs(5)).map(|_| ())
+}
+
+fn stop_nginx_best_effort() {
+    let Ok(runtime_dir) = paths::mg_pocket_runtime_dir() else {
+        return;
+    };
+    let Ok(config_dir) = paths::mg_pocket_config_dir() else {
+        return;
+    };
+    let nginx = runtime_dir.join("nginx/nginx.exe");
+    if !nginx.is_file() {
+        return;
+    }
+    let mut command = Command::new(nginx);
+    scripts::prepare_child_command(&mut command);
+    command
+        .arg("-s")
+        .arg("quit")
+        .arg("-c")
+        .arg(config_dir.join("nginx.conf"))
+        .arg("-p")
+        .arg(runtime_dir.join("nginx"))
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    let _ = command_success_with_timeout(&mut command, Duration::from_secs(5));
+}
+
+fn command_success_with_timeout(command: &mut Command, timeout: Duration) -> bool {
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(_) => return false,
+    };
+    let started = Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return status.success(),
+            Ok(None) => {}
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return false;
+            }
+        }
+        if started.elapsed() >= timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(80));
+    }
 }
 
 fn kill_pid_if_owned(pid: u32, expected_path: &Path) -> LauncherResult<()> {
