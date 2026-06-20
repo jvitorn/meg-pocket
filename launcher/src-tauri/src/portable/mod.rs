@@ -1,6 +1,7 @@
 pub mod backup;
 pub mod diagnose;
 pub mod download;
+pub mod env;
 pub mod install;
 pub mod maintenance;
 pub mod nginx;
@@ -279,11 +280,7 @@ pub fn quick_diagnose() -> LauncherResult<String> {
 pub fn doctor(app: &AppHandle, job_manager: &JobManager) -> LauncherResult<String> {
     let job = job_manager.start("Diagnosticar")?;
     let mut ctx = PortableJob::new(app, job);
-    ctx.started(
-        "Diagnóstico",
-        "Verificando instalação portátil local.",
-        0,
-    );
+    ctx.started("Diagnóstico", "Verificando instalação portátil local.", 0);
     let result = diagnose::full_status_json();
     finish_string_job(ctx, result, "Finalizado", "Diagnóstico concluído.")
 }
@@ -307,7 +304,10 @@ pub fn install_project(app: &AppHandle, job_manager: &JobManager) -> LauncherRes
     )
 }
 
-pub fn repair_installation(app: &AppHandle, job_manager: &JobManager) -> LauncherResult<CommandOutput> {
+pub fn repair_installation(
+    app: &AppHandle,
+    job_manager: &JobManager,
+) -> LauncherResult<CommandOutput> {
     run_output_job(
         app,
         job_manager,
@@ -403,7 +403,9 @@ pub fn restore_backup(
     confirmed: bool,
 ) -> LauncherResult<CommandOutput> {
     if !confirmed {
-        return Err(LauncherError::friendly("Restore exige confirmação explícita."));
+        return Err(LauncherError::friendly(
+            "Restore exige confirmação explícita.",
+        ));
     }
     run_output_job(
         app,
@@ -423,7 +425,9 @@ pub fn reset_local_data(
     confirmed: bool,
 ) -> LauncherResult<CommandOutput> {
     if !confirmed {
-        return Err(LauncherError::friendly("Reset local exige confirmação explícita."));
+        return Err(LauncherError::friendly(
+            "Reset local exige confirmação explícita.",
+        ));
     }
     run_output_job(
         app,
@@ -453,9 +457,9 @@ pub(crate) fn run_command(
     scripts::prepare_child_command(command);
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
     let display = format!("{command:?}");
-    let mut child = command
-        .spawn()
-        .map_err(|error| LauncherError::technical(format!("Não foi possível executar {display}"), error))?;
+    let mut child = command.spawn().map_err(|error| {
+        LauncherError::technical(format!("Não foi possível executar {display}"), error)
+    })?;
     let cancel = ctx.job.cancel_flag();
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
@@ -475,8 +479,12 @@ pub(crate) fn run_command(
                 let output = CommandOutput {
                     success: status.success(),
                     code: status.code(),
-                    stdout: stdout_handle.and_then(|handle| handle.join().ok()).unwrap_or_default(),
-                    stderr: stderr_handle.and_then(|handle| handle.join().ok()).unwrap_or_default(),
+                    stdout: stdout_handle
+                        .and_then(|handle| handle.join().ok())
+                        .unwrap_or_default(),
+                    stderr: stderr_handle
+                        .and_then(|handle| handle.join().ok())
+                        .unwrap_or_default(),
                 };
                 ctx.append_output(&output);
                 if output.success {
@@ -493,7 +501,10 @@ pub(crate) fn run_command(
             Ok(None) => {}
             Err(error) => {
                 let _ = child.kill();
-                return Err(LauncherError::technical("Não foi possível acompanhar comando portátil", error));
+                return Err(LauncherError::technical(
+                    "Não foi possível acompanhar comando portátil",
+                    error,
+                ));
             }
         }
 
@@ -501,7 +512,9 @@ pub(crate) fn run_command(
             let _ = child.kill();
             let _ = child.wait();
             return Err(LauncherError::new(
-                format!("Falhou na etapa: {step}. O comando passou do tempo limite e foi cancelado."),
+                format!(
+                    "Falhou na etapa: {step}. O comando passou do tempo limite e foi cancelado."
+                ),
                 format!("Timeout em comando portátil: {display}"),
             ));
         }
@@ -522,12 +535,8 @@ pub(crate) fn run_daemon_start_command(
     ctx.progress(step, message, progress);
     scripts::prepare_child_command(command);
     let display = format!("{command:?}");
-    let output = run_daemon_start_command_raw(
-        command,
-        timeout,
-        ctx.job.cancel_flag(),
-        output_log_path,
-    )?;
+    let output =
+        run_daemon_start_command_raw(command, timeout, ctx.job.cancel_flag(), output_log_path)?;
     ctx.append_output(&output);
     if output.success {
         return Ok(output);
@@ -555,19 +564,23 @@ fn run_daemon_start_command_raw(
             .create(true)
             .append(true)
             .open(path)
-            .map_err(|error| LauncherError::technical("Não foi possível abrir log do serviço", error))?;
-        let stderr = stdout
-            .try_clone()
-            .map_err(|error| LauncherError::technical("Não foi possível abrir log do serviço", error))?;
-        command.stdout(Stdio::from(stdout)).stderr(Stdio::from(stderr));
+            .map_err(|error| {
+                LauncherError::technical("Não foi possível abrir log do serviço", error)
+            })?;
+        let stderr = stdout.try_clone().map_err(|error| {
+            LauncherError::technical("Não foi possível abrir log do serviço", error)
+        })?;
+        command
+            .stdout(Stdio::from(stdout))
+            .stderr(Stdio::from(stderr));
     } else {
         command.stdout(Stdio::null()).stderr(Stdio::null());
     }
 
     let display = format!("{command:?}");
-    let mut child = command
-        .spawn()
-        .map_err(|error| LauncherError::technical(format!("Não foi possível executar {display}"), error))?;
+    let mut child = command.spawn().map_err(|error| {
+        LauncherError::technical(format!("Não foi possível executar {display}"), error)
+    })?;
     let started = Instant::now();
 
     loop {
@@ -590,7 +603,10 @@ fn run_daemon_start_command_raw(
             Err(error) => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err(LauncherError::technical("Não foi possível acompanhar serviço portátil", error));
+                return Err(LauncherError::technical(
+                    "Não foi possível acompanhar serviço portátil",
+                    error,
+                ));
             }
         }
 
@@ -664,22 +680,74 @@ fn validate_health(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<()> {
     ctx.finalizing("Validando acesso", "Validando Nginx portátil.", 96);
     wait_until(ctx, Duration::from_secs(120), || {
         diagnose::check_http_path(config.public_port, "/healthz", Duration::from_millis(700))
+    })
+    .map_err(|_| {
+        nginx::nginx_error_with_logs(
+            "O Nginx portátil não respondeu na validação final.",
+            format!(
+                "Timeout aguardando http://127.0.0.1:{}/healthz durante validação final.",
+                config.public_port
+            ),
+        )
     })?;
     ctx.finalizing("Validando acesso", "Validando uploads e aplicativo.", 98);
     wait_until(ctx, Duration::from_secs(120), || {
-        diagnose::check_http_path(config.public_port, "/api/health", Duration::from_millis(700))
+        diagnose::check_http_path(
+            config.public_port,
+            "/api/health",
+            Duration::from_millis(700),
+        )
+    })
+    .map_err(|_| {
+        next_error_with_log(
+            "O aplicativo Next portátil não respondeu.",
+            format!(
+                "Timeout aguardando http://127.0.0.1:{}/api/health durante validação final.",
+                config.public_port
+            ),
+        )
     })?;
     if !diagnose::check_http_path(
         config.public_port,
         "/uploads/.meg-pocket-health",
         Duration::from_millis(700),
     ) {
-        return Err(LauncherError::friendly(
-            "O M&G Pocket iniciou, mas os uploads locais não responderam. Use Reparar instalação.",
+        return Err(nginx::nginx_error_with_logs(
+            "O M&G Pocket iniciou, mas os uploads locais não responderam.",
+            format!(
+                "Falha validando alias de uploads em http://127.0.0.1:{}/uploads/.meg-pocket-health.",
+                config.public_port
+            ),
         ));
     }
     ctx.finalizing("Validando acesso", "Sistema portátil validado.", 99);
     Ok(())
+}
+
+fn next_error_with_log(friendly: impl Into<String>, technical: impl Into<String>) -> LauncherError {
+    let log_path = crate::paths::mg_pocket_logs_dir()
+        .ok()
+        .map(|path| path.join("app.log"));
+    let log_text = log_path
+        .as_ref()
+        .and_then(|path| fs::read_to_string(path).ok())
+        .filter(|text| !text.trim().is_empty())
+        .map(|text| tail_for_error(&text, 128 * 1024).to_string())
+        .unwrap_or_else(|| "(vazio ou indisponível)".to_string());
+    let log_label = log_path
+        .as_ref()
+        .map(|path| path.display().to_string())
+        .unwrap_or_else(|| "app.log".to_string());
+
+    LauncherError::new(
+        friendly,
+        format!(
+            "{}\n\nConteúdo de {}:\n{}",
+            technical.into(),
+            log_label,
+            log_text
+        ),
+    )
 }
 
 fn wait_until<F>(ctx: &PortableJob<'_, '_>, timeout: Duration, mut check: F) -> LauncherResult<()>
@@ -703,6 +771,14 @@ fn read_pipe<R: Read>(mut reader: R) -> String {
     let mut text = String::new();
     let _ = reader.read_to_string(&mut text);
     text
+}
+
+fn tail_for_error(text: &str, limit: usize) -> &str {
+    if text.len() <= limit {
+        text
+    } else {
+        text.get(text.len().saturating_sub(limit)..).unwrap_or(text)
+    }
 }
 
 fn default_preparation_steps() -> Vec<jobs::LauncherStep> {
@@ -822,7 +898,10 @@ mod tests {
 
     #[test]
     fn structured_step_progress_maps_global_ranges_to_step_percentages() {
-        assert_eq!(preparation_step_id("Iniciando PostgreSQL portátil", 48), STEP_BANCO_LOCAL);
+        assert_eq!(
+            preparation_step_id("Iniciando PostgreSQL portátil", 48),
+            STEP_BANCO_LOCAL
+        );
         assert_eq!(step_progress_percent(STEP_BANCO_LOCAL, 48), 52);
         assert_eq!(preparation_step_id("Validando acesso", 96), STEP_ACESSO);
     }

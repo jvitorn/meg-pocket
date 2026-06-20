@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   findMagias: vi.fn(),
   findPericias: vi.fn(),
   findInventario: vi.fn(),
-  getSessionUserId: vi.fn(),
+  getOptionalSessionUserId: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -26,7 +26,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 vi.mock("@/lib/regras/personagemPermissao", () => ({
-  getSessionUserId: mocks.getSessionUserId,
+  getOptionalSessionUserId: mocks.getOptionalSessionUserId,
 }));
 
 vi.mock("@/lib/cache/revalidate", () => ({
@@ -41,7 +41,7 @@ describe("GET /api/personagem/[id]", () => {
     mocks.findMagias.mockReset();
     mocks.findPericias.mockReset();
     mocks.findInventario.mockReset();
-    mocks.getSessionUserId.mockReset();
+    mocks.getOptionalSessionUserId.mockReset();
   });
 
   it("rejeita id invalido", async () => {
@@ -154,7 +154,7 @@ describe("GET /api/personagem/[id]", () => {
         },
       },
     ]);
-    mocks.getSessionUserId.mockResolvedValue("user-1");
+    mocks.getOptionalSessionUserId.mockResolvedValue("user-1");
 
     const response = await GET(
       new Request("http://localhost:3000/api/personagem/7") as never,
@@ -237,6 +237,50 @@ describe("GET /api/personagem/[id]", () => {
         contraAtaqueUsado: 1,
       },
       canEdit: true,
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it("mantem GET publico quando a sessao opcional nao pode ser consultada", async () => {
+    mocks.findPersonagem.mockResolvedValue({
+      id: 8,
+      nome: "Lia",
+      apelido: null,
+      campanhaId: null,
+      classeId: null,
+      racaId: null,
+      elemento: "agua",
+      hp_atual: null,
+      mana_atual: null,
+      defesa_atual: 0,
+      defesa_max: 0,
+      hp_base: null,
+      mana_base: null,
+      descricao: null,
+      anotacoes: null,
+      imagemPrincipal: null,
+      imagemPerfil: null,
+      habilidadeDiariaUsada: false,
+      statusEspecial: null,
+      userId: "user-1",
+      raca: null,
+      classe: null,
+      slotsDefensivos: null,
+    });
+    mocks.findMagias.mockResolvedValue([]);
+    mocks.findPericias.mockResolvedValue([]);
+    mocks.findInventario.mockResolvedValue([]);
+    mocks.getOptionalSessionUserId.mockResolvedValue(null);
+
+    const response = await GET(
+      new Request("http://localhost:3000/api/personagem/8") as never,
+      { params: Promise.resolve({ id: "8" }) }
+    );
+
+    await expect(response.json()).resolves.toMatchObject({
+      id: 8,
+      nome: "Lia",
+      canEdit: false,
     });
     expect(response.status).toBe(200);
   });

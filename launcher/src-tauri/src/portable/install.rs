@@ -7,9 +7,8 @@ use crate::{
     errors::{LauncherError, LauncherResult},
     paths,
     portable::{
-        diagnose,
-        nginx,
-        types::{PortableRuntimeConfig, unix_timestamp_string},
+        diagnose, env as portable_env, nginx,
+        types::{unix_timestamp_string, PortableRuntimeConfig},
     },
 };
 
@@ -45,7 +44,10 @@ pub fn ensure_layout() -> LauncherResult<()> {
     Ok(())
 }
 
-pub fn configure_runtime(version: &str, runtime_version: &str) -> LauncherResult<PortableRuntimeConfig> {
+pub fn configure_runtime(
+    version: &str,
+    runtime_version: &str,
+) -> LauncherResult<PortableRuntimeConfig> {
     ensure_layout()?;
     let public_port = choose_port(&[3000, 3005, 3010, 3015]);
     let next_port = public_port.saturating_add(1);
@@ -60,7 +62,7 @@ pub fn configure_runtime(version: &str, runtime_version: &str) -> LauncherResult
         app_url: format!("http://localhost:{public_port}"),
         installed_at: unix_timestamp_string(),
     };
-    write_env(&config)?;
+    portable_env::write_file(&config)?;
     nginx::write_config(&config)?;
     write_runtime_config(&config)?;
     Ok(config)
@@ -68,6 +70,7 @@ pub fn configure_runtime(version: &str, runtime_version: &str) -> LauncherResult
 
 pub fn read_or_create_runtime_config() -> LauncherResult<PortableRuntimeConfig> {
     if let Some(config) = diagnose::read_runtime_config() {
+        portable_env::write_file(&config)?;
         return Ok(config);
     }
     configure_runtime("desconhecida", "desconhecido")
@@ -97,37 +100,12 @@ pub fn validate_runtime_root(root: &Path) -> LauncherResult<()> {
     } else {
         Err(LauncherError::new(
             "A instalação local está incompleta. Use Reparar instalação.",
-            format!("Arquivos ausentes no runtime extraído:\n{}", missing.join("\n")),
+            format!(
+                "Arquivos ausentes no runtime extraído:\n{}",
+                missing.join("\n")
+            ),
         ))
     }
-}
-
-fn write_env(config: &PortableRuntimeConfig) -> LauncherResult<()> {
-    let data_dir = paths::mg_pocket_data_content_dir()?;
-    let database_url = format!(
-        "postgresql://meg:meg@127.0.0.1:{}/meg_pocket?schema=public",
-        config.postgres_port
-    );
-    let content = format!(
-        r#"DATABASE_URL="{database_url}"
-DIRECT_URL="{database_url}"
-NEXTAUTH_SECRET="meg-pocket-portable-local"
-NEXTAUTH_URL="{app_url}"
-NEXT_PUBLIC_BASE_URL="{app_url}"
-PORT="{next_port}"
-HOSTNAME="127.0.0.1"
-STORAGE_DRIVER="local"
-STORAGE_BUCKET="personagens"
-STORAGE_LOCAL_DIR="{uploads_dir}"
-STORAGE_LOCAL_PUBLIC_URL="/uploads"
-NEXT_PUBLIC_STORAGE_MAX_FILE_SIZE_MB="40"
-"#,
-        app_url = config.app_url,
-        next_port = config.next_port,
-        uploads_dir = data_dir.join("uploads").to_string_lossy().replace('\\', "/"),
-    );
-    fs::write(paths::mg_pocket_config_dir()?.join(".env.portable"), content)
-        .map_err(|error| LauncherError::technical("Não foi possível gravar .env.portable", error))
 }
 
 fn choose_port(candidates: &[u16]) -> u16 {

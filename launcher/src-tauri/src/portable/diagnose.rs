@@ -77,9 +77,16 @@ pub fn required_paths() -> Vec<PathBuf> {
         "app/.next",
         "app/public",
         "prisma/schema.prisma",
+        "prisma/prisma.config.mjs",
         "prisma/migrations",
         "prisma/seeds/generated/index.sql",
+        "scripts/package.json",
+        "scripts/package-lock.json",
         "scripts/run-sql-file.mjs",
+        "scripts/lib/run-sql-file.mjs",
+        "scripts/portable-db-setup.mjs",
+        "scripts/node_modules/pg/package.json",
+        "scripts/node_modules/prisma/build/index.js",
     ]
     .into_iter()
     .map(PathBuf::from)
@@ -201,5 +208,33 @@ fn current_os() -> &'static str {
         "macos"
     } else {
         "unknown"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn required_paths_include_portable_script_runtime() {
+        let paths = required_paths()
+            .into_iter()
+            .map(|path| path.to_string_lossy().replace('\\', "/"))
+            .collect::<Vec<_>>();
+
+        for expected in [
+            "scripts/portable-db-setup.mjs",
+            "scripts/node_modules/pg/package.json",
+            "scripts/node_modules/prisma/build/index.js",
+            "prisma/prisma.config.mjs",
+            "scripts/package.json",
+            "scripts/package-lock.json",
+            "scripts/lib/run-sql-file.mjs",
+        ] {
+            assert!(
+                paths.iter().any(|path| path == expected),
+                "required_paths missing {expected}"
+            );
+        }
     }
 }

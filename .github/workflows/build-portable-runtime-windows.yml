@@ -85,7 +85,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            launcher/portable/scripts/package-lock.json
 
       - name: Install npm dependencies
         shell: bash
@@ -257,13 +259,21 @@ jobs:
           copy_dir "public" "$runtime_dir/app/public"
 
           copy_file "prisma/schema.prisma" "$runtime_dir/prisma/schema.prisma"
+          copy_file "launcher/portable/prisma/prisma.config.mjs" "$runtime_dir/prisma/prisma.config.mjs"
           copy_dir "prisma/migrations" "$runtime_dir/prisma/migrations"
           copy_dir "prisma/seeds" "$runtime_dir/prisma/seeds"
 
           copy_file "scripts/run-sql-file.mjs" "$runtime_dir/scripts/run-sql-file.mjs"
           copy_file "scripts/portable-db-setup.mjs" "$runtime_dir/scripts/portable-db-setup.mjs"
+          copy_file "launcher/portable/scripts/package.json" "$runtime_dir/scripts/package.json"
+          copy_file "launcher/portable/scripts/package-lock.json" "$runtime_dir/scripts/package-lock.json"
           copy_dir "scripts/lib" "$runtime_dir/scripts/lib"
           copy_dir_contents "launcher/portable/templates" "$runtime_dir/templates"
+
+          (
+            cd "$runtime_dir/scripts"
+            npm ci --omit=dev
+          )
 
           node_zip_name="node-v$NODE_PORTABLE_VERSION-win-x64.zip"
           node_zip="$cache_dir/$node_zip_name"
@@ -309,10 +319,16 @@ jobs:
             "app/.next"
             "app/public"
             "prisma/schema.prisma"
+            "prisma/prisma.config.mjs"
             "prisma/migrations"
             "prisma/seeds/generated/index.sql"
+            "scripts/package.json"
+            "scripts/package-lock.json"
             "scripts/run-sql-file.mjs"
+            "scripts/lib/run-sql-file.mjs"
             "scripts/portable-db-setup.mjs"
+            "scripts/node_modules/pg/package.json"
+            "scripts/node_modules/prisma/build/index.js"
           )
 
           missing_paths=()
@@ -327,6 +343,67 @@ jobs:
             exit 1
           fi
 
+          node_exe="$PWD/$runtime_dir/runtime/node/node.exe"
+          prisma_cli="$PWD/$runtime_dir/scripts/node_modules/prisma/build/index.js"
+
+          (
+            cd "$runtime_dir/scripts"
+            "$node_exe" --input-type=module -e "const pg = await import('pg'); if (!pg.default?.Client && !pg.Client) throw new Error('pg Client nao encontrado');"
+          )
+
+          (
+            cd "$runtime_dir/prisma"
+            DATABASE_URL="postgresql://meg:meg@127.0.0.1:54321/meg_pocket?schema=public" \
+            DIRECT_URL="postgresql://meg:meg@127.0.0.1:54321/meg_pocket?schema=public" \
+            "$node_exe" "$prisma_cli" --version
+          )
+
+          nginx_space_root="$work_dir/MG Pocket nginx test"
+          mkdir -p \
+            "$nginx_space_root/config" \
+            "$nginx_space_root/logs" \
+            "$nginx_space_root/data/uploads" \
+            "$nginx_space_root/runtime"
+          cp -a "$runtime_dir/runtime/nginx" "$nginx_space_root/runtime/nginx"
+          nginx_mime="$(cygpath -m "$nginx_space_root/runtime/nginx/conf/mime.types")"
+          nginx_error_log="$(cygpath -m "$nginx_space_root/logs/nginx-error.log")"
+          nginx_access_log="$(cygpath -m "$nginx_space_root/logs/nginx-access.log")"
+          nginx_pid="$(cygpath -m "$nginx_space_root/logs/nginx.pid")"
+          nginx_uploads="$(cygpath -m "$nginx_space_root/data/uploads")/"
+          cat > "$nginx_space_root/config/nginx.conf" <<EOF
+          worker_processes  1;
+          error_log  "$nginx_error_log";
+          pid        "$nginx_pid";
+
+          events {
+              worker_connections  256;
+          }
+
+          http {
+              access_log "$nginx_access_log";
+              include       "$nginx_mime";
+              default_type  application/octet-stream;
+
+              server {
+                  listen 3000;
+                  server_name localhost;
+
+                  location = /healthz {
+                      return 200 "ok\n";
+                  }
+
+                  location ^~ /uploads/ {
+                      alias "$nginx_uploads";
+                      try_files \$uri =404;
+                  }
+              }
+          }
+          EOF
+          "$nginx_space_root/runtime/nginx/nginx.exe" \
+            -t \
+            -c "$nginx_space_root/config/nginx.conf" \
+            -p "$nginx_space_root/runtime/nginx"
+
           zip_abs="$PWD/$zip_path"
           rm -f "$zip_path"
           (
@@ -336,6 +413,21 @@ jobs:
 
           if [ ! -s "$zip_path" ]; then
             echo "::error::Missing runtime ZIP: $zip_path"
+            exit 1
+          fi
+
+          zip_listing="$("$seven_zip" l -slt "$(cygpath -w "$zip_path")")"
+          zip_missing_paths=()
+          for required_path in "${required_paths[@]}"; do
+            windows_required_path="${required_path//\//\\}"
+            if ! grep -Fq "Path = $required_path" <<< "$zip_listing" &&
+               ! grep -Fq "Path = $windows_required_path" <<< "$zip_listing"; then
+              zip_missing_paths+=("$required_path")
+            fi
+          done
+
+          if [ "${#zip_missing_paths[@]}" -gt 0 ]; then
+            printf "::error::Runtime ZIP missing required files:\\n%s\\n" "${zip_missing_paths[*]}"
             exit 1
           fi
 

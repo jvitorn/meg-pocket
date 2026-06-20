@@ -10,7 +10,7 @@ use std::{
 use crate::{
     errors::{LauncherError, LauncherResult},
     paths,
-    portable::{types::PortableRuntimeConfig, PortableJob},
+    portable::{env as portable_env, types::PortableRuntimeConfig, PortableJob},
     scripts::{self, CommandOutput},
 };
 
@@ -290,20 +290,7 @@ fn run_migrations_and_seed(
     let mut command = Command::new(paths::mg_pocket_runtime_dir()?.join("node/node.exe"));
     command.arg(script);
     command.current_dir(paths::mg_pocket_data_dir()?);
-    command.env(
-        "DATABASE_URL",
-        format!(
-            "postgresql://meg:meg@127.0.0.1:{}/meg_pocket?schema=public",
-            config.postgres_port
-        ),
-    );
-    command.env(
-        "DIRECT_URL",
-        format!(
-            "postgresql://meg:meg@127.0.0.1:{}/meg_pocket?schema=public",
-            config.postgres_port
-        ),
-    );
+    portable_env::apply_database_env(&mut command, config);
     super::run_command(
         ctx,
         "Banco local",
@@ -313,6 +300,15 @@ fn run_migrations_and_seed(
         Duration::from_secs(10 * 60),
     )
     .map(|_| ())
+    .map_err(|error| {
+        LauncherError::new(
+            "Não foi possível aplicar migrations e dados iniciais.",
+            format!(
+                "Falha em migrations/seed do PostgreSQL portátil.\n{}",
+                error.technical_message()
+            ),
+        )
+    })
 }
 
 fn validate_required_binaries(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<()> {

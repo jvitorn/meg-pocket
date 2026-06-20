@@ -16,6 +16,7 @@ pub fn read_logs() -> LauncherResult<String> {
         "app.log",
         "postgres.log",
         "postgres-control.log",
+        "nginx-launcher.log",
         "nginx-access.log",
         "nginx-error.log",
     ] {

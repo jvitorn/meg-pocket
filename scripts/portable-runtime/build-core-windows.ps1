@@ -237,6 +237,7 @@ function Copy-PrismaPayload {
   param([Parameter(Mandatory = $true)][string]$RuntimeRoot)
 
   Copy-File (Join-Path $RepoRoot "prisma/schema.prisma") (Join-PortablePath $RuntimeRoot "prisma/schema.prisma")
+  Copy-File (Join-Path $RepoRoot "launcher/portable/prisma/prisma.config.mjs") (Join-PortablePath $RuntimeRoot "prisma/prisma.config.mjs")
   Copy-Directory (Join-Path $RepoRoot "prisma/migrations") (Join-PortablePath $RuntimeRoot "prisma/migrations")
   Copy-Directory (Join-Path $RepoRoot "prisma/seeds") (Join-PortablePath $RuntimeRoot "prisma/seeds")
 }
@@ -246,8 +247,23 @@ function Copy-ScriptsPayload {
 
   Copy-File (Join-Path $RepoRoot "scripts/run-sql-file.mjs") (Join-PortablePath $RuntimeRoot "scripts/run-sql-file.mjs")
   Copy-File (Join-Path $RepoRoot "scripts/portable-db-setup.mjs") (Join-PortablePath $RuntimeRoot "scripts/portable-db-setup.mjs")
+  Copy-File (Join-Path $RepoRoot "launcher/portable/scripts/package.json") (Join-PortablePath $RuntimeRoot "scripts/package.json")
+  Copy-File (Join-Path $RepoRoot "launcher/portable/scripts/package-lock.json") (Join-PortablePath $RuntimeRoot "scripts/package-lock.json")
   Copy-Directory (Join-Path $RepoRoot "scripts/lib") (Join-PortablePath $RuntimeRoot "scripts/lib")
   Copy-DirectoryContents (Join-Path $RepoRoot "launcher/portable/templates") (Join-PortablePath $RuntimeRoot "templates")
+}
+
+function Install-ScriptsRuntimeDependencies {
+  param([Parameter(Mandatory = $true)][string]$RuntimeRoot)
+
+  $scriptsRoot = Join-PortablePath $RuntimeRoot "scripts"
+  Push-Location $scriptsRoot
+  try {
+    Write-Host "Installing portable script runtime dependencies"
+    Invoke-External "npm" @("ci", "--omit=dev")
+  } finally {
+    Pop-Location
+  }
 }
 
 function Add-PortableNode {
@@ -332,10 +348,16 @@ function Test-RuntimePayload {
     "app/.next",
     "app/public",
     "prisma/schema.prisma",
+    "prisma/prisma.config.mjs",
     "prisma/migrations",
     "prisma/seeds/generated/index.sql",
+    "scripts/package.json",
+    "scripts/package-lock.json",
     "scripts/run-sql-file.mjs",
-    "scripts/portable-db-setup.mjs"
+    "scripts/lib/run-sql-file.mjs",
+    "scripts/portable-db-setup.mjs",
+    "scripts/node_modules/pg/package.json",
+    "scripts/node_modules/prisma/build/index.js"
   )
 
   $missing = @($required | Where-Object {
@@ -428,6 +450,7 @@ try {
   Copy-AppPayload $RuntimeRoot
   Copy-PrismaPayload $RuntimeRoot
   Copy-ScriptsPayload $RuntimeRoot
+  Install-ScriptsRuntimeDependencies $RuntimeRoot
   Add-PortableNode $RuntimeRoot $WorkRoot $CacheRoot
   Add-PortableNginx $RuntimeRoot $WorkRoot $CacheRoot
   Add-PortablePostgres $RuntimeRoot $WorkRoot $CacheRoot

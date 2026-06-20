@@ -8,12 +8,12 @@ use std::{
 use crate::{
     errors::{LauncherError, LauncherResult},
     paths,
-    scripts,
     portable::{
         diagnose, install, nginx, node, postgres,
-        types::{PortableRuntimeConfig, ProcessInfo, ProcessRegistry, unix_timestamp_string},
+        types::{unix_timestamp_string, PortableRuntimeConfig, ProcessInfo, ProcessRegistry},
         PortableJob,
     },
+    scripts,
 };
 
 pub fn start(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<ProcessRegistry> {
@@ -94,7 +94,10 @@ fn write_registry(registry: &ProcessRegistry) -> LauncherResult<()> {
     .map_err(|error| LauncherError::technical("Não foi possível gravar processes.json", error))
 }
 
-fn start_next(ctx: &mut PortableJob<'_, '_>, config: &PortableRuntimeConfig) -> LauncherResult<u32> {
+fn start_next(
+    ctx: &mut PortableJob<'_, '_>,
+    config: &PortableRuntimeConfig,
+) -> LauncherResult<u32> {
     let log = fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -112,18 +115,81 @@ fn start_next(ctx: &mut PortableJob<'_, '_>, config: &PortableRuntimeConfig) -> 
         .map_err(|error| LauncherError::technical("Não foi possível iniciar Next portátil", error))
 }
 
-fn start_nginx(ctx: &mut PortableJob<'_, '_>, _config: &PortableRuntimeConfig) -> LauncherResult<u32> {
-    let mut command = Command::new(paths::mg_pocket_runtime_dir()?.join("nginx/nginx.exe"));
-    command.arg("-c").arg(paths::mg_pocket_config_dir()?.join("nginx.conf"));
-    command.arg("-p").arg(paths::mg_pocket_runtime_dir()?.join("nginx"));
-    command.current_dir(paths::mg_pocket_runtime_dir()?.join("nginx"));
+fn start_nginx(
+    ctx: &mut PortableJob<'_, '_>,
+    config: &PortableRuntimeConfig,
+) -> LauncherResult<u32> {
+    ctx.progress("Sistema", "Validando configuração do Nginx portátil.", 76);
+    nginx::test_config()?;
+    let mut command = nginx::start_command()?;
     scripts::prepare_child_command(&mut command);
-    command.stdout(Stdio::null()).stderr(Stdio::null());
-    ctx.progress("Sistema", "Iniciando acesso local.", 78);
+    nginx::append_launcher_log(&format!(
+        "\n=== nginx start {} ===\ncomando: {command:?}\n",
+        unix_timestamp_string()
+    ))?;
+    let stdout = nginx::open_launcher_log()?;
+    let stderr = stdout.try_clone().map_err(|error| {
+        LauncherError::technical("Não foi possível abrir nginx-launcher.log", error)
+    })?;
     command
-        .spawn()
-        .map(|child| child.id())
-        .map_err(|error| LauncherError::technical("Não foi possível iniciar Nginx portátil", error))
+        .stdout(Stdio::from(stdout))
+        .stderr(Stdio::from(stderr));
+    ctx.progress("Sistema", "Iniciando acesso local.", 78);
+    let mut child = command.spawn().map_err(|error| {
+        nginx::nginx_error_with_logs(
+            "Não foi possível iniciar o Nginx portátil.",
+            format!("Falha ao executar nginx.exe: {error}"),
+        )
+    })?;
+    let pid = child.id();
+    let started = Instant::now();
+    while started.elapsed() < Duration::from_secs(10) {
+        if let Err(error) = ctx.check_cancelled() {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(error);
+        }
+
+        if diagnose::check_http_path(config.public_port, "/healthz", Duration::from_millis(500)) {
+            return Ok(pid);
+        }
+
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                return Err(nginx::nginx_error_with_logs(
+                    "O Nginx portátil encerrou antes de responder.",
+                    format!(
+                        "nginx.exe encerrou antes de /healthz responder. Exit code: {}",
+                        status
+                            .code()
+                            .map(|code| code.to_string())
+                            .unwrap_or_else(|| "indisponível".to_string())
+                    ),
+                ));
+            }
+            Ok(None) => {}
+            Err(error) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(nginx::nginx_error_with_logs(
+                    "Não foi possível acompanhar o Nginx portátil.",
+                    format!("Falha acompanhando processo nginx.exe: {error}"),
+                ));
+            }
+        }
+
+        std::thread::sleep(Duration::from_millis(250));
+    }
+
+    let _ = child.kill();
+    let _ = child.wait();
+    Err(nginx::nginx_error_with_logs(
+        "O Nginx portátil não respondeu a tempo.",
+        format!(
+            "Timeout de 10s aguardando http://127.0.0.1:{}/healthz após iniciar nginx.exe.",
+            config.public_port
+        ),
+    ))
 }
 
 fn stop_nginx(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<()> {
@@ -133,9 +199,21 @@ fn stop_nginx(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<()> {
     }
     let mut command = Command::new(nginx);
     command.arg("-s").arg("quit");
-    command.arg("-c").arg(paths::mg_pocket_config_dir()?.join("nginx.conf"));
-    command.arg("-p").arg(paths::mg_pocket_runtime_dir()?.join("nginx"));
-    super::run_command(ctx, "Parando serviços", "Parando Nginx portátil.", 45, &mut command, Duration::from_secs(5)).map(|_| ())
+    command
+        .arg("-c")
+        .arg(paths::mg_pocket_config_dir()?.join("nginx.conf"));
+    command
+        .arg("-p")
+        .arg(paths::mg_pocket_runtime_dir()?.join("nginx"));
+    super::run_command(
+        ctx,
+        "Parando serviços",
+        "Parando Nginx portátil.",
+        45,
+        &mut command,
+        Duration::from_secs(5),
+    )
+    .map(|_| ())
 }
 
 fn stop_nginx_best_effort() {
@@ -190,9 +268,10 @@ fn command_success_with_timeout(command: &mut Command, timeout: Duration) -> boo
 }
 
 fn kill_pid_if_owned(pid: u32, expected_path: &Path) -> LauncherResult<()> {
-    if pid == 0 || !pid_command_line(pid)
-        .map(|line| line.contains(&expected_path.to_string_lossy().to_string()))
-        .unwrap_or(false)
+    if pid == 0
+        || !pid_command_line(pid)
+            .map(|line| line.contains(&expected_path.to_string_lossy().to_string()))
+            .unwrap_or(false)
     {
         return Ok(());
     }
@@ -200,9 +279,13 @@ fn kill_pid_if_owned(pid: u32, expected_path: &Path) -> LauncherResult<()> {
     if cfg!(target_os = "windows") {
         let mut command = Command::new("taskkill");
         scripts::prepare_child_command(&mut command);
-        let _ = command.args(["/PID", &pid.to_string(), "/T", "/F"]).status();
+        let _ = command
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .status();
     } else {
-        let _ = Command::new("kill").args(["-TERM", &pid.to_string()]).status();
+        let _ = Command::new("kill")
+            .args(["-TERM", &pid.to_string()])
+            .status();
     }
     Ok(())
 }
