@@ -507,7 +507,7 @@ fn wait_for_server_ready(
     while started.elapsed() < Duration::from_secs(60) {
         if ctx.is_cancelled() {
             let _ = stop_best_effort();
-            return Err(LauncherError::friendly("Operação cancelada."));
+            return Err(LauncherError::cancelled("Operação cancelada."));
         }
         if server_ready(config) {
             return Ok(());
@@ -516,8 +516,8 @@ fn wait_for_server_ready(
     }
 
     let _ = stop_best_effort();
-    Err(postgres_error_with_log(
-        "O PostgreSQL portátil não respondeu a tempo.",
+    Err(postgres_timeout_error_with_log(
+        "O PostgreSQL portátil não respondeu a tempo. Tente novamente ou use Reparar instalação.",
         "Timeout aguardando psql SELECT 1 no banco postgres.",
         log_path,
     ))
@@ -711,7 +711,7 @@ fn run_pg_ctl_start_command(
                 ),
             };
             write_control_result(control_log_path, postgres_log_path, &output)?;
-            return Err(LauncherError::friendly("Operação cancelada."));
+            return Err(LauncherError::cancelled("Operação cancelada."));
         }
 
         match child.try_wait() {
@@ -896,6 +896,25 @@ fn unix_timestamp_for_log() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs())
         .unwrap_or(0)
+}
+
+fn postgres_timeout_error_with_log(
+    friendly: impl Into<String>,
+    technical: impl Into<String>,
+    log_path: &Path,
+) -> LauncherError {
+    let technical = technical.into();
+    let log_tail = tail_file(log_path, 60)
+        .filter(|tail| !tail.trim().is_empty())
+        .unwrap_or_else(|| "postgres.log vazio ou indisponível.".to_string());
+    LauncherError::timeout(
+        friendly,
+        format!(
+            "{technical}\n\nÚltimas linhas de {}:\n{}",
+            log_path.display(),
+            log_tail
+        ),
+    )
 }
 
 fn postgres_error_with_log(

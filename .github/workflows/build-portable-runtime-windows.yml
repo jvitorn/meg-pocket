@@ -474,12 +474,43 @@ jobs:
           rm -rf "$work_dir"
 
           require_path "$manifest_path" "portable manifest"
+
+          # Count files and compute uncompressed size from the 7-Zip listing.
+          zip_file_count=0
+          zip_uncompressed=0
+          while IFS= read -r listing_line; do
+            if [[ "$listing_line" =~ ^Size\ =\ ([0-9]+)$ ]]; then
+              zip_uncompressed=$((zip_uncompressed + BASH_REMATCH[1]))
+              zip_file_count=$((zip_file_count + 1))
+            fi
+          done <<< "$zip_listing"
+
+          size_mb="$(awk "BEGIN {printf \"%.1f\", $size_bytes / 1048576}")"
+          uncompressed_mb="$(awk "BEGIN {printf \"%.1f\", $zip_uncompressed / 1048576}")"
+
           echo "Portable runtime ZIP: $zip_path"
+          echo "  Compressed:   ${size_mb} MB (${size_bytes} bytes)"
+          echo "  Uncompressed: ${uncompressed_mb} MB (${zip_uncompressed} bytes)"
+          echo "  Files:        ${zip_file_count}"
           echo "Portable manifest: $manifest_path"
+
+          {
+            echo "## Portable Runtime"
+            echo "| Property | Value |"
+            echo "| --- | --- |"
+            echo "| File | \`$zip_name\` |"
+            echo "| Compressed | ${size_mb} MB |"
+            echo "| Uncompressed | ${uncompressed_mb} MB |"
+            echo "| File count | ${zip_file_count} |"
+            echo "| SHA-256 | \`$sha256\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
           {
             echo "file=$zip_path"
             echo "manifest=$manifest_path"
+            echo "compressed_size_bytes=$size_bytes"
+            echo "uncompressed_size_bytes=$zip_uncompressed"
+            echo "file_count=$zip_file_count"
           } >> "$GITHUB_OUTPUT"
 
       - name: Upload artifact
