@@ -358,7 +358,7 @@ jobs:
             "$node_exe" "$prisma_cli" --version
           )
 
-          nginx_space_root="$work_dir/MG Pocket nginx test"
+          nginx_space_root="$PWD/$work_dir/MG Pocket nginx test"
           mkdir -p \
             "$nginx_space_root/config" \
             "$nginx_space_root/logs" \
@@ -370,6 +370,8 @@ jobs:
           nginx_access_log="$(cygpath -m "$nginx_space_root/logs/nginx-access.log")"
           nginx_pid="$(cygpath -m "$nginx_space_root/logs/nginx.pid")"
           nginx_uploads="$(cygpath -m "$nginx_space_root/data/uploads")/"
+          nginx_config_win="$(cygpath -w "$nginx_space_root/config/nginx.conf")"
+          nginx_prefix_win="$(cygpath -w "$nginx_space_root/runtime/nginx")"
           cat > "$nginx_space_root/config/nginx.conf" <<EOF
           worker_processes  1;
           error_log  "$nginx_error_log";
@@ -401,8 +403,8 @@ jobs:
           EOF
           "$nginx_space_root/runtime/nginx/nginx.exe" \
             -t \
-            -c "$nginx_space_root/config/nginx.conf" \
-            -p "$nginx_space_root/runtime/nginx"
+            -c "$nginx_config_win" \
+            -p "$nginx_prefix_win"
 
           zip_abs="$PWD/$zip_path"
           rm -f "$zip_path"
