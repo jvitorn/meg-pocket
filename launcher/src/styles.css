@@ -201,6 +201,13 @@ main {
   color: #bdd8d2;
 }
 
+.operation-progress__transfer {
+  margin: 0;
+  color: #a0d4c8;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .operation-progress__track {
   position: relative;
   height: 8px;

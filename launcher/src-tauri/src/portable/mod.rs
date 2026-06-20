@@ -185,6 +185,7 @@ impl<'app, 'manager> PortableJob<'app, 'manager> {
             &format!("Falhou na etapa: {}", self.current_step),
             self.current_step_id.as_deref(),
             self.steps.clone(),
+            Some(error.kind_str()),
         );
     }
 
@@ -192,7 +193,7 @@ impl<'app, 'manager> PortableJob<'app, 'manager> {
         let current_step = self.current_step.clone();
         self.update_structured_steps(
             &current_step,
-            "Cancelado pelo usuário.",
+            "Operação cancelada. Nenhuma instalação existente foi alterada.",
             self.progress,
             "cancelled",
             None,
@@ -217,9 +218,74 @@ impl<'app, 'manager> PortableJob<'app, 'manager> {
         self.job.is_cancelled()
     }
 
+    pub(crate) fn progress_download(
+        &mut self,
+        step: &str,
+        message: &str,
+        progress: u8,
+        transferred: u64,
+        total: Option<u64>,
+        speed: Option<u64>,
+        elapsed: u64,
+    ) {
+        self.current_step = step.to_string();
+        self.progress = jobs::clamp_running_progress(progress).max(self.progress);
+        self.update_structured_steps(step, message, self.progress, "running", None);
+        jobs::emit_transfer_progress(
+            self.app,
+            self.job.job_id(),
+            self.job.action(),
+            step,
+            message,
+            self.progress,
+            self.current_step_id.as_deref(),
+            self.steps.clone(),
+            jobs::TransferProgress {
+                transferred_bytes: Some(transferred),
+                total_bytes: total,
+                files_processed: None,
+                total_files: None,
+                bytes_per_second: speed,
+                elapsed_seconds: Some(elapsed),
+            },
+        );
+    }
+
+    pub(crate) fn progress_extraction(
+        &mut self,
+        step: &str,
+        message: &str,
+        progress: u8,
+        files_processed: u64,
+        total_files: u64,
+        elapsed: u64,
+    ) {
+        self.current_step = step.to_string();
+        self.progress = jobs::clamp_running_progress(progress).max(self.progress);
+        self.update_structured_steps(step, message, self.progress, "running", None);
+        jobs::emit_transfer_progress(
+            self.app,
+            self.job.job_id(),
+            self.job.action(),
+            step,
+            message,
+            self.progress,
+            self.current_step_id.as_deref(),
+            self.steps.clone(),
+            jobs::TransferProgress {
+                transferred_bytes: None,
+                total_bytes: None,
+                files_processed: Some(files_processed),
+                total_files: Some(total_files),
+                bytes_per_second: None,
+                elapsed_seconds: Some(elapsed),
+            },
+        );
+    }
+
     pub(crate) fn check_cancelled(&self) -> LauncherResult<()> {
         if self.is_cancelled() {
-            Err(LauncherError::friendly("Operação cancelada."))
+            Err(LauncherError::cancelled("Operação cancelada."))
         } else {
             Ok(())
         }
@@ -471,7 +537,7 @@ pub(crate) fn run_command(
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
             let _ = child.kill();
             let _ = child.wait();
-            return Err(LauncherError::friendly("Operação cancelada."));
+            return Err(LauncherError::cancelled("Operação cancelada."));
         }
 
         match child.try_wait() {
@@ -511,10 +577,8 @@ pub(crate) fn run_command(
         if started.elapsed() >= timeout {
             let _ = child.kill();
             let _ = child.wait();
-            return Err(LauncherError::new(
-                format!(
-                    "Falhou na etapa: {step}. O comando passou do tempo limite e foi cancelado."
-                ),
+            return Err(LauncherError::timeout(
+                format!("A etapa '{step}' demorou mais que o esperado e foi interrompida. Tente novamente."),
                 format!("Timeout em comando portátil: {display}"),
             ));
         }
@@ -587,7 +651,7 @@ fn run_daemon_start_command_raw(
         if cancel.load(Ordering::Relaxed) {
             let _ = child.kill();
             let _ = child.wait();
-            return Err(LauncherError::friendly("Operação cancelada."));
+            return Err(LauncherError::cancelled("Operação cancelada."));
         }
 
         match child.try_wait() {
@@ -613,8 +677,8 @@ fn run_daemon_start_command_raw(
         if started.elapsed() >= timeout {
             let _ = child.kill();
             let _ = child.wait();
-            return Err(LauncherError::new(
-                "O serviço portátil demorou demais para responder e foi interrompido.",
+            return Err(LauncherError::timeout(
+                "O serviço portátil demorou mais que o esperado para responder e foi interrompido. Tente novamente.",
                 format!("Timeout em comando de serviço portátil: {display}"),
             ));
         }
@@ -762,8 +826,9 @@ where
         }
         std::thread::sleep(Duration::from_secs(2));
     }
-    Err(LauncherError::friendly(
-        "Não foi possível validar o sistema local a tempo. Use Reparar instalação ou veja os logs técnicos.",
+    Err(LauncherError::timeout(
+        "Não foi possível validar o sistema local a tempo. Tente novamente ou use Reparar instalação.",
+        format!("Timeout de {}s aguardando condição de saúde.", timeout.as_secs()),
     ))
 }
 

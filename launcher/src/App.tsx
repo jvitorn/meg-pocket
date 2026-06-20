@@ -186,6 +186,22 @@ function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
+function formatTransferDetail(event: LauncherJobEvent): string | null {
+  if (event.transferredBytes !== undefined && event.transferredBytes > 0) {
+    const transferred = (event.transferredBytes / 1_048_576).toFixed(1);
+    const total = event.totalBytes !== undefined ? ` de ${(event.totalBytes / 1_048_576).toFixed(1)} MB` : "";
+    const speed =
+      event.bytesPerSecond && event.bytesPerSecond > 0
+        ? ` — ${(event.bytesPerSecond / 1_048_576).toFixed(1)} MB/s`
+        : "";
+    return `${transferred} MB${total}${speed}`;
+  }
+  if (event.filesProcessed !== undefined && event.totalFiles !== undefined && event.totalFiles > 0) {
+    return `${event.filesProcessed.toLocaleString("pt-BR")} de ${event.totalFiles.toLocaleString("pt-BR")} arquivos`;
+  }
+  return null;
+}
+
 function dependencyInstructions(dependencies: DependencyStatus) {
   if (dependencies.os === "windows") {
     return dependencies.manualInstructions || "Instale as ferramentas indicadas e tente novamente.";
@@ -249,8 +265,8 @@ function localJobEvent(
   };
 }
 
-function isCancelledMessage(message: string) {
-  return message.toLocaleLowerCase().includes("cancelad");
+function isEventCancelled(errorKind?: string) {
+  return errorKind === "cancelled_by_user";
 }
 
 function launcherStatusLabel(status: SystemStatus | null, jobStatus: JobStatus, isBusy: boolean, error: string) {
@@ -417,6 +433,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [steps, setSteps] = useState<ProgressStep[]>(initialSteps);
+  const lastTerminalEventKindRef = useRef<string | undefined>(undefined);
   const [resetOpen, setResetOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState<"safe" | "complete" | null>(null);
   const [restoreOpen, setRestoreOpen] = useState(false);
@@ -508,6 +525,7 @@ export default function App() {
 
     const handleJobEvent = (payload: LauncherJobEvent, eventName: LauncherJobEventName) => {
       if (eventName === "launcher://job-started") {
+        lastTerminalEventKindRef.current = undefined;
         setJobEvent(payload);
         setJobStatus("running");
         setRecentJobLogs([]);
@@ -546,13 +564,14 @@ export default function App() {
       if (eventName === "launcher://job-finished") {
         setJobEvent(payload);
         const nextStatus = payload.level === "error" ? "error" : payload.level === "cancelled" ? "cancelled" : "success";
+        lastTerminalEventKindRef.current = payload.errorKind ?? (nextStatus === "cancelled" ? "cancelled_by_user" : nextStatus);
         setJobStatus(nextStatus);
         setSteps((current) => applyJobEventToSteps(current, payload, eventName));
         if (nextStatus === "error") {
           setError((current) => current || "Não foi possível concluir. Use Ver detalhes técnicos para investigar o que aconteceu.");
         } else if (nextStatus === "cancelled") {
           setError("");
-          setNotice("Cancelado pelo usuário.");
+          setNotice("Operação cancelada. Nenhuma instalação existente foi alterada.");
         }
       }
     };
@@ -635,15 +654,15 @@ export default function App() {
     } catch (err) {
       updateLogBuffer((current) => appendOutput(current, `Erro em ${label}`, errorMessage(err)), true);
       const message = friendlyActionError(label, err);
-      if (isCancelledMessage(message)) {
+      if (isEventCancelled(lastTerminalEventKindRef.current)) {
         setSteps((current) =>
           current.map((step) =>
             step.status === "running"
-              ? { ...step, status: "cancelled", message: "Cancelado pelo usuário." }
+              ? { ...step, status: "cancelled", message: "Operação cancelada." }
               : step,
           ),
         );
-        setJobEvent(localJobEvent(label, "cancelled", "Cancelado pelo usuário.", jobEvent?.progress ?? 0));
+        setJobEvent(localJobEvent(label, "cancelled", "Operação cancelada.", jobEvent?.progress ?? 0));
         setJobStatus("cancelled");
       } else {
         setJobEvent(localJobEvent(label, "error", message));
@@ -720,10 +739,10 @@ export default function App() {
         true,
       );
       const message = friendlyActionError("Preparar Ambiente", err);
-      if (isCancelledMessage(message)) {
-        setJobEvent(localJobEvent("Preparar Ambiente", "cancelled", "Cancelado pelo usuário.", jobEvent?.progress ?? 0));
+      if (isEventCancelled(lastTerminalEventKindRef.current)) {
+        setJobEvent(localJobEvent("Preparar Ambiente", "cancelled", "Operação cancelada.", jobEvent?.progress ?? 0));
         setJobStatus("cancelled");
-        setNotice("Cancelado pelo usuário.");
+        setNotice("Operação cancelada. Nenhuma instalação existente foi alterada.");
       } else {
         setJobEvent(localJobEvent("Preparar Ambiente", "error", message));
         setJobStatus("error");
@@ -819,17 +838,17 @@ export default function App() {
     } catch (err) {
       updateLogBuffer((current) => appendOutput(current, "Erro ao preparar ambiente", errorMessage(err)), true);
       const message = friendlyActionError("Preparar Ambiente", err);
-      if (isCancelledMessage(message)) {
+      if (isEventCancelled(lastTerminalEventKindRef.current)) {
         setSteps((current) =>
           current.map((step) =>
             step.status === "running"
-              ? { ...step, status: "cancelled", message: "Cancelado pelo usuário." }
+              ? { ...step, status: "cancelled", message: "Operação cancelada." }
               : step,
           ),
         );
-        setJobEvent(localJobEvent("Preparar Ambiente", "cancelled", "Cancelado pelo usuário.", jobEvent?.progress ?? 0));
+        setJobEvent(localJobEvent("Preparar Ambiente", "cancelled", "Operação cancelada.", jobEvent?.progress ?? 0));
         setJobStatus("cancelled");
-        setNotice("Cancelado pelo usuário.");
+        setNotice("Operação cancelada. Nenhuma instalação existente foi alterada.");
       } else {
         setSteps((current) =>
           current.map((step) =>
@@ -1072,13 +1091,13 @@ export default function App() {
         setSteps((current) =>
           current.map((step) =>
             step.status === "running"
-              ? { ...step, status: "cancelled", message: "Cancelado pelo usuário." }
+              ? { ...step, status: "cancelled", message: "Operação cancelada." }
               : step,
           ),
         );
-        setJobEvent(localJobEvent(jobEvent?.action || "Operação", "cancelled", "Cancelado pelo usuário.", currentProgress));
+        setJobEvent(localJobEvent(jobEvent?.action || "Operação", "cancelled", "Operação cancelada.", currentProgress));
         setJobStatus("cancelled");
-        setNotice("Cancelado pelo usuário.");
+        setNotice("Operação cancelada. Nenhuma instalação existente foi alterada.");
         setBusy(null);
       }
     } catch (err) {
@@ -1180,6 +1199,8 @@ export default function App() {
           progress: Math.max(0, Math.min(100, jobEvent.progress)),
         }
       : progressCopy(busy);
+
+  const transferDetail = jobStatus === "running" && jobEvent ? formatTransferDetail(jobEvent) : null;
 
   const closeHelp = () => {
     if (helpTopic === "firstSteps" && hideFirstSteps) {
@@ -1329,6 +1350,9 @@ export default function App() {
             <strong>{activeProgress.title}</strong>
             <span>{activeProgress.step ? `${activeProgress.step}: ${activeProgress.detail}` : activeProgress.detail}</span>
           </div>
+          {transferDetail ? (
+            <p className="operation-progress__transfer">{transferDetail}</p>
+          ) : null}
           <div
             className="operation-progress__track"
             role="progressbar"

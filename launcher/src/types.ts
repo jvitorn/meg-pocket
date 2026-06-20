@@ -90,6 +90,20 @@ export type LauncherJobEvent = {
   status?: JobStatus;
   currentStepId?: LauncherStep["id"];
   steps?: LauncherStep[];
+  /** Typed error kind emitted by the backend. Never "cancelled_by_user" for timeouts. */
+  errorKind?: "cancelled_by_user" | "timeout" | "download" | "integrity" | "extraction" | "validation" | "installation" | "database" | "prisma" | "next" | "nginx" | "health_check" | "file_locked" | "port_unavailable" | "unknown" | string;
+  /** Bytes transferred so far (download progress). */
+  transferredBytes?: number;
+  /** Total expected bytes (download progress). */
+  totalBytes?: number;
+  /** Files processed so far (extraction progress). */
+  filesProcessed?: number;
+  /** Total file count (extraction progress). */
+  totalFiles?: number;
+  /** Transfer speed in bytes/s. */
+  bytesPerSecond?: number;
+  /** Seconds elapsed since the operation started. */
+  elapsedSeconds?: number;
 };
 
 export type StepState = LauncherStepStatus;
