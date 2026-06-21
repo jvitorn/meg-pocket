@@ -543,16 +543,12 @@ fn delete_portable_files(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<()> {
     let data_dir = paths::mg_pocket_data_dir()?;
     validate_portable_delete_path(&data_dir)?;
 
-    if data_dir.exists() {
-        ctx.log(
-            "Excluindo",
-            &format!("Removendo: {}", data_dir.display()),
-            "info",
-        );
-        fs::remove_dir_all(&data_dir).map_err(|error| {
-            LauncherError::technical("Não foi possível remover pasta do M&G Pocket", error)
-        })?;
-    }
+    ctx.log(
+        "Excluindo",
+        &format!("Removendo: {}", data_dir.display()),
+        "info",
+    );
+    crate::cleanup::cleanup_local_installation(crate::cleanup::CleanupOptions::portable_delete())?;
     ctx.progress("Finalizado", "Arquivos removidos.", 95);
     Ok(())
 }
@@ -564,38 +560,38 @@ pub(crate) fn validate_portable_delete_path(path: &Path) -> LauncherResult<()> {
         ));
     }
 
-    let components: Vec<_> = path.components().collect();
-    if components.len() < 3 {
-        return Err(LauncherError::friendly(
-            "Recusado: caminho muito curto para ser a pasta do M&G Pocket.",
-        ));
-    }
-
     let env_override = std::env::var("MG_POCKET_DATA_DIR")
         .ok()
         .filter(|v| !v.trim().is_empty());
-
-    if env_override.is_none() {
-        let folder_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        if folder_name != "MG Pocket" {
+    if env_override.is_some() {
+        if crate::storage::is_dangerous_delete_path(path) {
             return Err(LauncherError::friendly(
-                "Recusado: o nome da pasta não é 'MG Pocket'.",
+                "Recusado: caminho perigoso para exclusão.",
             ));
         }
-    }
-
-    if path.exists() {
-        let has_marker = path.join("config").join("runtime.json").exists()
-            || (path.join("runtime").is_dir() && path.join("config").is_dir())
-            || path.join("app").join("server.js").exists();
-        if !has_marker {
-            return Err(LauncherError::friendly(
-                "A pasta não contém marcadores do M&G Pocket. Exclusão recusada por segurança.",
-            ));
+        if path.exists() {
+            let metadata = fs::symlink_metadata(path).map_err(|error| {
+                LauncherError::technical("Não foi possível validar pasta local", error)
+            })?;
+            if metadata.file_type().is_symlink() {
+                return Err(LauncherError::friendly(
+                    "Recusado: a pasta local resolve para um link simbólico.",
+                ));
+            }
+            let has_marker = path.join("config").join("runtime.json").exists()
+                || path.join("config").join("processes.json").exists()
+                || path.join("app").join("server.js").exists()
+                || path.join("runtime").is_dir();
+            if !has_marker {
+                return Err(LauncherError::friendly(
+                    "A pasta não contém marcadores do M&G Pocket. Exclusão recusada por segurança.",
+                ));
+            }
         }
+        return Ok(());
     }
 
-    Ok(())
+    crate::cleanup::validate_mg_pocket_root_for_delete(path)
 }
 
 pub(crate) fn run_command(

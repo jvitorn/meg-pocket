@@ -154,6 +154,7 @@ fn status_json(full: bool) -> LauncherResult<String> {
         "uploadsDirectoryOk": paths::mg_pocket_data_content_dir().map(|path| path.join("uploads").is_dir()).unwrap_or(false),
         "uploadsServed": uploads_served,
         "nextAssetsOnline": installed && check_http_path(public_port, "/imgs/icons/logo_guerreiro.svg", PORT_TIMEOUT),
+        "installationRootPath": paths::mg_pocket_data_dir().map(|path| path.to_string_lossy().to_string()).unwrap_or_default(),
         "localDataPath": paths::mg_pocket_data_content_dir().map(|path| path.to_string_lossy().to_string()).unwrap_or_default(),
         "localBackupsPath": paths::mg_pocket_backups_dir().map(|path| path.to_string_lossy().to_string()).unwrap_or_default(),
         "localLogsPath": paths::mg_pocket_logs_dir().map(|path| path.to_string_lossy().to_string()).unwrap_or_default(),

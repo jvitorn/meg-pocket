@@ -1,7 +1,8 @@
 import { ExternalLink, Play } from "lucide-react";
-import type { LauncherViewState, SystemStatus } from "../types";
+import type { LauncherViewState, LocalStorageStatus, ShareState, SystemStatus } from "../types";
 import { ActionButton } from "./ActionButton";
 import { LauncherActions } from "./LauncherActions";
+import { LauncherStoragePanel } from "./LauncherStoragePanel";
 import { LauncherStatusPanel } from "./LauncherStatusPanel";
 
 type LauncherMainViewProps = {
@@ -12,18 +13,23 @@ type LauncherMainViewProps = {
   busy: boolean;
   loadingStart: boolean;
   loadingStop: boolean;
+  loadingShare: boolean;
   loadingUpdate: boolean;
   loadingBackup: boolean;
+  shareState: ShareState;
+  storageStatus: LocalStorageStatus | null;
+  loadingStorage: boolean;
   onPrimaryAction: () => void;
   onStartServer: () => void;
   onStopServer: () => void;
-  onOpenSite: () => void;
+  onShare: () => void;
   onUpdate: () => void;
   onBackup: () => void;
   onRestoreBackup: () => void;
   onOpenLogs: () => void;
   onDelete: () => void;
   onRetry: () => void;
+  onOpenInstallationFolder: () => void;
 };
 
 function primaryLabel(viewState: LauncherViewState) {
@@ -45,18 +51,23 @@ export function LauncherMainView({
   busy,
   loadingStart,
   loadingStop,
+  loadingShare,
   loadingUpdate,
   loadingBackup,
+  shareState,
+  storageStatus,
+  loadingStorage,
   onPrimaryAction,
   onStartServer,
   onStopServer,
-  onOpenSite,
+  onShare,
   onUpdate,
   onBackup,
   onRestoreBackup,
   onOpenLogs,
   onDelete,
   onRetry,
+  onOpenInstallationFolder,
 }: LauncherMainViewProps) {
   const isError = viewState === "error";
 
@@ -68,6 +79,7 @@ export function LauncherMainView({
           status={status}
           error={error}
           appUrl={status?.appUrl}
+          shareState={shareState}
         />
 
         {!isError ? (
@@ -104,15 +116,23 @@ export function LauncherMainView({
             {error}
           </div>
         ) : null}
+
+        <LauncherStoragePanel
+          status={status}
+          storage={storageStatus}
+          loading={loadingStorage}
+          onOpenFolder={onOpenInstallationFolder}
+        />
       </div>
 
       <aside className="main-view__actions">
         <LauncherActions
           viewState={viewState}
           busy={busy}
+          shareState={shareState}
           onStartServer={onStartServer}
           onStopServer={onStopServer}
-          onOpenSite={onOpenSite}
+          onShare={onShare}
           onUpdate={onUpdate}
           onBackup={onBackup}
           onRestoreBackup={onRestoreBackup}
@@ -120,6 +140,7 @@ export function LauncherMainView({
           onDelete={onDelete}
           loadingStart={loadingStart}
           loadingStop={loadingStop}
+          loadingShare={loadingShare}
           loadingUpdate={loadingUpdate}
           loadingBackup={loadingBackup}
         />

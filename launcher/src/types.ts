@@ -24,6 +24,13 @@ export type SystemStatus = {
   projectVersion?: string;
   appUrl?: string;
   adminerUrl?: string;
+  installationRootPath?: string;
+  installationSizeBytes?: number;
+  dataSizeBytes?: number;
+  backupsSizeBytes?: number;
+  logsSizeBytes?: number;
+  downloadsSizeBytes?: number;
+  runtimeSizeBytes?: number;
   appOnline: boolean;
   adminerOnline: boolean;
   podmanInstalled?: boolean;
@@ -42,6 +49,32 @@ export type SystemStatus = {
   localBackupsPath?: string;
   localLogsPath?: string;
   checkedAt?: string;
+};
+
+export type ShareStatus = "inactive" | "preparing" | "active" | "stopping" | "error";
+
+export type ShareState = {
+  status: ShareStatus | string;
+  publicUrl?: string | null;
+  localUrl?: string | null;
+  pid?: number | null;
+  executablePath?: string | null;
+  executableSha256?: string | null;
+  version?: string | null;
+  message?: string | null;
+  startedAt?: string | null;
+  updatedAt?: string;
+};
+
+export type LocalStorageStatus = {
+  installationRootPath: string;
+  installationSizeBytes: number;
+  dataSizeBytes: number;
+  backupsSizeBytes: number;
+  logsSizeBytes: number;
+  downloadsSizeBytes: number;
+  runtimeSizeBytes: number;
+  updatedAt: string;
 };
 
 export type DependencyStatus = {

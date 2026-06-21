@@ -59,6 +59,7 @@ pub fn install_project(
     local_build: bool,
     no_cache: bool,
 ) -> LauncherResult<CommandOutput> {
+    let _ = crate::tunnel::stop();
     match runtime_mode() {
         RuntimeMode::Docker => docker::install_project(
             app,
@@ -80,6 +81,7 @@ pub fn repair_installation(
     local_build: bool,
     no_cache: bool,
 ) -> LauncherResult<CommandOutput> {
+    let _ = crate::tunnel::stop();
     match runtime_mode() {
         RuntimeMode::Docker => docker::repair_installation(
             app,
@@ -109,6 +111,7 @@ pub fn stop_app(
     jobs: &JobManager,
     use_sudo_docker: bool,
 ) -> LauncherResult<CommandOutput> {
+    let _ = crate::tunnel::stop();
     match runtime_mode() {
         RuntimeMode::Docker => docker::stop_app(app, jobs, use_sudo_docker),
         RuntimeMode::Portable => portable::stop_app(app, jobs),
@@ -120,6 +123,7 @@ pub fn restart_app(
     jobs: &JobManager,
     use_sudo_docker: bool,
 ) -> LauncherResult<CommandOutput> {
+    let _ = crate::tunnel::stop();
     match runtime_mode() {
         RuntimeMode::Docker => docker::restart_app(app, jobs, use_sudo_docker),
         RuntimeMode::Portable => portable::restart_app(app, jobs),
@@ -131,10 +135,16 @@ pub fn read_logs(
     jobs: &JobManager,
     use_sudo_docker: bool,
 ) -> LauncherResult<String> {
-    match runtime_mode() {
+    let mut logs = match runtime_mode() {
         RuntimeMode::Docker => docker::read_logs(app, jobs, use_sudo_docker),
         RuntimeMode::Portable => portable::read_logs(app, jobs),
+    }?;
+    let tunnel_logs = crate::tunnel::read_log_text();
+    if !tunnel_logs.trim().is_empty() {
+        logs.push_str("\n\n# cloudflared.log\n");
+        logs.push_str(&tunnel_logs);
     }
+    Ok(logs)
 }
 
 pub fn backup(
@@ -155,6 +165,7 @@ pub fn restore_backup(
     confirmed: bool,
     use_sudo_docker: bool,
 ) -> LauncherResult<CommandOutput> {
+    let _ = crate::tunnel::stop();
     match runtime_mode() {
         RuntimeMode::Docker => {
             docker::restore_backup(app, jobs, backup_path, confirmed, use_sudo_docker)
@@ -169,6 +180,7 @@ pub fn reset_local_data(
     confirmed: bool,
     use_sudo_docker: bool,
 ) -> LauncherResult<CommandOutput> {
+    let _ = crate::tunnel::stop();
     match runtime_mode() {
         RuntimeMode::Docker => docker::reset_local_data(app, jobs, confirmed, use_sudo_docker),
         RuntimeMode::Portable => portable::reset_local_data(app, jobs, confirmed),
@@ -181,6 +193,7 @@ pub fn delete_local_installation(
     confirmed: bool,
     use_sudo_docker: bool,
 ) -> LauncherResult<CommandOutput> {
+    let _ = crate::tunnel::stop();
     match runtime_mode() {
         RuntimeMode::Portable => portable::delete_local_installation(app, jobs, confirmed),
         RuntimeMode::Docker => docker::remove_local_project(
@@ -220,6 +233,10 @@ fn annotate_status(raw: String, mode: RuntimeMode) -> LauncherResult<String> {
     object.insert(
         "portableInstalled".to_string(),
         json!(portable::diagnose::is_installed()),
+    );
+    object.insert(
+        "installationRootPath".to_string(),
+        json!(path_string(paths::mg_pocket_data_dir())),
     );
     object.insert(
         "localDataPath".to_string(),

@@ -1,13 +1,14 @@
-import type { LauncherViewState, SystemStatus } from "../types";
+import type { LauncherViewState, ShareState, SystemStatus } from "../types";
 
 type LauncherStatusPanelProps = {
   viewState: LauncherViewState;
   status: SystemStatus | null;
   error: string;
   appUrl?: string;
+  shareState: ShareState;
 };
 
-export function LauncherStatusPanel({ viewState, status, error, appUrl }: LauncherStatusPanelProps) {
+export function LauncherStatusPanel({ viewState, status, error, appUrl, shareState }: LauncherStatusPanelProps) {
   if (viewState === "error") {
     return (
       <div className="status-panel status-panel--error" role="status">
@@ -24,7 +25,9 @@ export function LauncherStatusPanel({ viewState, status, error, appUrl }: Launch
         <div className="status-panel__dot status-panel__dot--online" aria-hidden="true" />
         <h3>Servidor online</h3>
         <p className="status-panel__message">
-          O M&amp;G Pocket está pronto para uso.
+          {shareState.status === "active"
+            ? "Compartilhamento temporário ativo."
+            : "O M&G Pocket está pronto para uso."}
         </p>
         {appUrl ? (
           <p className="status-panel__url">{appUrl}</p>

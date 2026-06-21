@@ -2990,8 +2990,12 @@ fn build_system_status(
         .as_ref()
         .map(|output| output.success)
         .unwrap_or(false);
-    let project_diagnostics = if !quick && project_installed && docker_running {
-        collect_project_diagnostics(&project_dir, cancel.clone())
+    let project_diagnostics = if project_installed && docker_running {
+        if quick {
+            collect_quick_project_diagnostics(app_port)
+        } else {
+            collect_project_diagnostics(&project_dir, cancel.clone())
+        }
     } else {
         ProjectDiagnostics::default()
     };
@@ -3064,6 +3068,21 @@ struct ProjectDiagnostics {
     uploads_directory_ok: bool,
     uploads_served: bool,
     next_assets_online: bool,
+}
+
+fn collect_quick_project_diagnostics(app_port: u16) -> ProjectDiagnostics {
+    let app_online = check_http_path(app_port, "/api/health", PORT_TIMEOUT);
+    let nginx_online = check_http_path(app_port, "/healthz", PORT_TIMEOUT);
+    ProjectDiagnostics {
+        app_online,
+        database_connected: app_online,
+        containers_active: app_online || nginx_online,
+        nginx_online,
+        uploads_directory_ok: false,
+        uploads_served: false,
+        next_assets_online: app_online
+            && check_http_path(app_port, "/imgs/icons/logo_guerreiro.svg", PORT_TIMEOUT),
+    }
 }
 
 fn collect_project_diagnostics(
@@ -4620,6 +4639,10 @@ fn redact_sensitive(line: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::{
+        io::{Read, Write},
+        net::TcpListener,
+    };
 
     #[test]
     fn parses_linux_distro_family_from_os_release() {
@@ -4677,6 +4700,36 @@ PRETTY_NAME="Ubuntu 24.04 LTS"
         let error = run_capture(command, Duration::from_millis(100), None)
             .expect_err("comando deve estourar timeout");
         assert_eq!(error.kind, ProcessErrorKind::Timeout);
+    }
+
+    #[test]
+    fn quick_project_diagnostics_uses_http_health_checks() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).expect("porta livre");
+        let port = listener.local_addr().unwrap().port();
+        let handle = std::thread::spawn(move || {
+            for _ in 0..3 {
+                let (mut stream, _) = listener.accept().expect("conexão");
+                let mut buffer = [0_u8; 512];
+                let _ = stream.read(&mut buffer);
+                let request = String::from_utf8_lossy(&buffer);
+                let status = if request.contains("/api/health")
+                    || request.contains("/healthz")
+                    || request.contains("/imgs/icons/logo_guerreiro.svg")
+                {
+                    "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"
+                } else {
+                    "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                };
+                let _ = stream.write_all(status.as_bytes());
+            }
+        });
+
+        let diagnostics = collect_quick_project_diagnostics(port);
+        assert!(diagnostics.app_online);
+        assert!(diagnostics.nginx_online);
+        assert!(diagnostics.containers_active);
+        assert!(diagnostics.next_assets_online);
+        handle.join().unwrap();
     }
 
     #[test]

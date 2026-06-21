@@ -7,6 +7,8 @@ import {
   doctor,
   ensureDockerPermission,
   ensureDockerRunning,
+  getLocalStorageStatus,
+  getShareStatus,
   installDockerLinux,
   installProject,
   installSystemDependencies,
@@ -14,11 +16,15 @@ import {
   listenLauncherJobEvent,
   type LauncherJobEventName,
   openSite,
+  openShareLink,
+  openInstallationFolder,
   quickDiagnose,
   readLogs,
   repairInstallation,
   restoreBackup,
+  startShare,
   startApp,
+  stopShare,
   stopApp,
 } from "./api";
 import { AppShell } from "./components/AppShell";
@@ -34,13 +40,16 @@ import {
   LauncherNginxNotice,
 } from "./components/LauncherNginxNotice";
 import { LauncherProgressView } from "./components/LauncherProgressView";
+import { LauncherSharePanel } from "./components/LauncherSharePanel";
 import type {
   CommandOutput,
   DependencyStatus,
   JobStatus,
   LauncherJobEvent,
   LauncherViewState,
+  LocalStorageStatus,
   ProgressStep,
+  ShareState,
   SystemStatus,
 } from "./types";
 import { resolveLauncherViewState } from "./types";
@@ -56,6 +65,7 @@ const preparationStepTemplates: ProgressStep[] = [
 const initialSteps: ProgressStep[] = createInitialSteps();
 
 const FIRST_STEPS_STORAGE_KEY = "mg-pocket-launcher-hide-first-steps";
+const initialShareState: ShareState = { status: "inactive" };
 
 function appendOutput(current: string, label: string, output?: CommandOutput | string) {
   const text = typeof output === "string" ? output : [output?.stdout, output?.stderr].filter(Boolean).join("\n");
@@ -353,6 +363,12 @@ export default function App() {
   const [helpTopic, setHelpTopic] = useState<HelpTopic | null>(null);
   const [hideFirstSteps, setHideFirstSteps] = useState(false);
   const [nginxNoticeOpen, setNginxNoticeOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareState, setShareState] = useState<ShareState>(initialShareState);
+  const [shareError, setShareError] = useState("");
+  const [storageStatus, setStorageStatus] = useState<LocalStorageStatus | null>(null);
+  const [loadingStorage, setLoadingStorage] = useState(false);
+  const storageRefreshRef = useRef({ startedAt: 0, requestId: 0 });
 
   const [dependencyPrompt, setDependencyPrompt] = useState<DependencyStatus | null>(null);
   const [pendingDependencyAction, setPendingDependencyAction] = useState<PendingDependencyAction | null>(null);
@@ -518,9 +534,50 @@ export default function App() {
     }
   };
 
+  const refreshShareStatus = async () => {
+    try {
+      const nextShareState = await getShareStatus();
+      setShareState(nextShareState);
+      if (nextShareState.status !== "error") setShareError("");
+      return nextShareState;
+    } catch {
+      setShareState(initialShareState);
+      return initialShareState;
+    }
+  };
+
+  const refreshStorageStatus = useCallback(async (force = false) => {
+    const now = Date.now();
+    if (!force && now - storageRefreshRef.current.startedAt < 20_000) return;
+    const requestId = storageRefreshRef.current.requestId + 1;
+    storageRefreshRef.current = { startedAt: now, requestId };
+    setLoadingStorage(true);
+    try {
+      const nextStorageStatus = await getLocalStorageStatus();
+      if (storageRefreshRef.current.requestId === requestId) {
+        setStorageStatus(nextStorageStatus);
+      }
+    } catch {
+      if (storageRefreshRef.current.requestId === requestId) {
+        setStorageStatus(null);
+      }
+    } finally {
+      if (storageRefreshRef.current.requestId === requestId) {
+        setLoadingStorage(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     void refreshQuickStatus();
+    void refreshShareStatus();
   }, []);
+
+  useEffect(() => {
+    if (status?.projectInstalled || status?.installationRootPath || status?.localDataPath) {
+      void refreshStorageStatus();
+    }
+  }, [refreshStorageStatus, status?.checkedAt, status?.installationRootPath, status?.localDataPath, status?.projectInstalled]);
 
   useEffect(() => {
     if (window.localStorage.getItem(FIRST_STEPS_STORAGE_KEY) !== "true") {
@@ -556,6 +613,8 @@ export default function App() {
       const output = await action();
       if (typeof output === "string") updateLogBuffer((current) => appendOutput(current, label, output), true);
       await refreshQuickStatus();
+      await refreshShareStatus();
+      await refreshStorageStatus(true);
     } catch (err) {
       updateLogBuffer((current) => appendOutput(current, `Erro em ${label}`, errorMessage(err)), true);
       const message = friendlyActionError(label, err);
@@ -824,6 +883,78 @@ export default function App() {
     }
   };
 
+  const startSharing = async () => {
+    if (isBusy) return;
+    setShareOpen(true);
+    setShareError("");
+    setBusy("Compartilhar");
+    setShareState((current) => ({ ...current, status: "preparing", message: "Criando link temporário..." }));
+    try {
+      const nextShareState = await startShare();
+      setShareState(nextShareState);
+      setNotice("Compartilhamento temporário ativo.");
+    } catch (err) {
+      const message = friendlyActionError("Compartilhar sessão", err);
+      setShareError(message);
+      setShareState({
+        status: "error",
+        message: "Não foi possível criar o link temporário.",
+        publicUrl: null,
+      });
+      setError(message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const openSharing = async () => {
+    if (shareState.status === "active") {
+      setShareOpen(true);
+      return;
+    }
+    await startSharing();
+  };
+
+  const stopSharing = async () => {
+    if (isBusy && busy !== "Encerrar compartilhamento") return;
+    setShareError("");
+    setBusy("Encerrar compartilhamento");
+    setShareState((current) => ({ ...current, status: "stopping", publicUrl: null }));
+    try {
+      const nextShareState = await stopShare();
+      setShareState(nextShareState);
+      setNotice("Compartilhamento encerrado.");
+    } catch (err) {
+      const message = friendlyActionError("Encerrar compartilhamento", err);
+      setShareError(message);
+      setError(message);
+      await refreshShareStatus();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const copyShareLink = async () => {
+    const url = shareState.publicUrl;
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setNotice("Link copiado.");
+    } catch {
+      setShareError("Não foi possível copiar o link automaticamente.");
+    }
+  };
+
+  const openSharedLink = async () => {
+    const url = shareState.publicUrl;
+    if (!url) return;
+    try {
+      await openShareLink(url);
+    } catch (err) {
+      setShareError(friendlyActionError("Abrir link", err));
+    }
+  };
+
   const runPrimaryAction = async () => {
     if (viewState === "online") {
       await openPocket();
@@ -1071,18 +1202,23 @@ export default function App() {
         busy={isBusy}
         loadingStart={busy === "Iniciar servidor"}
         loadingStop={busy === "Parar"}
+        loadingShare={busy === "Compartilhar" || busy === "Encerrar compartilhamento"}
         loadingUpdate={busy === "Atualizar"}
         loadingBackup={busy === "Backup"}
+        shareState={shareState}
+        storageStatus={storageStatus}
+        loadingStorage={loadingStorage}
         onPrimaryAction={() => void runPrimaryAction()}
         onStartServer={() => void startAndOpenPocket()}
         onStopServer={() => void runAction("Parar", () => stopApp(dockerOptions))}
-        onOpenSite={() => void openPocket()}
+        onShare={() => void openSharing()}
         onUpdate={() => void installOrUpdateProject()}
         onBackup={() => void runAction("Backup", () => backup(dockerOptions))}
         onRestoreBackup={() => void restoreData()}
         onOpenLogs={() => setLogsOpen(true)}
         onDelete={() => setDeleteOpen(true)}
         onRetry={() => void runPrimaryAction()}
+        onOpenInstallationFolder={() => void openInstallationFolder()}
       />
     );
   };
@@ -1101,6 +1237,18 @@ export default function App() {
           setDeleteOpen(false);
           void runAction("Backup", () => backup(dockerOptions));
         }}
+      />
+
+      <LauncherSharePanel
+        open={shareOpen}
+        state={shareState}
+        loading={busy === "Compartilhar" || busy === "Encerrar compartilhamento"}
+        error={shareError}
+        onClose={() => setShareOpen(false)}
+        onStart={() => void startSharing()}
+        onStop={() => void stopSharing()}
+        onCopy={() => void copyShareLink()}
+        onOpenLink={() => void openSharedLink()}
       />
 
       <ConfirmDialog

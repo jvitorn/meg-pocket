@@ -1,21 +1,22 @@
 import {
   Archive,
-  ExternalLink,
   Play,
   RefreshCw,
   ScrollText,
+  Share2,
   Square,
   Trash2,
 } from "lucide-react";
-import type { LauncherViewState } from "../types";
+import type { LauncherViewState, ShareState } from "../types";
 import { ActionButton } from "./ActionButton";
 
 type LauncherActionsProps = {
   viewState: LauncherViewState;
   busy: boolean;
+  shareState: ShareState;
   onStartServer: () => void;
   onStopServer: () => void;
-  onOpenSite: () => void;
+  onShare: () => void;
   onUpdate: () => void;
   onBackup: () => void;
   onRestoreBackup: () => void;
@@ -23,6 +24,7 @@ type LauncherActionsProps = {
   onDelete: () => void;
   loadingStart: boolean;
   loadingStop: boolean;
+  loadingShare: boolean;
   loadingUpdate: boolean;
   loadingBackup: boolean;
 };
@@ -30,9 +32,10 @@ type LauncherActionsProps = {
 export function LauncherActions({
   viewState,
   busy,
+  shareState,
   onStartServer,
   onStopServer,
-  onOpenSite,
+  onShare,
   onUpdate,
   onBackup,
   onRestoreBackup,
@@ -40,15 +43,26 @@ export function LauncherActions({
   onDelete,
   loadingStart,
   loadingStop,
+  loadingShare,
   loadingUpdate,
   loadingBackup,
 }: LauncherActionsProps) {
   const isOnline = viewState === "online";
+  const isShareActive = shareState.status === "active";
 
   return (
     <div className="launcher-actions" aria-label="Ações do servidor">
       {isOnline ? (
         <>
+          <ActionButton
+            icon={<Share2 size={18} />}
+            variant={isShareActive ? "secondary" : "ghost"}
+            disabled={busy}
+            loading={loadingShare || shareState.status === "preparing"}
+            onClick={onShare}
+          >
+            {isShareActive ? "Gerenciar compartilhamento" : "Compartilhar sessão"}
+          </ActionButton>
           <ActionButton
             icon={<Square size={18} />}
             variant="secondary"
@@ -57,14 +71,6 @@ export function LauncherActions({
             onClick={onStopServer}
           >
             Parar servidor
-          </ActionButton>
-          <ActionButton
-            icon={<ExternalLink size={18} />}
-            variant="ghost"
-            disabled={busy}
-            onClick={onOpenSite}
-          >
-            Abrir no navegador
           </ActionButton>
         </>
       ) : (

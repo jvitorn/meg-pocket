@@ -71,6 +71,18 @@ pub fn stop(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<()> {
     write_registry(&ProcessRegistry::empty())
 }
 
+pub fn stop_best_effort_for_cleanup() {
+    let registry = read_registry().unwrap_or_else(ProcessRegistry::empty);
+    stop_nginx_best_effort();
+    if let Some(next) = registry.next {
+        if let Ok(app_dir) = paths::mg_pocket_app_dir() {
+            let _ = kill_pid_if_owned(next.pid, &app_dir);
+        }
+    }
+    let _ = postgres::stop_best_effort();
+    let _ = write_registry(&ProcessRegistry::empty());
+}
+
 pub fn restart(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<ProcessRegistry> {
     let _ = stop(ctx);
     start(ctx)
