@@ -1,6 +1,6 @@
+mod docker;
 mod errors;
 mod installers;
-mod docker;
 mod jobs;
 mod paths;
 mod portable;
@@ -257,6 +257,25 @@ fn removeLocalProject(
     ))
 }
 
+#[tauri::command(rename_all = "camelCase", async)]
+#[allow(non_snake_case)]
+fn deleteLocalInstallation(
+    app: AppHandle,
+    jobs: State<'_, JobManager>,
+    confirmed: bool,
+    use_sudo_docker: Option<bool>,
+) -> Result<CommandOutput, String> {
+    if !confirmed {
+        return Err("Exclusão exige confirmação explícita.".to_string());
+    }
+    command_result(runtime::delete_local_installation(
+        &app,
+        &jobs,
+        confirmed,
+        use_sudo_docker.unwrap_or(false),
+    ))
+}
+
 fn open_allowed_url(url: &str) -> LauncherResult<()> {
     if url != "https://www.docker.com/products/docker-desktop/" && !is_allowed_localhost_url(url) {
         return Err(LauncherError::friendly("URL não permitida pelo launcher."));
@@ -411,8 +430,9 @@ pub fn run() {
     tauri::Builder::default()
         .manage(JobManager::default())
         .setup(|app| {
-            let lock = paths::acquire_instance_lock()
-                .map_err(|error| Box::<dyn std::error::Error>::from(error.friendly_message().to_string()))?;
+            let lock = paths::acquire_instance_lock().map_err(|error| {
+                Box::<dyn std::error::Error>::from(error.friendly_message().to_string())
+            })?;
             app.manage(lock);
             Ok(())
         })
@@ -440,6 +460,7 @@ pub fn run() {
             restoreBackup,
             resetLocalData,
             removeLocalProject,
+            deleteLocalInstallation,
             cancelCurrentJob
         ])
         .run(tauri::generate_context!())

@@ -20,6 +20,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 
 const invokeMock = vi.mocked(invoke);
 const firstStepsStorageKey = "mg-pocket-launcher-hide-first-steps";
+const nginxNoticeKey = "mg-pocket-launcher-nginx-notice-accepted";
 const storage = new Map<string, string>();
 
 function installLocalStorageMock() {
@@ -134,16 +135,16 @@ describe("M&G Pocket Launcher", () => {
     expect(await screen.findByRole("dialog", { name: "Primeiros passos" })).toBeInTheDocument();
   });
 
-  it("usa Preparar Ambiente como ação principal e imagem pronta como modo padrão", async () => {
+  it("usa Instalar M&G Pocket como ação principal e imagem pronta como modo padrão", async () => {
     const user = await renderReady({ ...baseStatus, projectInstalled: false, appOnline: false, nginxOnline: false });
 
-    expect(screen.getByRole("button", { name: "Preparar Ambiente" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Instalar M&G Pocket" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Instalar\/Atualizar/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByText("Opções avançadas"));
     expect(screen.getByLabelText(/Baixar versão pronta/i)).toBeChecked();
 
-    await user.click(screen.getByRole("button", { name: "Preparar Ambiente" }));
+    await user.click(screen.getByRole("button", { name: "Instalar M&G Pocket" }));
 
     await waitFor(() =>
       expect(invokeMock).toHaveBeenCalledWith("installProject", {
@@ -161,7 +162,7 @@ describe("M&G Pocket Launcher", () => {
     await user.click(screen.getByText("Opções avançadas"));
     await user.click(screen.getByLabelText(/Construir localmente/i));
     await user.click(screen.getByLabelText(/Reconstruir sem cache/i));
-    await user.click(screen.getByRole("button", { name: "Preparar Ambiente" }));
+    await user.click(screen.getByRole("button", { name: "Instalar M&G Pocket" }));
 
     await waitFor(() =>
       expect(invokeMock).toHaveBeenCalledWith("installProject", {
@@ -192,7 +193,7 @@ describe("M&G Pocket Launcher", () => {
     expect(invokeMock).not.toHaveBeenCalledWith("openSite");
   });
 
-  it("barra não fica travada em 100% e botões liberam após erro", async () => {
+  it("botões ficam desativados durante job e são liberados após erro", async () => {
     await renderReady();
 
     emitLauncherEvent("launcher://job-started", {
@@ -204,7 +205,7 @@ describe("M&G Pocket Launcher", () => {
       level: "info",
     });
 
-    expect(screen.getByRole("button", { name: /^Diagnosticar$/i })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: /^Diagnosticar$/i })).not.toBeInTheDocument();
 
     emitLauncherEvent("launcher://job-finished", {
       job_id: "job-1",
@@ -215,8 +216,9 @@ describe("M&G Pocket Launcher", () => {
       level: "error",
     });
 
-    await waitFor(() => expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100"));
-    expect(screen.getByRole("status")).toHaveTextContent(/Não foi possível concluir/i);
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(/Não foi possível concluir/i),
+    );
     expect(screen.getByRole("button", { name: /^Diagnosticar$/i })).toBeEnabled();
     expect(screen.queryByRole("button", { name: /^Cancelar$/i })).not.toBeInTheDocument();
   });
@@ -231,15 +233,16 @@ describe("M&G Pocket Launcher", () => {
   it("diagnóstico simples aparece antes dos detalhes técnicos", async () => {
     await renderReady();
 
-    const diagnostics = within(screen.getByLabelText("Diagnóstico"));
-    expect(diagnostics.getByText("Banco de dados")).toBeInTheDocument();
-    expect(diagnostics.getByText("Aplicativo")).toBeInTheDocument();
-    expect(diagnostics.getByText("Acesso local")).toBeInTheDocument();
-    expect(diagnostics.queryByText("Nginx")).not.toBeInTheDocument();
+    // StatusCard "Diagnóstico" is the section with that aria-label
+    const diagnosticsCard = screen.getByRole("region", { name: "Diagnóstico" });
+    expect(within(diagnosticsCard).getByText("Banco de dados")).toBeInTheDocument();
+    expect(within(diagnosticsCard).getByText("Aplicativo")).toBeInTheDocument();
+    expect(within(diagnosticsCard).getByText("Acesso local")).toBeInTheDocument();
+    expect(within(diagnosticsCard).queryByText("Nginx")).not.toBeInTheDocument();
     expect(screen.getAllByText("Detalhes técnicos").length).toBeGreaterThan(0);
   });
 
-  it("renderiza cinco etapas principais e não mostra card Docker no modo portátil", async () => {
+  it("renderiza cinco etapas de preparação quando job está em execução", async () => {
     await renderReady({
       ...baseStatus,
       os: "windows",
@@ -252,14 +255,33 @@ describe("M&G Pocket Launcher", () => {
       appUrl: "http://localhost:3000",
     });
 
-    const preparationSteps = within(screen.getByLabelText("Etapas de preparação"));
-    expect(preparationSteps.getByText("Diagnóstico")).toBeInTheDocument();
-    expect(preparationSteps.getByText("Runtime")).toBeInTheDocument();
-    expect(preparationSteps.getByText("Banco local")).toBeInTheDocument();
-    expect(preparationSteps.getByText("Sistema")).toBeInTheDocument();
-    expect(preparationSteps.getByText("Acesso")).toBeInTheDocument();
-    expect(screen.getByText("Modo de execução: Portátil")).toBeInTheDocument();
-    expect(screen.getByText("Endereço local: http://localhost:3000")).toBeInTheDocument();
+    emitLauncherEvent("launcher://job-started", {
+      job_id: "job-steps",
+      action: "Instalar M&G Pocket",
+      step: "Runtime",
+      message: "Baixando runtime.",
+      progress: 20,
+      level: "info",
+    });
+
+    const preparationSteps = await screen.findByLabelText("Etapas de preparação");
+    expect(within(preparationSteps).getByText("Diagnóstico")).toBeInTheDocument();
+    expect(within(preparationSteps).getByText("Runtime")).toBeInTheDocument();
+    expect(within(preparationSteps).getByText("Banco local")).toBeInTheDocument();
+    expect(within(preparationSteps).getByText("Sistema")).toBeInTheDocument();
+    expect(within(preparationSteps).getByText("Acesso")).toBeInTheDocument();
+  });
+
+  it("não mostra card Docker no modo portátil", async () => {
+    await renderReady({
+      ...baseStatus,
+      os: "windows",
+      runtimeMode: "portable",
+      runtimeLabel: "Portátil",
+      dockerInstalled: false,
+      dockerRunning: false,
+    });
+
     expect(screen.queryByLabelText("Docker")).not.toBeInTheDocument();
   });
 
@@ -355,7 +377,8 @@ describe("M&G Pocket Launcher", () => {
     await user.click(screen.getByRole("button", { name: /^Backup$/i }));
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("backup", { useSudoDocker: false }));
 
-    await user.click(screen.getByRole("button", { name: /Restaurar Backup/i }));
+    const restoreButtons = screen.getAllByRole("button", { name: /Restaurar[- ][Bb]ackup/i });
+    await user.click(restoreButtons[0]);
     expect(await screen.findByText(/vai substituir os dados atuais/i)).toBeInTheDocument();
     await user.type(screen.getByLabelText(/Digite RESTAURAR/i), "RESTAURAR");
     await user.click(screen.getByRole("button", { name: "Restaurar" }));
@@ -367,5 +390,82 @@ describe("M&G Pocket Launcher", () => {
         useSudoDocker: false,
       }),
     );
+  });
+
+  it("excluir instalação requer digitar EXCLUIR e chama deleteLocalInstallation", async () => {
+    const user = await renderReady();
+
+    await user.click(screen.getByRole("button", { name: /Excluir instalação/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Excluir instalação local" });
+    expect(dialog).toBeInTheDocument();
+
+    const confirmBtn = within(dialog).getByRole("button", { name: /Excluir definitivamente/i });
+    expect(confirmBtn).toBeDisabled();
+
+    await user.type(within(dialog).getByLabelText(/Confirmação de exclusão/i), "EXCLUIR");
+    expect(confirmBtn).toBeEnabled();
+
+    await user.click(confirmBtn);
+
+    await waitFor(() =>
+      expect(invokeMock).toHaveBeenCalledWith("deleteLocalInstallation", {
+        confirmed: true,
+        useSudoDocker: false,
+      }),
+    );
+  });
+
+  it("aviso nginx é mostrado no Windows portable na primeira execução", async () => {
+    await renderReady({
+      ...baseStatus,
+      os: "windows",
+      runtimeMode: "portable",
+      runtimeLabel: "Portátil",
+      dockerInstalled: false,
+      dockerRunning: false,
+    });
+
+    const notice = await screen.findByRole("dialog", { name: "Permissão de rede do Windows" });
+    expect(notice).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(within(notice).getByRole("button", { name: /Entendi e continuar/i }));
+
+    expect(screen.queryByRole("dialog", { name: "Permissão de rede do Windows" })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(nginxNoticeKey)).toBe("true");
+  });
+
+  it("aviso nginx não é mostrado se já foi aceito", async () => {
+    window.localStorage.setItem(nginxNoticeKey, "true");
+
+    await renderReady({
+      ...baseStatus,
+      os: "windows",
+      runtimeMode: "portable",
+      dockerInstalled: false,
+      dockerRunning: false,
+    });
+
+    expect(screen.queryByRole("dialog", { name: "Permissão de rede do Windows" })).not.toBeInTheDocument();
+  });
+
+  it("botão Abrir no navegador é mostrado quando online", async () => {
+    await renderReady();
+
+    expect(screen.getAllByRole("button", { name: /^Abrir no navegador$/i }).length).toBeGreaterThan(0);
+  });
+
+  it("botão Iniciar servidor é mostrado quando instalado mas parado", async () => {
+    await renderReady({ ...baseStatus, appOnline: false, nginxOnline: false });
+
+    expect(screen.getAllByRole("button", { name: /^Iniciar servidor$/i }).length).toBeGreaterThan(0);
+  });
+
+  it("estado not_installed mostra botão Instalar M&G Pocket", async () => {
+    await renderReady({ ...baseStatus, projectInstalled: false, appOnline: false, nginxOnline: false });
+
+    expect(screen.getByRole("button", { name: /^Instalar M&G Pocket$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Abrir no navegador$/i })).not.toBeInTheDocument();
   });
 });

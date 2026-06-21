@@ -124,6 +124,10 @@ export function removeLocalProject(
   return invoke<CommandOutput>("removeLocalProject", { mode, confirmed: true, ...options });
 }
 
+export function deleteLocalInstallation(options: DockerCommandOptions = {}): Promise<CommandOutput> {
+  return invoke<CommandOutput>("deleteLocalInstallation", { confirmed: true, ...options });
+}
+
 export function cancelCurrentJob(): Promise<boolean> {
   return invoke<boolean>("cancelCurrentJob");
 }

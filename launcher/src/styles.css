@@ -954,6 +954,618 @@ main {
   }
 }
 
+/* ── Install view (Screen 01: not installed) ──────────────────── */
+
+.install-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  padding: 48px 24px;
+  max-width: 560px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.install-view__visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.install-view__brand {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  color: #f7d88f;
+  border: 1px solid rgba(247, 216, 143, 0.42);
+  background: rgba(44, 34, 28, 0.82);
+  border-radius: 14px;
+}
+
+.install-view__brand svg:last-child {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  color: #86d5c4;
+}
+
+.install-view__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.install-view__title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.install-view__description {
+  margin: 0;
+  color: #d9b981;
+  font-size: 1rem;
+}
+
+.install-view__hint {
+  margin: 0;
+  color: rgba(246, 239, 226, 0.65);
+  font-size: 0.875rem;
+}
+
+.install-view__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.install-view__footnote {
+  margin: 0;
+  color: rgba(246, 239, 226, 0.45);
+  font-size: 0.78rem;
+}
+
+.install-view__footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: rgba(246, 239, 226, 0.45);
+  font-size: 0.78rem;
+}
+
+.install-view__help-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #d9b981;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.install-view__help-link:hover {
+  color: #f7d88f;
+}
+
+/* ── Progress view (Screen 02: preparing) ─────────────────────── */
+
+.progress-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid rgba(247, 216, 143, 0.18);
+  border-radius: 8px;
+  background: rgba(44, 34, 28, 0.72);
+}
+
+.progress-view__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.progress-view__message {
+  margin: 0;
+  color: rgba(246, 239, 226, 0.78);
+  font-size: 0.92rem;
+}
+
+.progress-view__bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress-view__bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.progress-view__bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: #f7d88f;
+  transition: width 0.3s ease;
+}
+
+.progress-view__percent {
+  min-width: 36px;
+  text-align: right;
+  color: rgba(246, 239, 226, 0.55);
+  font-size: 0.8rem;
+}
+
+.progress-view__transfer {
+  margin: 0;
+  color: rgba(246, 239, 226, 0.55);
+  font-size: 0.8rem;
+}
+
+.progress-view__recent-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 56px;
+}
+
+.progress-view__recent-log {
+  margin: 0;
+  color: rgba(246, 239, 226, 0.55);
+  font-size: 0.8rem;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.progress-view__recent-log--last {
+  color: rgba(246, 239, 226, 0.85);
+}
+
+.progress-view__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.progress-view__logs-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #d9b981;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.progress-view__logs-link:hover {
+  color: #f7d88f;
+}
+
+/* ── Main view (Screen 03: installed/online) ──────────────────── */
+
+.main-view {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  padding: 24px;
+  border: 1px solid rgba(247, 216, 143, 0.18);
+  border-radius: 8px;
+  background: rgba(44, 34, 28, 0.72);
+}
+
+.main-view__center {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.main-view__notice {
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(134, 213, 196, 0.3);
+  background: rgba(134, 213, 196, 0.08);
+  color: #86d5c4;
+  font-size: 0.875rem;
+}
+
+.main-view__error {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 145, 128, 0.3);
+  background: rgba(122, 35, 28, 0.32);
+  color: rgba(246, 239, 226, 0.85);
+  font-size: 0.875rem;
+}
+
+.main-view__error-links {
+  display: flex;
+  gap: 12px;
+}
+
+.main-view__error-links button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #d9b981;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.main-view__error-links button:hover {
+  color: #f7d88f;
+}
+
+/* ── Status panel ─────────────────────────────────────────────── */
+
+.status-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.status-panel__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-panel__dot--online {
+  background: #48bb78;
+  box-shadow: 0 0 6px rgba(72, 187, 120, 0.7);
+}
+
+.status-panel__dot--stopped {
+  background: rgba(246, 239, 226, 0.35);
+}
+
+.status-panel__dot--error {
+  background: #fc8181;
+}
+
+.status-panel__dot--idle {
+  background: rgba(246, 239, 226, 0.18);
+}
+
+.status-panel__label {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: rgba(246, 239, 226, 0.85);
+}
+
+.status-panel__label--online {
+  color: #68d391;
+}
+
+.status-panel__url {
+  margin-left: auto;
+  color: rgba(246, 239, 226, 0.45);
+  font-size: 0.78rem;
+}
+
+/* ── Launcher actions sidebar ─────────────────────────────────── */
+
+.launcher-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.launcher-actions__divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
+}
+
+/* ── Logs view (Screen 04) ────────────────────────────────────── */
+
+.logs-view {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(44, 34, 28, 0.72);
+}
+
+.logs-view__center {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.logs-view__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.logs-view__header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.logs-view__filters {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.logs-view__filter {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(246, 239, 226, 0.65);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.logs-view__filter--active,
+.logs-view__filter:hover {
+  background: rgba(247, 216, 143, 0.16);
+  border-color: rgba(247, 216, 143, 0.4);
+  color: #f7d88f;
+}
+
+.logs-view__content {
+  flex: 1;
+  min-height: 320px;
+  max-height: 560px;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.32);
+  color: rgba(246, 239, 226, 0.75);
+  font-size: 0.78rem;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: auto;
+}
+
+.logs-view__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Help dialog ──────────────────────────────────────────────── */
+
+.help-dialog {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  width: min(720px, 92vw);
+  max-height: 80vh;
+  border-radius: 10px;
+  border: 1px solid rgba(247, 216, 143, 0.22);
+  background: #1e1812;
+  overflow: hidden;
+}
+
+.help-dialog__nav {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.22);
+  overflow-y: auto;
+}
+
+.help-dialog__nav-label {
+  margin: 0 16px 8px;
+  color: rgba(246, 239, 226, 0.45);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.help-dialog__nav-item {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  color: rgba(246, 239, 226, 0.75);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.help-dialog__nav-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f6efe2;
+}
+
+.help-dialog__nav-item--active {
+  background: rgba(247, 216, 143, 0.14);
+  color: #f7d88f;
+  font-weight: 600;
+}
+
+.help-dialog__content {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.help-dialog__content h2 {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.help-dialog__body {
+  flex: 1;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: rgba(246, 239, 226, 0.85);
+}
+
+.help-dialog__body h3 {
+  margin: 16px 0 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f7d88f;
+}
+
+.help-dialog__body p,
+.help-dialog__body ol,
+.help-dialog__body ul {
+  margin: 0 0 10px;
+}
+
+.help-dialog__body li {
+  margin-bottom: 4px;
+}
+
+.help-dialog__footer {
+  padding-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.help-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  color: rgba(246, 239, 226, 0.65);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* ── Delete dialog extras ─────────────────────────────────────── */
+
+.delete-dialog__backup-hint {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(247, 216, 143, 0.22);
+  background: rgba(247, 216, 143, 0.06);
+}
+
+.delete-dialog__backup-hint p {
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+  color: rgba(246, 239, 226, 0.8);
+}
+
+.delete-dialog__backup-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(247, 216, 143, 0.4);
+  background: rgba(247, 216, 143, 0.1);
+  color: #f7d88f;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.delete-dialog__backup-btn:hover {
+  background: rgba(247, 216, 143, 0.2);
+}
+
+.confirm-dialog__confirmation-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.875rem;
+  color: rgba(246, 239, 226, 0.75);
+}
+
+.confirm-dialog__confirmation-label input {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.3);
+  color: #f6efe2;
+  font-size: 0.9rem;
+}
+
+/* ── Help panel quick links (in advanced section) ─────────────── */
+
+.help-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.help-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  color: rgba(246, 239, 226, 0.7);
+  font-size: 0.875rem;
+}
+
+.help-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 14px 14px;
+}
+
+.help-panel__actions button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(246, 239, 226, 0.8);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.help-panel__actions button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f6efe2;
+}
+
+/* ── Maintenance panel ────────────────────────────────────────── */
+
+.maintenance-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
 @media (max-width: 980px) {
   body {
     min-width: 0;
@@ -984,5 +1596,29 @@ main {
   .step-progress,
   .preparation-steps__list {
     grid-template-columns: 1fr;
+  }
+
+  .main-view,
+  .logs-view {
+    grid-template-columns: 1fr;
+  }
+
+  .help-dialog {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    max-height: 92vh;
+  }
+
+  .help-dialog__nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 8px;
+  }
+
+  .help-dialog__nav-item {
+    padding: 6px 10px;
+    font-size: 0.8rem;
   }
 }

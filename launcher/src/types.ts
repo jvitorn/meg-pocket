@@ -109,3 +109,24 @@ export type LauncherJobEvent = {
 export type StepState = LauncherStepStatus;
 
 export type ProgressStep = LauncherStep;
+
+export type LauncherViewState =
+  | "not_installed"
+  | "preparing"
+  | "installed_stopped"
+  | "online"
+  | "logs"
+  | "error";
+
+export function resolveLauncherViewState(
+  status: SystemStatus | null,
+  jobStatus: JobStatus,
+  logsOpen: boolean,
+): LauncherViewState {
+  if (logsOpen) return "logs";
+  if (jobStatus === "running" || jobStatus === "cancelled") return "preparing";
+  if (jobStatus === "error") return "error";
+  if (!status?.projectInstalled) return "not_installed";
+  if (status?.appOnline) return "online";
+  return "installed_stopped";
+}

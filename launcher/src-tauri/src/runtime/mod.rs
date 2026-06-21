@@ -8,8 +8,7 @@ use crate::{
     docker,
     errors::{LauncherError, LauncherResult},
     jobs::JobManager,
-    paths,
-    portable,
+    paths, portable,
     runtime::{detection::detect_runtime_mode, types::RuntimeMode},
     scripts::CommandOutput,
 };
@@ -176,6 +175,24 @@ pub fn reset_local_data(
     }
 }
 
+pub fn delete_local_installation(
+    app: &AppHandle,
+    jobs: &JobManager,
+    confirmed: bool,
+    use_sudo_docker: bool,
+) -> LauncherResult<CommandOutput> {
+    match runtime_mode() {
+        RuntimeMode::Portable => portable::delete_local_installation(app, jobs, confirmed),
+        RuntimeMode::Docker => docker::remove_local_project(
+            app,
+            jobs,
+            "complete".to_string(),
+            confirmed,
+            use_sudo_docker,
+        ),
+    }
+}
+
 pub fn local_site_url() -> String {
     match runtime_mode() {
         RuntimeMode::Docker => docker::local_site_url(),
@@ -195,9 +212,9 @@ fn annotate_status(raw: String, mode: RuntimeMode) -> LauncherResult<String> {
     let mut value = serde_json::from_str::<Value>(&raw).map_err(|error| {
         LauncherError::technical("Não foi possível ler diagnóstico do runtime", error)
     })?;
-    let object = value.as_object_mut().ok_or_else(|| {
-        LauncherError::friendly("Diagnóstico retornou um formato inválido.")
-    })?;
+    let object = value
+        .as_object_mut()
+        .ok_or_else(|| LauncherError::friendly("Diagnóstico retornou um formato inválido."))?;
     object.insert("runtimeMode".to_string(), json!(mode.as_str()));
     object.insert("runtimeLabel".to_string(), json!(mode.label()));
     object.insert(

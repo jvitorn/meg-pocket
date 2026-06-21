@@ -27,6 +27,7 @@ use tauri::AppHandle;
 use crate::{
     errors::{LauncherError, LauncherResult},
     jobs::{self, JobManager},
+    paths,
     scripts::{self, CommandOutput},
 };
 
@@ -511,6 +512,92 @@ pub fn local_site_url() -> String {
     diagnose::configured_app_url()
 }
 
+pub fn delete_local_installation(
+    app: &AppHandle,
+    job_manager: &JobManager,
+    confirmed: bool,
+) -> LauncherResult<CommandOutput> {
+    if !confirmed {
+        return Err(LauncherError::friendly(
+            "Exclusão exige confirmação explícita.",
+        ));
+    }
+    run_output_job(
+        app,
+        job_manager,
+        "Excluir instalação local",
+        "Encerrando",
+        "Encerrando serviços antes da exclusão.",
+        |ctx| {
+            ctx.progress("Encerrando", "Parando serviços portáteis.", 10);
+            let _ = process::stop(ctx);
+            ctx.progress("Excluindo", "Removendo arquivos da instalação local.", 50);
+            delete_portable_files(ctx)
+        },
+        "Finalizado",
+        "Instalação local excluída.",
+    )
+}
+
+fn delete_portable_files(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<()> {
+    let data_dir = paths::mg_pocket_data_dir()?;
+    validate_portable_delete_path(&data_dir)?;
+
+    if data_dir.exists() {
+        ctx.log(
+            "Excluindo",
+            &format!("Removendo: {}", data_dir.display()),
+            "info",
+        );
+        fs::remove_dir_all(&data_dir).map_err(|error| {
+            LauncherError::technical("Não foi possível remover pasta do M&G Pocket", error)
+        })?;
+    }
+    ctx.progress("Finalizado", "Arquivos removidos.", 95);
+    Ok(())
+}
+
+pub(crate) fn validate_portable_delete_path(path: &Path) -> LauncherResult<()> {
+    if path.as_os_str().is_empty() {
+        return Err(LauncherError::friendly(
+            "Caminho de exclusão vazio. Operação cancelada.",
+        ));
+    }
+
+    let components: Vec<_> = path.components().collect();
+    if components.len() < 3 {
+        return Err(LauncherError::friendly(
+            "Recusado: caminho muito curto para ser a pasta do M&G Pocket.",
+        ));
+    }
+
+    let env_override = std::env::var("MG_POCKET_DATA_DIR")
+        .ok()
+        .filter(|v| !v.trim().is_empty());
+
+    if env_override.is_none() {
+        let folder_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if folder_name != "MG Pocket" {
+            return Err(LauncherError::friendly(
+                "Recusado: o nome da pasta não é 'MG Pocket'.",
+            ));
+        }
+    }
+
+    if path.exists() {
+        let has_marker = path.join("config").join("runtime.json").exists()
+            || (path.join("runtime").is_dir() && path.join("config").is_dir())
+            || path.join("app").join("server.js").exists();
+        if !has_marker {
+            return Err(LauncherError::friendly(
+                "A pasta não contém marcadores do M&G Pocket. Exclusão recusada por segurança.",
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 pub(crate) fn run_command(
     ctx: &mut PortableJob<'_, '_>,
     step: &str,
@@ -944,6 +1031,8 @@ fn step_progress_percent(step_id: &str, progress: u8) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use tempfile::TempDir;
 
     #[cfg(not(target_os = "windows"))]
     #[test]
@@ -969,6 +1058,135 @@ mod tests {
         );
         assert_eq!(step_progress_percent(STEP_BANCO_LOCAL, 48), 52);
         assert_eq!(preparation_step_id("Validando acesso", 96), STEP_ACESSO);
+    }
+
+    #[test]
+    fn validate_delete_rejects_empty_path() {
+        let result = validate_portable_delete_path(Path::new(""));
+        assert!(result.is_err());
+        let msg = result.unwrap_err().friendly_message().to_string();
+        assert!(msg.contains("vazio"), "mensagem: {msg}");
+    }
+
+    #[test]
+    fn validate_delete_rejects_root_path() {
+        let result = validate_portable_delete_path(Path::new("/"));
+        assert!(result.is_err());
+        let msg = result.unwrap_err().friendly_message().to_string();
+        assert!(
+            msg.contains("curto") || msg.contains("Recusado"),
+            "mensagem: {msg}"
+        );
+    }
+
+    #[test]
+    fn validate_delete_rejects_short_path() {
+        let result = validate_portable_delete_path(Path::new("/home"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_delete_rejects_wrong_folder_name() {
+        // Without MG_POCKET_DATA_DIR env override, last component must be "MG Pocket"
+        // Remove any env override for this test
+        let old = std::env::var("MG_POCKET_DATA_DIR").ok();
+        std::env::remove_var("MG_POCKET_DATA_DIR");
+
+        let result = validate_portable_delete_path(Path::new("/home/user/Downloads/something"));
+        assert!(result.is_err());
+        let msg = result.unwrap_err().friendly_message().to_string();
+        assert!(
+            msg.contains("MG Pocket") || msg.contains("Recusado"),
+            "mensagem: {msg}"
+        );
+
+        if let Some(val) = old {
+            std::env::set_var("MG_POCKET_DATA_DIR", val);
+        }
+    }
+
+    #[test]
+    fn validate_delete_accepts_nonexistent_mg_pocket_folder() {
+        let old = std::env::var("MG_POCKET_DATA_DIR").ok();
+        std::env::remove_var("MG_POCKET_DATA_DIR");
+
+        // Non-existent "MG Pocket" folder should be accepted (idempotent)
+        let result = validate_portable_delete_path(Path::new("/home/user/AppData/Local/MG Pocket"));
+        assert!(
+            result.is_ok(),
+            "pasta inexistente deve ser aceita: {:?}",
+            result.err()
+        );
+
+        if let Some(val) = old {
+            std::env::set_var("MG_POCKET_DATA_DIR", val);
+        }
+    }
+
+    #[test]
+    fn validate_delete_accepts_existing_mg_pocket_with_markers() {
+        let old = std::env::var("MG_POCKET_DATA_DIR").ok();
+        std::env::remove_var("MG_POCKET_DATA_DIR");
+
+        let tmp = TempDir::new().unwrap();
+        let pocket_dir = tmp.path().join("MG Pocket");
+        fs::create_dir_all(pocket_dir.join("config")).unwrap();
+        fs::write(pocket_dir.join("config").join("runtime.json"), "{}").unwrap();
+
+        let result = validate_portable_delete_path(&pocket_dir);
+        assert!(
+            result.is_ok(),
+            "pasta com marcadores deve ser aceita: {:?}",
+            result.err()
+        );
+
+        if let Some(val) = old {
+            std::env::set_var("MG_POCKET_DATA_DIR", val);
+        }
+    }
+
+    #[test]
+    fn validate_delete_rejects_existing_folder_without_markers() {
+        let old = std::env::var("MG_POCKET_DATA_DIR").ok();
+        std::env::remove_var("MG_POCKET_DATA_DIR");
+
+        let tmp = TempDir::new().unwrap();
+        let pocket_dir = tmp.path().join("MG Pocket");
+        fs::create_dir_all(&pocket_dir).unwrap();
+        // No markers — just an empty folder named "MG Pocket"
+
+        let result = validate_portable_delete_path(&pocket_dir);
+        assert!(result.is_err(), "pasta sem marcadores deve ser rejeitada");
+        let msg = result.unwrap_err().friendly_message().to_string();
+        assert!(
+            msg.contains("marcadores") || msg.contains("segurança"),
+            "mensagem: {msg}"
+        );
+
+        if let Some(val) = old {
+            std::env::set_var("MG_POCKET_DATA_DIR", val);
+        }
+    }
+
+    #[test]
+    fn delete_portable_files_is_idempotent_when_folder_missing() {
+        let old = std::env::var("MG_POCKET_DATA_DIR").ok();
+        let tmp = TempDir::new().unwrap();
+        let nonexistent = tmp.path().join("MG Pocket");
+        std::env::set_var("MG_POCKET_DATA_DIR", nonexistent.to_str().unwrap());
+
+        // Call validate_portable_delete_path directly — folder doesn't exist = OK
+        let result = validate_portable_delete_path(&nonexistent);
+        assert!(
+            result.is_ok(),
+            "pasta ausente deve ser aceita (idempotente): {:?}",
+            result.err()
+        );
+
+        match old {
+            Some(val) => std::env::set_var("MG_POCKET_DATA_DIR", val),
+            None => std::env::remove_var("MG_POCKET_DATA_DIR"),
+        }
     }
 }
 

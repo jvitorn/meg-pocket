@@ -25,7 +25,10 @@ pub fn read_logs() -> LauncherResult<String> {
             continue;
         }
         let text = fs::read_to_string(&path).unwrap_or_default();
-        output.push_str(&format!("# {name}\n{}\n\n", tail_bytes(&text, LOG_LIMIT_BYTES)));
+        output.push_str(&format!(
+            "# {name}\n{}\n\n",
+            tail_bytes(&text, LOG_LIMIT_BYTES)
+        ));
     }
     if output.trim().is_empty() {
         Ok("Nenhum log portátil encontrado ainda.".to_string())
@@ -54,8 +57,9 @@ pub fn reset_local_data(ctx: &mut PortableJob<'_, '_>) -> LauncherResult<()> {
             LauncherError::technical(format!("Não foi possível recriar data/{critical}"), error)
         })?;
     }
-    fs::write(data_dir.join("uploads/.meg-pocket-health"), "ok\n")
-        .map_err(|error| LauncherError::technical("Não foi possível recriar health de uploads", error))?;
+    fs::write(data_dir.join("uploads/.meg-pocket-health"), "ok\n").map_err(|error| {
+        LauncherError::technical("Não foi possível recriar health de uploads", error)
+    })?;
     Ok(())
 }
 
