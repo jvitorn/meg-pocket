@@ -1,4 +1,4 @@
-import { Copy, Download, RefreshCw, Trash2, Wrench, XCircle } from "lucide-react";
+import { Copy, Download, HelpCircle, RefreshCw, Trash2, Wrench, XCircle } from "lucide-react";
 import { useState } from "react";
 import { ActionButton } from "./ActionButton";
 
@@ -11,6 +11,7 @@ type LauncherLogsViewProps = {
   onRefresh: () => void;
   onRepair: () => void;
   onClose: () => void;
+  onHelp: () => void;
 };
 
 function filterLogs(logs: string, level: LogLevel) {
@@ -32,6 +33,7 @@ export function LauncherLogsView({
   onRefresh,
   onRepair,
   onClose,
+  onHelp,
 }: LauncherLogsViewProps) {
   const [level, setLevel] = useState<LogLevel>("all");
   const [displayLogs, setDisplayLogs] = useState<string | null>(null);
@@ -129,6 +131,15 @@ export function LauncherLogsView({
           onClick={onRepair}
         >
           Reparar instalação
+        </ActionButton>
+
+        <ActionButton
+          icon={<HelpCircle size={18} />}
+          variant="ghost"
+          disabled={false}
+          onClick={onHelp}
+        >
+          Ajuda
         </ActionButton>
 
         <ActionButton

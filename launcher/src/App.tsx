@@ -1057,6 +1057,7 @@ export default function App() {
           onRefresh={() => void loadLogs()}
           onRepair={() => setRepairOpen(true)}
           onClose={() => setLogsOpen(false)}
+          onHelp={() => setHelpTopic("logs")}
         />
       );
     }
@@ -1087,7 +1088,7 @@ export default function App() {
   };
 
   return (
-    <AppShell>
+    <AppShell onHelp={() => setHelpTopic("firstSteps")}>
       {renderMainContent()}
 
       <LauncherDeleteDialog
