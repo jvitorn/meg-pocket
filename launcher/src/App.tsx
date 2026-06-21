@@ -1,20 +1,3 @@
-import {
-  Activity,
-  Archive,
-  BookOpen,
-  ExternalLink,
-  FolderOpen,
-  HardDrive,
-  HelpCircle,
-  Play,
-  RefreshCw,
-  RotateCcw,
-  ScrollText,
-  Settings,
-  ShieldCheck,
-  Square,
-  Wrench,
-} from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   backup,
@@ -30,21 +13,14 @@ import {
   launcherJobEvents,
   listenLauncherJobEvent,
   type LauncherJobEventName,
-  openAdminer,
-  openBackupsFolder,
-  openDataFolder,
-  openDockerGuide,
-  openLogsFolder,
   openSite,
   quickDiagnose,
   readLogs,
   repairInstallation,
-  restartApp,
   restoreBackup,
   startApp,
   stopApp,
 } from "./api";
-import { ActionButton } from "./components/ActionButton";
 import { AppShell } from "./components/AppShell";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { LauncherDeleteDialog } from "./components/LauncherDeleteDialog";
@@ -58,8 +34,6 @@ import {
   LauncherNginxNotice,
 } from "./components/LauncherNginxNotice";
 import { LauncherProgressView } from "./components/LauncherProgressView";
-import { LogPanel } from "./components/LogPanel";
-import { StatusCard, type StatusItem } from "./components/StatusCard";
 import type {
   CommandOutput,
   DependencyStatus,
@@ -82,21 +56,6 @@ const preparationStepTemplates: ProgressStep[] = [
 const initialSteps: ProgressStep[] = createInitialSteps();
 
 const FIRST_STEPS_STORAGE_KEY = "mg-pocket-launcher-hide-first-steps";
-
-function boolLabel(value: boolean, yes = "sim", no = "não") {
-  return value ? yes : no;
-}
-
-function tone(value: boolean): StatusItem["tone"] {
-  return value ? "ok" : "bad";
-}
-
-function friendlyOs(os?: string) {
-  if (os === "linux") return "Linux";
-  if (os === "windows") return "Windows";
-  if (os === "macos") return "macOS";
-  return "desconhecido";
-}
 
 function appendOutput(current: string, label: string, output?: CommandOutput | string) {
   const text = typeof output === "string" ? output : [output?.stdout, output?.stderr].filter(Boolean).join("\n");
@@ -386,15 +345,11 @@ export default function App() {
   const [steps, setSteps] = useState<ProgressStep[]>(initialSteps);
   const lastTerminalEventKindRef = useRef<string | undefined>(undefined);
 
-  // Modal state
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [restorePath, setRestorePath] = useState("");
   const [repairOpen, setRepairOpen] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
-  const [localBuild, setLocalBuild] = useState(false);
-  const [localBuildNoCache, setLocalBuildNoCache] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [helpTopic, setHelpTopic] = useState<HelpTopic | null>(null);
   const [hideFirstSteps, setHideFirstSteps] = useState(false);
   const [nginxNoticeOpen, setNginxNoticeOpen] = useState(false);
@@ -421,13 +376,12 @@ export default function App() {
     () => ({
       useSudoDocker: sudoDockerThisSession,
       lightBuild: true,
-      localBuild,
-      noCache: localBuild ? localBuildNoCache : false,
+      localBuild: false,
+      noCache: false,
     }),
-    [localBuild, localBuildNoCache, sudoDockerThisSession],
+    [sudoDockerThisSession],
   );
 
-  // Derived view state
   const viewState: LauncherViewState = useMemo(
     () => resolveLauncherViewState(status, jobStatus, logsOpen),
     [status, jobStatus, logsOpen],
@@ -564,25 +518,6 @@ export default function App() {
     }
   };
 
-  const diagnose = async () => {
-    setBusy("diagnose");
-    setJobStatus("idle");
-    setError("");
-    try {
-      const nextStatus = await doctor();
-      setStatus(nextStatus);
-      return nextStatus;
-    } catch (err) {
-      const message = friendlyActionError("Diagnosticar", err);
-      setJobEvent(localJobEvent("Diagnosticar", "error", message));
-      setJobStatus("error");
-      setError(message);
-      return null;
-    } finally {
-      setBusy(null);
-    }
-  };
-
   useEffect(() => {
     void refreshQuickStatus();
   }, []);
@@ -593,7 +528,6 @@ export default function App() {
     }
   }, []);
 
-  // Show nginx notice on Windows portable before first start
   useEffect(() => {
     if (
       status?.os === "windows" &&
@@ -909,7 +843,6 @@ export default function App() {
   const confirmDelete = async () => {
     setDeleteOpen(false);
     await runAction("Excluir instalação", () => deleteLocalInstallation(dockerOptions));
-    // After deletion, reset to not-installed state
     setJobStatus("idle");
     setError("");
     setNotice("A instalação local do M&G Pocket foi excluída.");
@@ -1088,75 +1021,6 @@ export default function App() {
 
   const transferDetail = jobStatus === "running" && jobEvent ? formatTransferDetail(jobEvent) : null;
 
-  const showLinuxInstallDocker = status?.os === "linux" && status.supported && !status.dockerInstalled;
-  const showWindowsDockerGuide = status?.os === "windows" && !status.dockerInstalled && status.runtimeMode !== "portable";
-
-  const statusItems = useMemo(() => {
-    const empty: StatusItem[] = [{ label: "Status", value: "aguardando", tone: "idle" }];
-    if (!status) return { environment: empty, docker: empty, project: empty, diagnostics: empty, technical: empty };
-
-    const okOrAttention = (value: boolean, waiting = false) =>
-      value ? "Tudo pronto" : waiting ? "Aguardando" : "Precisa de atenção";
-    const okTone = (value: boolean, waiting = false): StatusItem["tone"] => (value ? "ok" : waiting ? "warn" : "bad");
-
-    const environment: StatusItem[] = [
-      { label: "Status", value: viewState === "online" ? "Online" : viewState === "installed_stopped" ? "Parado" : "Aguardando", tone: error || jobStatus === "error" ? "bad" : status.appOnline ? "ok" : status.projectInstalled ? "warn" : "idle" },
-      { label: "Modo de execução", value: status.runtimeLabel || (status.runtimeMode === "portable" ? "Portátil" : "Docker"), tone: status.runtimeMode === "portable" ? "ok" : "idle" },
-      { label: "Sistema", value: friendlyOs(status.os), tone: status.os === "unknown" ? "warn" : "ok" },
-      { label: "Distro", value: status.distroName || "não aplicável", tone: status.os === "linux" ? "ok" : "idle" },
-      { label: "Suporte automático", value: boolLabel(status.supported), tone: status.supported ? "ok" : "warn" },
-    ];
-
-    if (status.os === "windows") {
-      environment.push(
-        { label: "winget", value: boolLabel(Boolean(status.wingetInstalled)), tone: status.wingetInstalled ? "ok" : "warn" },
-        { label: "Git", value: boolLabel(Boolean(status.gitInstalled)), tone: status.gitInstalled ? "ok" : "warn" },
-      );
-    }
-
-    const docker: StatusItem[] = [
-      { label: "Docker", value: status.dockerRunning ? "OK" : status.dockerInstalled ? "precisa abrir" : "não encontrado", tone: status.dockerRunning ? "ok" : "warn" },
-      {
-        label: "Permissão",
-        value: status.dockerPermissionOk ? "OK" : sudoDockerThisSession ? "OK nesta sessão" : status.sudoDockerWorks ? "aguardando" : "precisa atenção",
-        tone: status.dockerPermissionOk ? "ok" : status.sudoDockerWorks ? "warn" : "bad",
-      },
-      { label: "Preparação", value: status.projectInstalled ? "preparado" : "não preparado", tone: status.projectInstalled ? "ok" : "warn" },
-    ];
-
-    const project: StatusItem[] = [
-      { label: "Projeto", value: status.projectInstalled ? "preparado" : "não preparado", tone: status.projectInstalled ? "ok" : "warn" },
-      { label: "Banco de dados", value: okOrAttention(Boolean(status.databaseConnected), status.projectInstalled && !status.databaseConnected), tone: okTone(Boolean(status.databaseConnected), status.projectInstalled && !status.databaseConnected) },
-      { label: "Aplicativo", value: okOrAttention(status.appOnline, status.projectInstalled && !status.appOnline), tone: okTone(status.appOnline, status.projectInstalled && !status.appOnline) },
-      { label: "Acesso local", value: okOrAttention(Boolean(status.nginxOnline && status.appOnline), status.projectInstalled && !status.appOnline), tone: okTone(Boolean(status.nginxOnline && status.appOnline), status.projectInstalled && !status.appOnline) },
-    ];
-
-    const diagnostics: StatusItem[] = [
-      { label: "Docker", value: status.dockerRunning ? "OK" : status.dockerInstalled ? "precisa abrir" : "não encontrado", tone: status.dockerRunning ? "ok" : "warn" },
-      { label: "Projeto", value: status.projectInstalled ? "preparado" : "não preparado", tone: status.projectInstalled ? "ok" : "warn" },
-      { label: "Banco de dados", value: okOrAttention(Boolean(status.databaseConnected), status.projectInstalled), tone: okTone(Boolean(status.databaseConnected), status.projectInstalled) },
-      { label: "Aplicativo", value: okOrAttention(status.appOnline, status.projectInstalled), tone: okTone(status.appOnline, status.projectInstalled) },
-      { label: "Acesso local", value: okOrAttention(Boolean(status.nginxOnline && status.appOnline), status.projectInstalled), tone: okTone(Boolean(status.nginxOnline && status.appOnline), status.projectInstalled) },
-      { label: "Backup", value: status.projectInstalled ? "disponível" : "não disponível", tone: status.projectInstalled ? "ok" : "warn" },
-    ];
-
-    const technical: StatusItem[] = [
-      { label: "Git instalado", value: boolLabel(Boolean(status.gitInstalled)), tone: status.gitInstalled ? "ok" : "warn" },
-      { label: "Docker instalado", value: boolLabel(status.dockerInstalled), tone: tone(status.dockerInstalled) },
-      { label: "Docker Compose", value: boolLabel(status.dockerComposeInstalled), tone: tone(status.dockerComposeInstalled) },
-      { label: "Containers ativos", value: boolLabel(Boolean(status.containersActive)), tone: status.containersActive ? "ok" : "warn" },
-      { label: "Nginx", value: status.nginxOnline ? "ok" : "offline", tone: status.nginxOnline ? "ok" : "warn" },
-      { label: "Uploads", value: status.uploadsServed ? "ok" : status.uploadsDirectoryOk ? "pasta ok" : "verificar", tone: status.uploadsServed ? "ok" : "warn" },
-      { label: "Assets Next", value: status.nextAssetsOnline ? "ok" : "verificar", tone: status.nextAssetsOnline ? "ok" : "warn" },
-      { label: "Porta local", value: status.port3000Available ? "livre" : "em uso", tone: status.port3000Available || status.appOnline ? "ok" : "warn" },
-      { label: "Portas 80/443/5432", value: [status.port80Available, status.port443Available, status.port5432Available].every(Boolean) ? "livres" : "em uso", tone: [status.port80Available, status.port443Available, status.port5432Available].every(Boolean) ? "ok" : "warn" },
-      { label: "Versão local", value: status.projectVersion || "desconhecida", tone: "idle" },
-      { label: "Caminho", value: status.projectPath || "desconhecido", tone: "idle" },
-    ];
-
-    return { environment, docker, project, diagnostics, technical };
-  }, [status, sudoDockerThisSession, jobStatus, error, viewState]);
-
   const renderMainContent = () => {
     if (viewState === "not_installed") {
       return (
@@ -1197,7 +1061,6 @@ export default function App() {
       );
     }
 
-    // online, installed_stopped, error
     return (
       <LauncherMainView
         viewState={viewState}
@@ -1225,212 +1088,8 @@ export default function App() {
 
   return (
     <AppShell>
-      {/* Warnings visible in all states */}
-      {showWindowsDockerGuide ? (
-        <div className="message message--warn">
-          No Windows, o launcher pode instalar Docker Desktop via winget quando disponível, ou você pode abrir a página oficial.
-          <button type="button" onClick={() => void openDockerGuide()}>
-            Abrir página de download do Docker Desktop
-          </button>
-        </div>
-      ) : null}
-      {status?.requiresRelogin && !sudoDockerThisSession ? (
-        <div className="message message--warn">
-          Salve seus arquivos, saia da sessão do Linux e entre novamente. Depois abra o launcher e clique em Instalar M&G Pocket.
-        </div>
-      ) : null}
-      {status?.appOnline && status.databaseConnected === false ? (
-        <div className="message message--warn">
-          O M&G Pocket iniciou, mas os dados ainda podem estar carregando. Aguarde alguns segundos e tente abrir novamente.
-        </div>
-      ) : null}
-      {status?.projectInstalled && status.nginxOnline === false && viewState !== "preparing" ? (
-        <div className="message message--warn">
-          Não conseguimos abrir o M&G Pocket agora. Algum serviço ainda pode estar iniciando ou outro programa pode estar usando o endereço local.
-        </div>
-      ) : null}
-
       {renderMainContent()}
 
-      {/* Advanced panels — hidden while a job is actively running, and in logs view */}
-      {(viewState !== "preparing" || jobStatus !== "running") && viewState !== "logs" ? (
-        <>
-          {viewState !== "not_installed" && viewState !== "preparing" ? (
-            <details className="technical-details">
-              <summary>
-                <Settings size={18} aria-hidden="true" />
-                Detalhes técnicos
-              </summary>
-              <div className="status-grid status-grid--technical">
-                <StatusCard title="Ambiente" icon={<ShieldCheck size={20} />} items={statusItems.environment} />
-                {status?.runtimeMode === "portable" ? null : (
-                  <StatusCard title="Docker" icon={<HardDrive size={20} />} items={statusItems.docker} />
-                )}
-                <StatusCard title="Projeto" icon={<BookOpen size={20} />} items={statusItems.project} />
-                <StatusCard title="Diagnóstico" icon={<Activity size={20} />} items={statusItems.diagnostics} aria-label="Diagnóstico" />
-                <StatusCard title="Detalhes técnicos" icon={<Settings size={20} />} items={statusItems.technical} />
-              </div>
-              <LogPanel logs={logs} onRefresh={loadLogs} loading={busy === "Logs"} />
-            </details>
-          ) : null}
-
-          <details
-            className="advanced-panel"
-            aria-label="Opções avançadas"
-            open={advancedOpen}
-            onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
-          >
-            <summary>
-              <Settings size={18} aria-hidden="true" />
-              Opções avançadas
-            </summary>
-            <div className="advanced-options">
-              <label className="advanced-toggle">
-                <input
-                  type="radio"
-                  name="install-mode"
-                  checked={!localBuild}
-                  disabled={isBusy}
-                  onChange={() => setLocalBuild(false)}
-                />
-                <span>
-                  <strong>Baixar versão pronta</strong>
-                  <small>Recomendado. Baixa uma versão já preparada do M&G Pocket e evita compilar o sistema no seu computador.</small>
-                </span>
-              </label>
-              <label className="advanced-toggle">
-                <input
-                  type="radio"
-                  name="install-mode"
-                  checked={localBuild}
-                  disabled={isBusy}
-                  onChange={() => setLocalBuild(true)}
-                />
-                <span>
-                  <strong>Construir localmente</strong>
-                  <small>Avançado. Use apenas para desenvolvimento ou reparo. Pode demorar bastante em computadores mais fracos.</small>
-                </span>
-              </label>
-              {localBuild ? (
-                <label className="advanced-toggle advanced-toggle--compact">
-                  <input
-                    type="checkbox"
-                    checked={localBuildNoCache}
-                    disabled={isBusy}
-                    onChange={(event) => setLocalBuildNoCache(event.target.checked)}
-                  />
-                  <span>
-                    <strong>Reconstruir sem cache</strong>
-                    <small>Força uma recompilação completa no computador.</small>
-                  </span>
-                </label>
-              ) : null}
-            </div>
-          </details>
-
-          <details className="advanced-panel maintenance-panel" aria-label="Ações de manutenção">
-            <summary>
-              <Wrench size={18} aria-hidden="true" />
-              Ações de manutenção
-            </summary>
-            <section className="actions-panel" aria-label="Ações de manutenção">
-              {showLinuxInstallDocker ? (
-                <ActionButton
-                  icon={<HardDrive size={18} />}
-                  disabled={isBusy}
-                  loading={busy === "Instalar Docker"}
-                  onClick={() =>
-                    requestAdminPermission("install-docker", [
-                      "Instalar Docker e Docker Compose",
-                      "Iniciar o serviço docker",
-                      "Adicionar seu usuário ao grupo docker, quando necessário",
-                    ])
-                  }
-                >
-                  Instalar Docker no Linux
-                </ActionButton>
-              ) : null}
-              <ActionButton icon={<RefreshCw size={18} />} disabled={isBusy} loading={busy === "diagnose"} onClick={diagnose}>
-                Diagnosticar
-              </ActionButton>
-              <ActionButton icon={<Wrench size={18} />} disabled={isBusy} onClick={() => setRepairOpen(true)} variant="ghost">
-                Reparar instalação
-              </ActionButton>
-              <ActionButton icon={<Play size={18} />} disabled={isBusy} loading={busy === "Iniciar servidor"} onClick={startAndOpenPocket}>
-                Iniciar M&G Pocket
-              </ActionButton>
-              <ActionButton icon={<Square size={18} />} disabled={isBusy} onClick={() => void runAction("Parar", () => stopApp(dockerOptions))}>
-                Parar
-              </ActionButton>
-              <ActionButton icon={<RotateCcw size={18} />} disabled={isBusy} onClick={() => void runAction("Reiniciar", () => restartApp(dockerOptions))}>
-                Reiniciar
-              </ActionButton>
-              <ActionButton icon={<ExternalLink size={18} />} disabled={isBusy} onClick={openPocket} variant={status?.appOnline ? "primary" : "secondary"}>
-                Abrir M&G Pocket
-              </ActionButton>
-              <ActionButton icon={<ExternalLink size={18} />} disabled={isBusy || !status?.adminerOnline} onClick={() => void openAdminer()}>
-                Abrir Adminer
-              </ActionButton>
-              <ActionButton icon={<ScrollText size={18} />} disabled={busy === "Logs"} loading={busy === "Logs"} onClick={() => void loadLogs()}>
-                Ver detalhes técnicos
-              </ActionButton>
-              <ActionButton icon={<FolderOpen size={18} />} disabled={isBusy} onClick={() => void openDataFolder()}>
-                Abrir pasta de dados
-              </ActionButton>
-              <ActionButton icon={<FolderOpen size={18} />} disabled={isBusy} onClick={() => void openBackupsFolder()}>
-                Abrir pasta de backups
-              </ActionButton>
-              <ActionButton icon={<FolderOpen size={18} />} disabled={isBusy} onClick={() => void openLogsFolder()}>
-                Abrir logs técnicos
-              </ActionButton>
-              <ActionButton icon={<Archive size={18} />} disabled={isBusy} onClick={() => void runAction("Backup", () => backup(dockerOptions))}>
-                Backup
-              </ActionButton>
-              <ActionButton icon={<Archive size={18} />} disabled={isBusy} onClick={() => void restoreData()}>
-                Restaurar Backup
-              </ActionButton>
-            </section>
-          </details>
-
-          <details className="help-panel" aria-label="Ajuda">
-            <summary className="help-panel__header">
-              <HelpCircle size={20} aria-hidden="true" />
-              Ajuda
-            </summary>
-            <div className="help-panel__actions">
-              <button type="button" onClick={() => setHelpTopic("firstSteps")}>
-                Primeiros passos
-              </button>
-              <button type="button" onClick={() => setHelpTopic("installAndUpdate")}>
-                Instalação e atualização
-              </button>
-              <button type="button" onClick={() => setHelpTopic("localServer")}>
-                Servidor local
-              </button>
-              <button type="button" onClick={() => setHelpTopic("images")}>
-                Imagens e Nginx
-              </button>
-              <button type="button" onClick={() => setHelpTopic("backup")}>
-                Backup e restauração
-              </button>
-              <button type="button" onClick={() => setHelpTopic("commonProblems")}>
-                Problemas comuns
-              </button>
-              <button type="button" onClick={() => setHelpTopic("logs")}>
-                Logs e diagnóstico
-              </button>
-              <button type="button" onClick={() => setHelpTopic("delete")}>
-                Exclusão dos dados
-              </button>
-              <button type="button" onClick={() => setHelpTopic("about")}>
-                Sobre o M&G Pocket
-              </button>
-            </div>
-          </details>
-        </>
-      ) : null}
-
-      {/* Modals */}
       <LauncherDeleteDialog
         open={deleteOpen}
         installPath={status?.projectPath || status?.localDataPath || ""}
@@ -1462,21 +1121,12 @@ export default function App() {
         open={repairOpen}
         title="Reparar instalação"
         description={
-          <>
-            {localBuild ? (
-              <>
-                <p>Esta opção recompila o M&G Pocket neste computador.</p>
-                <p>Use apenas se você estiver desenvolvendo o projeto ou se a versão pronta não funcionar.</p>
-              </>
-            ) : (
-              <p>
-                Vamos tentar corrigir a instalação baixando novamente a versão pronta do M&G Pocket e reiniciando os
-                serviços locais.
-              </p>
-            )}
-          </>
+          <p>
+            Vamos tentar corrigir a instalação baixando novamente a versão pronta do M&G Pocket e reiniciando os
+            serviços locais.
+          </p>
         }
-        confirmLabel={localBuild ? "Reconstruir localmente" : "Reparar instalação"}
+        confirmLabel="Reparar instalação"
         cancelLabel="Cancelar"
         confirmVariant="primary"
         onCancel={() => setRepairOpen(false)}

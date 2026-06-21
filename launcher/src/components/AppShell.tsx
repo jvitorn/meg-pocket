@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { BookOpen, Dice5 } from "lucide-react";
+import type { ReactNode } from "react";
 
 type AppShellProps = {
   children: ReactNode;
@@ -8,16 +8,14 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
   return (
     <div className="app-shell">
+      <div className="app-bg" aria-hidden="true" />
       <header className="app-header">
         <div className="brand-mark" aria-hidden="true">
-          <BookOpen size={26} />
-          <Dice5 size={18} />
+          <BookOpen size={20} />
+          <Dice5 size={13} />
         </div>
-        <div>
-          <p>Sistema local para mestres de RPG</p>
-          <h1>M&G Pocket Launcher</h1>
-          <h2 className="sr-only">Launcher</h2>
-        </div>
+        <span className="brand-title">M&amp;G Pocket</span>
+        <h2 className="sr-only">Launcher</h2>
       </header>
       <main>{children}</main>
     </div>

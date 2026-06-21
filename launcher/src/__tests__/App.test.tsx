@@ -127,22 +127,11 @@ describe("M&G Pocket Launcher", () => {
     expect(window.localStorage.getItem(firstStepsStorageKey)).toBe("true");
   });
 
-  it("Ajuda abre Primeiros passos novamente", async () => {
-    const user = await renderReady();
-
-    await user.click(screen.getByRole("button", { name: "Primeiros passos" }));
-
-    expect(await screen.findByRole("dialog", { name: "Primeiros passos" })).toBeInTheDocument();
-  });
-
-  it("usa Instalar M&G Pocket como ação principal e imagem pronta como modo padrão", async () => {
+  it("usa Instalar M&G Pocket como ação principal com modo padrão", async () => {
     const user = await renderReady({ ...baseStatus, projectInstalled: false, appOnline: false, nginxOnline: false });
 
     expect(screen.getByRole("button", { name: "Instalar M&G Pocket" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Instalar\/Atualizar/i })).not.toBeInTheDocument();
-
-    await user.click(screen.getByText("Opções avançadas"));
-    expect(screen.getByLabelText(/Baixar versão pronta/i)).toBeChecked();
 
     await user.click(screen.getByRole("button", { name: "Instalar M&G Pocket" }));
 
@@ -156,38 +145,26 @@ describe("M&G Pocket Launcher", () => {
     );
   });
 
-  it("modo avançado usa build local e permite rebuild sem cache", async () => {
-    const user = await renderReady({ ...baseStatus, projectInstalled: false, appOnline: false, nginxOnline: false });
+  it("Iniciar servidor abre o navegador quando o app fica online", async () => {
+    const user = await renderReady({ ...baseStatus, appOnline: false, nginxOnline: false });
 
-    await user.click(screen.getByText("Opções avançadas"));
-    await user.click(screen.getByLabelText(/Construir localmente/i));
-    await user.click(screen.getByLabelText(/Reconstruir sem cache/i));
-    await user.click(screen.getByRole("button", { name: "Instalar M&G Pocket" }));
+    // After startApp, quickDiagnose should return online
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === "quickDiagnose") return JSON.stringify(baseStatus);
+      return { success: true, code: 0, stdout: `${command} ok`, stderr: "" };
+    });
 
-    await waitFor(() =>
-      expect(invokeMock).toHaveBeenCalledWith("installProject", {
-        useSudoDocker: false,
-        lightBuild: true,
-        localBuild: true,
-        noCache: true,
-      }),
-    );
-  });
-
-  it("Iniciar M&G Pocket abre o navegador quando o app fica online", async () => {
-    const user = await renderReady();
-
-    await user.click(screen.getByRole("button", { name: /^Iniciar M&G Pocket$/i }));
+    await user.click(screen.getAllByRole("button", { name: /^Iniciar servidor$/i })[0]);
 
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("startApp", { useSudoDocker: false }));
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("openSite"));
     expect(screen.getByText(/Abrindo no navegador/i)).toBeInTheDocument();
   });
 
-  it("Abrir M&G Pocket abre quando online e mostra mensagem amigável quando offline", async () => {
+  it("Iniciar servidor mostra mensagem amigável quando app não fica online", async () => {
     const user = await renderReady({ ...baseStatus, appOnline: false, nginxOnline: false });
 
-    await user.click(screen.getByRole("button", { name: /^Abrir M&G Pocket$/i }));
+    await user.click(screen.getAllByRole("button", { name: /^Iniciar servidor$/i })[0]);
 
     expect(await screen.findByText(/ainda não está pronto para abrir/i)).toBeInTheDocument();
     expect(invokeMock).not.toHaveBeenCalledWith("openSite");
@@ -205,7 +182,8 @@ describe("M&G Pocket Launcher", () => {
       level: "info",
     });
 
-    expect(screen.queryByRole("button", { name: /^Diagnosticar$/i })).not.toBeInTheDocument();
+    // During running job, main view is replaced by progress view
+    expect(screen.queryByRole("button", { name: /^Abrir no navegador$/i })).not.toBeInTheDocument();
 
     emitLauncherEvent("launcher://job-finished", {
       job_id: "job-1",
@@ -219,27 +197,8 @@ describe("M&G Pocket Launcher", () => {
     await waitFor(() =>
       expect(screen.getByRole("status")).toHaveTextContent(/Não foi possível concluir/i),
     );
-    expect(screen.getByRole("button", { name: /^Diagnosticar$/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /^Tentar novamente$/i })).toBeEnabled();
     expect(screen.queryByRole("button", { name: /^Cancelar$/i })).not.toBeInTheDocument();
-  });
-
-  it("mensagem de proxy não aparece para usuário final", async () => {
-    await renderReady({ ...baseStatus, nginxOnline: false });
-
-    expect(screen.getByText(/Não conseguimos abrir o M&G Pocket agora/i)).toBeInTheDocument();
-    expect(screen.queryByText(/proxy local/i)).not.toBeInTheDocument();
-  });
-
-  it("diagnóstico simples aparece antes dos detalhes técnicos", async () => {
-    await renderReady();
-
-    // StatusCard "Diagnóstico" is the section with that aria-label
-    const diagnosticsCard = screen.getByRole("region", { name: "Diagnóstico" });
-    expect(within(diagnosticsCard).getByText("Banco de dados")).toBeInTheDocument();
-    expect(within(diagnosticsCard).getByText("Aplicativo")).toBeInTheDocument();
-    expect(within(diagnosticsCard).getByText("Acesso local")).toBeInTheDocument();
-    expect(within(diagnosticsCard).queryByText("Nginx")).not.toBeInTheDocument();
-    expect(screen.getAllByText("Detalhes técnicos").length).toBeGreaterThan(0);
   });
 
   it("renderiza cinco etapas de preparação quando job está em execução", async () => {
@@ -270,19 +229,6 @@ describe("M&G Pocket Launcher", () => {
     expect(within(preparationSteps).getByText("Banco local")).toBeInTheDocument();
     expect(within(preparationSteps).getByText("Sistema")).toBeInTheDocument();
     expect(within(preparationSteps).getByText("Acesso")).toBeInTheDocument();
-  });
-
-  it("não mostra card Docker no modo portátil", async () => {
-    await renderReady({
-      ...baseStatus,
-      os: "windows",
-      runtimeMode: "portable",
-      runtimeLabel: "Portátil",
-      dockerInstalled: false,
-      dockerRunning: false,
-    });
-
-    expect(screen.queryByLabelText("Docker")).not.toBeInTheDocument();
   });
 
   it("cancelamento mantém progresso real e marca etapa atual como cancelada", async () => {
@@ -330,16 +276,19 @@ describe("M&G Pocket Launcher", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/Cancelado pelo usuário/i);
     expect(within(screen.getByLabelText("Etapas de preparação")).getByText("Cancelado pelo usuário.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Cancelar$/i })).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /^Abrir M&G Pocket$/i }).some((button) => !button.hasAttribute("disabled"))).toBe(true);
+    expect(screen.getByRole("button", { name: /Ver detalhes técnicos/i })).toBeEnabled();
   });
 
-  it("Reparar instalação usa imagem pronta por padrão e build local só no avançado", async () => {
+  it("Reparar instalação abre a partir dos logs e chama repairInstallation", async () => {
     const user = await renderReady();
 
-    await user.click(screen.getByRole("button", { name: /^Reparar instalação$/i }));
-    await user.click(within(await screen.findByRole("dialog", { name: "Reparar instalação" })).getByRole("button", {
-      name: /^Reparar instalação$/i,
-    }));
+    await user.click(screen.getByRole("button", { name: /^Logs$/i }));
+    await user.click(await screen.findByRole("button", { name: /^Reparar instalação$/i }));
+    await user.click(
+      within(await screen.findByRole("dialog", { name: "Reparar instalação" })).getByRole("button", {
+        name: /^Reparar instalação$/i,
+      }),
+    );
 
     await waitFor(() =>
       expect(invokeMock).toHaveBeenCalledWith("repairInstallation", {
@@ -349,32 +298,13 @@ describe("M&G Pocket Launcher", () => {
         noCache: false,
       }),
     );
-
-    invokeMock.mockClear();
-    await user.click(screen.getByText("Opções avançadas"));
-    await user.click(screen.getByLabelText(/Construir localmente/i));
-    await user.click(screen.getByRole("button", { name: /^Reparar instalação$/i }));
-    await user.click(
-      within(await screen.findByRole("dialog", { name: "Reparar instalação" })).getByRole("button", {
-        name: /^Reconstruir localmente$/i,
-      }),
-    );
-
-    await waitFor(() =>
-      expect(invokeMock).toHaveBeenCalledWith("repairInstallation", {
-        useSudoDocker: false,
-        lightBuild: true,
-        localBuild: true,
-        noCache: false,
-      }),
-    );
   });
 
   it("backup chama apenas ação de banco e restauração pede confirmação", async () => {
     const user = await renderReady();
     vi.spyOn(window, "prompt").mockReturnValue("/tmp/meg-pocket-db-2026-05-22-1200.sql");
 
-    await user.click(screen.getByRole("button", { name: /^Backup$/i }));
+    await user.click(screen.getByRole("button", { name: /^Criar backup$/i }));
     await waitFor(() => expect(invokeMock).toHaveBeenCalledWith("backup", { useSudoDocker: false }));
 
     const restoreButtons = screen.getAllByRole("button", { name: /Restaurar[- ][Bb]ackup/i });
