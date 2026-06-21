@@ -36,7 +36,7 @@ jobs:
           - name: Windows
             artifactName: launcher-windows-checksums
             platform: windows-latest
-            args: "--bundles nsis,msi"
+            args: "--bundles nsis"
 
     steps:
       - name: Checkout

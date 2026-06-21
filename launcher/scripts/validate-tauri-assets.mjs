@@ -117,6 +117,18 @@ if (!resources || Array.isArray(resources) || resources["../../installers/"] !==
   fail('bundle.resources deve mapear "../../installers/" para "installers/"');
 }
 
+if (!Array.isArray(bundle.targets) || !bundle.targets.includes("nsis")) {
+  fail("bundle.targets deve incluir nsis para o instalador Windows com desinstalação limpa");
+}
+
+if (bundle.targets.includes("msi")) {
+  fail("bundle.targets não deve incluir msi; o fluxo Windows usa NSIS para hooks de desinstalação");
+}
+
+if (bundle.windows?.nsis?.installerHooks !== "./windows/hooks.nsh") {
+  fail('bundle.windows.nsis.installerHooks deve apontar para "./windows/hooks.nsh"');
+}
+
 const installersDir = path.resolve(tauriDir, "../../installers");
 assertDirectory(installersDir, "pasta installers");
 

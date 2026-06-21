@@ -27,7 +27,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["appimage", "deb", "rpm", "nsis", "msi"],
+    "targets": ["appimage", "deb", "rpm", "nsis"],
     "publisher": "João Vitor",
     "copyright": "Copyright © 2026 João Vitor",
     "category": "RolePlayingGame",
