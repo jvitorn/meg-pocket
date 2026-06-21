@@ -184,8 +184,8 @@ http {{
     keepalive_timeout  65;
 
     server {{
-        listen {public_port};
-        server_name localhost;
+        listen 127.0.0.1:{public_port};
+        server_name localhost 127.0.0.1;
 
         location = /healthz {{
             return 200 "ok\n";
@@ -310,5 +310,28 @@ mod tests {
             r#"include       "C:/Users/Player/AppData/Local/MG Pocket/runtime/nginx/conf/mime.types";"#
         ));
         assert!(!content.contains("include       mime.types;"));
+    }
+
+    #[test]
+    fn nginx_config_binds_to_localhost_only() {
+        let content = render_config(
+            &runtime_config(),
+            Path::new(r"C:\Users\Player\AppData\Local\MG Pocket\runtime"),
+            Path::new(r"C:\Users\Player\AppData\Local\MG Pocket\logs"),
+            Path::new(r"C:\Users\Player\AppData\Local\MG Pocket\data\uploads"),
+        );
+
+        assert!(
+            content.contains("listen 127.0.0.1:3000;"),
+            "nginx deve escutar somente em 127.0.0.1"
+        );
+        assert!(
+            !content.contains("listen 3000;"),
+            "nginx não deve escutar em todas as interfaces"
+        );
+        assert!(
+            content.contains("server_name localhost 127.0.0.1;"),
+            "server_name deve incluir 127.0.0.1"
+        );
     }
 }

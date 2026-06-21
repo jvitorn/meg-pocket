@@ -1,6 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { CommandOutput, DependencyStatus, LauncherJobEvent, SystemStatus } from "./types";
+import type {
+  CommandOutput,
+  DependencyStatus,
+  LauncherJobEvent,
+  LocalStorageStatus,
+  ShareState,
+  SystemStatus,
+} from "./types";
 
 export const launcherJobEvents = [
   "launcher://job-started",
@@ -81,6 +88,22 @@ export function openSite(): Promise<void> {
   return invoke<void>("openSite");
 }
 
+export function getShareStatus(): Promise<ShareState> {
+  return invoke<ShareState>("getShareStatus");
+}
+
+export function startShare(): Promise<ShareState> {
+  return invoke<ShareState>("startShare");
+}
+
+export function stopShare(): Promise<ShareState> {
+  return invoke<ShareState>("stopShare");
+}
+
+export function openShareLink(url: string): Promise<void> {
+  return invoke<void>("openShareLink", { url });
+}
+
 export function openAdminer(): Promise<void> {
   return invoke<void>("openAdminer");
 }
@@ -99,6 +122,14 @@ export function openBackupsFolder(): Promise<void> {
 
 export function openLogsFolder(): Promise<void> {
   return invoke<void>("openLogsFolder");
+}
+
+export function openInstallationFolder(): Promise<void> {
+  return invoke<void>("openInstallationFolder");
+}
+
+export function getLocalStorageStatus(): Promise<LocalStorageStatus> {
+  return invoke<LocalStorageStatus>("getLocalStorageStatus");
 }
 
 export function readLogs(options: DockerCommandOptions = {}): Promise<string> {
@@ -122,6 +153,10 @@ export function removeLocalProject(
   options: DockerCommandOptions = {},
 ): Promise<CommandOutput> {
   return invoke<CommandOutput>("removeLocalProject", { mode, confirmed: true, ...options });
+}
+
+export function deleteLocalInstallation(options: DockerCommandOptions = {}): Promise<CommandOutput> {
+  return invoke<CommandOutput>("deleteLocalInstallation", { confirmed: true, ...options });
 }
 
 export function cancelCurrentJob(): Promise<boolean> {

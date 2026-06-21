@@ -469,7 +469,11 @@ fn format_download_progress(transferred: u64, total: Option<u64>, speed: Option<
             speed_str
         )
     } else {
-        format!("{:.0} MB baixados{}", transferred as f64 / 1_048_576.0, speed_str)
+        format!(
+            "{:.0} MB baixados{}",
+            transferred as f64 / 1_048_576.0,
+            speed_str
+        )
     }
 }
 
@@ -498,13 +502,11 @@ fn validate_sha256(path: &Path, expected: &str) -> LauncherResult<bool> {
 fn extract_zip(ctx: &mut PortableJob<'_, '_>, zip_path: &Path) -> LauncherResult<PathBuf> {
     let tmp = paths::mg_pocket_tmp_dir()?.join(format!("portable-runtime-{}", std::process::id()));
     if tmp.exists() {
-        fs::remove_dir_all(&tmp).map_err(|e| {
-            LauncherError::technical("Não foi possível limpar tmp portátil", e)
-        })?;
+        fs::remove_dir_all(&tmp)
+            .map_err(|e| LauncherError::technical("Não foi possível limpar tmp portátil", e))?;
     }
-    fs::create_dir_all(&tmp).map_err(|e| {
-        LauncherError::technical("Não foi possível criar tmp portátil", e)
-    })?;
+    fs::create_dir_all(&tmp)
+        .map_err(|e| LauncherError::technical("Não foi possível criar tmp portátil", e))?;
 
     let result = extract_zip_native(ctx, zip_path, &tmp);
     if result.is_err() && !ctx.is_cancelled() {
@@ -683,9 +685,9 @@ fn copy_dir_all(source: &Path, destination: &Path) -> LauncherResult<()> {
         if source_path.is_dir() {
             copy_dir_all(&source_path, &target_path)?;
         } else {
-            fs::copy(&source_path, &target_path).map(|_| ()).map_err(|e| {
-                LauncherError::technical("Não foi possível copiar arquivo", e)
-            })?;
+            fs::copy(&source_path, &target_path)
+                .map(|_| ())
+                .map_err(|e| LauncherError::technical("Não foi possível copiar arquivo", e))?;
         }
     }
     Ok(())
@@ -809,7 +811,11 @@ mod tests {
 
     #[test]
     fn zip_cache_valid_returns_false_for_missing_file() {
-        assert!(!zip_cache_valid(Path::new("/nao-existe/arquivo.zip"), "abc", None));
+        assert!(!zip_cache_valid(
+            Path::new("/nao-existe/arquivo.zip"),
+            "abc",
+            None
+        ));
     }
 
     #[test]
@@ -836,7 +842,11 @@ mod tests {
 
     #[test]
     fn format_download_progress_shows_mb_and_speed() {
-        let msg = format_download_progress(50 * 1024 * 1024, Some(200 * 1024 * 1024), Some(5 * 1024 * 1024));
+        let msg = format_download_progress(
+            50 * 1024 * 1024,
+            Some(200 * 1024 * 1024),
+            Some(5 * 1024 * 1024),
+        );
         assert!(msg.contains("50"), "should contain transferred MB");
         assert!(msg.contains("200"), "should contain total MB");
         assert!(msg.contains("MB/s"), "should contain speed");

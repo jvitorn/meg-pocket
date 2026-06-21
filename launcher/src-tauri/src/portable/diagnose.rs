@@ -13,7 +13,7 @@ use crate::{
     paths,
     portable::{
         install,
-        types::{PortableRuntimeConfig, unix_timestamp_string},
+        types::{unix_timestamp_string, PortableRuntimeConfig},
     },
 };
 
@@ -95,7 +95,10 @@ pub fn required_paths() -> Vec<PathBuf> {
 
 fn status_json(full: bool) -> LauncherResult<String> {
     let config = read_runtime_config();
-    let public_port = config.as_ref().map(|config| config.public_port).unwrap_or(3000);
+    let public_port = config
+        .as_ref()
+        .map(|config| config.public_port)
+        .unwrap_or(3000);
     let postgres_port = config
         .as_ref()
         .map(|config| config.postgres_port)
@@ -107,12 +110,8 @@ fn status_json(full: bool) -> LauncherResult<String> {
     let installed = is_installed();
     let app_online = installed && check_http_path(public_port, "/api/health", PORT_TIMEOUT);
     let nginx_online = installed && check_http_path(public_port, "/healthz", PORT_TIMEOUT);
-    let uploads_served = installed
-        && check_http_path(
-            public_port,
-            "/uploads/.meg-pocket-health",
-            PORT_TIMEOUT,
-        );
+    let uploads_served =
+        installed && check_http_path(public_port, "/uploads/.meg-pocket-health", PORT_TIMEOUT);
     let database_connected = if full && installed {
         check_http_path(public_port, "/api/health/db", PORT_TIMEOUT)
             || check_local_port(postgres_port, PORT_TIMEOUT)
@@ -155,6 +154,7 @@ fn status_json(full: bool) -> LauncherResult<String> {
         "uploadsDirectoryOk": paths::mg_pocket_data_content_dir().map(|path| path.join("uploads").is_dir()).unwrap_or(false),
         "uploadsServed": uploads_served,
         "nextAssetsOnline": installed && check_http_path(public_port, "/imgs/icons/logo_guerreiro.svg", PORT_TIMEOUT),
+        "installationRootPath": paths::mg_pocket_data_dir().map(|path| path.to_string_lossy().to_string()).unwrap_or_default(),
         "localDataPath": paths::mg_pocket_data_content_dir().map(|path| path.to_string_lossy().to_string()).unwrap_or_default(),
         "localBackupsPath": paths::mg_pocket_backups_dir().map(|path| path.to_string_lossy().to_string()).unwrap_or_default(),
         "localLogsPath": paths::mg_pocket_logs_dir().map(|path| path.to_string_lossy().to_string()).unwrap_or_default(),

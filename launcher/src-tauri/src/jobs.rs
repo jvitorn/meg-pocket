@@ -248,23 +248,11 @@ pub fn emit_finalizing_progress(
     );
 }
 
-pub fn finish_job_success(
-    app: &AppHandle,
-    job_id: &str,
-    action: &str,
-    step: &str,
-    message: &str,
-) {
+pub fn finish_job_success(app: &AppHandle, job_id: &str, action: &str, step: &str, message: &str) {
     emit_finished(app, job_id, action, step, message, 100, "success");
 }
 
-pub fn finish_job_error(
-    app: &AppHandle,
-    job_id: &str,
-    action: &str,
-    step: &str,
-    message: &str,
-) {
+pub fn finish_job_error(app: &AppHandle, job_id: &str, action: &str, step: &str, message: &str) {
     emit_finished(app, job_id, action, step, message, 100, "error");
 }
 

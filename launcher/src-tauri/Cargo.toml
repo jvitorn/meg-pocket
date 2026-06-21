@@ -1,8 +1,8 @@
 [package]
 name = "mg-pocket-launcher"
 version = "1.1.0"
-description = "M&G Pocket Launcher"
-authors = ["M&G Pocket"]
+description = "Launcher oficial do M&G Pocket"
+authors = ["João Vitor"]
 license = "MIT"
 repository = "https://github.com/jvitorn/meg-pocket"
 edition = "2021"
@@ -22,3 +22,6 @@ sha2 = "0.10"
 tauri = { version = "2", features = [] }
 ureq = { version = "2", features = ["tls"] }
 zip = { version = "2", default-features = false, features = ["deflate", "deflate64", "bzip2"] }
+
+[dev-dependencies]
+tempfile = "3"

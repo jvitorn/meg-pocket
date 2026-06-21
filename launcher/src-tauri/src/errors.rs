@@ -96,11 +96,7 @@ impl LauncherError {
 
     pub fn cancelled(message: impl Into<String>) -> Self {
         let message = message.into();
-        Self::with_kind(
-            LauncherErrorKind::CancelledByUser,
-            message.clone(),
-            message,
-        )
+        Self::with_kind(LauncherErrorKind::CancelledByUser, message.clone(), message)
     }
 
     pub fn timeout(friendly: impl Into<String>, technical: impl Into<String>) -> Self {
@@ -189,7 +185,10 @@ mod tests {
         let err = LauncherError::timeout("Demorou demais.", "detalhes técnicos");
         assert_eq!(err.kind, LauncherErrorKind::Timeout);
         assert_eq!(err.kind_str(), "timeout");
-        assert!(!err.friendly_message().to_ascii_lowercase().contains("cancelad"));
+        assert!(!err
+            .friendly_message()
+            .to_ascii_lowercase()
+            .contains("cancelad"));
     }
 
     #[test]

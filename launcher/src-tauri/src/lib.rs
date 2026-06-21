@@ -1,19 +1,29 @@
+mod cleanup;
+mod docker;
 mod errors;
 mod installers;
-mod docker;
 mod jobs;
 mod paths;
 mod portable;
 mod process_utils;
 mod runtime;
 mod scripts;
+mod storage;
+mod tunnel;
 
-use std::{path::Path, process::Command};
+use std::{
+    path::Path,
+    process::Command,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use errors::{LauncherError, LauncherResult};
 use jobs::JobManager;
 use scripts::CommandOutput;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, State, WindowEvent};
 
 fn command_result<T>(result: LauncherResult<T>) -> Result<T, String> {
     result.map_err(|error| error.friendly_message().to_string())
@@ -248,6 +258,7 @@ fn removeLocalProject(
         return Err("Modo de remoção inválido.".to_string());
     }
 
+    let _ = tunnel::stop();
     command_result(docker::remove_local_project(
         &app,
         &jobs,
@@ -257,8 +268,54 @@ fn removeLocalProject(
     ))
 }
 
+#[tauri::command(rename_all = "camelCase", async)]
+#[allow(non_snake_case)]
+fn deleteLocalInstallation(
+    app: AppHandle,
+    jobs: State<'_, JobManager>,
+    confirmed: bool,
+    use_sudo_docker: Option<bool>,
+) -> Result<CommandOutput, String> {
+    if !confirmed {
+        return Err("Exclusão exige confirmação explícita.".to_string());
+    }
+    command_result(runtime::delete_local_installation(
+        &app,
+        &jobs,
+        confirmed,
+        use_sudo_docker.unwrap_or(false),
+    ))
+}
+
+#[tauri::command(async)]
+#[allow(non_snake_case)]
+fn getShareStatus() -> Result<tunnel::TunnelState, String> {
+    Ok(tunnel::status())
+}
+
+#[tauri::command(async)]
+#[allow(non_snake_case)]
+fn startShare() -> Result<tunnel::TunnelState, String> {
+    command_result(tunnel::start(runtime::local_site_url()))
+}
+
+#[tauri::command(async)]
+#[allow(non_snake_case)]
+fn stopShare() -> Result<tunnel::TunnelState, String> {
+    command_result(tunnel::stop())
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+fn getLocalStorageStatus() -> Result<storage::LocalStorageStatus, String> {
+    command_result(storage::local_storage_status())
+}
+
 fn open_allowed_url(url: &str) -> LauncherResult<()> {
-    if url != "https://www.docker.com/products/docker-desktop/" && !is_allowed_localhost_url(url) {
+    if url != "https://www.docker.com/products/docker-desktop/"
+        && !is_allowed_localhost_url(url)
+        && !is_allowed_share_url(url)
+    {
         return Err(LauncherError::friendly("URL não permitida pelo launcher."));
     }
 
@@ -317,10 +374,21 @@ fn is_allowed_localhost_url(url: &str) -> bool {
         && port_text.parse::<u16>().is_ok()
 }
 
+fn is_allowed_share_url(url: &str) -> bool {
+    tunnel::validation::validate_public_url(url).is_ok()
+}
+
 #[tauri::command]
 #[allow(non_snake_case)]
 fn openSite() -> Result<(), String> {
     command_result(open_allowed_url(&runtime::local_site_url()))
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+fn openShareLink(url: String) -> Result<(), String> {
+    let url = command_result(tunnel::validation::validate_public_url(&url))?;
+    command_result(open_allowed_url(&url))
 }
 
 #[tauri::command]
@@ -407,14 +475,51 @@ fn openLogsFolder() -> Result<(), String> {
     command_result(paths::mg_pocket_logs_dir().and_then(|path| open_folder(&path)))
 }
 
+#[tauri::command]
+#[allow(non_snake_case)]
+fn openInstallationFolder() -> Result<(), String> {
+    command_result(paths::mg_pocket_data_dir().and_then(|path| open_folder(&path)))
+}
+
+pub fn run_uninstall_cleanup(remove_user_data: bool) -> i32 {
+    let options = if remove_user_data {
+        cleanup::CleanupOptions::uninstall_remove_everything()
+    } else {
+        cleanup::CleanupOptions::uninstall_keep_user_data()
+    };
+    match cleanup::cleanup_local_installation(options) {
+        Ok(_) => 0,
+        Err(error) => {
+            eprintln!("{}", error.technical_message());
+            1
+        }
+    }
+}
+
 pub fn run() {
+    let closing = Arc::new(AtomicBool::new(false));
     tauri::Builder::default()
         .manage(JobManager::default())
         .setup(|app| {
-            let lock = paths::acquire_instance_lock()
-                .map_err(|error| Box::<dyn std::error::Error>::from(error.friendly_message().to_string()))?;
+            let lock = paths::acquire_instance_lock().map_err(|error| {
+                Box::<dyn std::error::Error>::from(error.friendly_message().to_string())
+            })?;
             app.manage(lock);
+            tunnel::cleanup_stale_state();
             Ok(())
+        })
+        .on_window_event(move |window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if closing.swap(true, Ordering::SeqCst) {
+                    return;
+                }
+                api.prevent_close();
+                let window = window.clone();
+                std::thread::spawn(move || {
+                    let _ = tunnel::stop();
+                    let _ = window.close();
+                });
+            }
         })
         .invoke_handler(tauri::generate_handler![
             doctor,
@@ -431,16 +536,23 @@ pub fn run() {
             restartApp,
             openSite,
             openAdminer,
+            openShareLink,
             openDockerGuide,
             openDataFolder,
             openBackupsFolder,
             openLogsFolder,
+            openInstallationFolder,
             readLogs,
             backup,
             restoreBackup,
             resetLocalData,
             removeLocalProject,
-            cancelCurrentJob
+            deleteLocalInstallation,
+            cancelCurrentJob,
+            getShareStatus,
+            startShare,
+            stopShare,
+            getLocalStorageStatus
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar M&G Pocket Launcher");
