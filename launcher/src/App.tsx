@@ -61,13 +61,15 @@ import type {
   SystemStatus,
 } from "./types";
 
-const initialSteps: ProgressStep[] = [
-  { id: "doctor", label: "Diagnóstico", state: "pending" },
-  { id: "docker", label: "Runtime", state: "pending" },
-  { id: "permission", label: "Banco local", state: "pending" },
-  { id: "project", label: "Sistema", state: "pending" },
-  { id: "online", label: "Acesso", state: "pending" },
+const preparationStepTemplates: ProgressStep[] = [
+  { id: "diagnostico", title: "Diagnóstico", status: "pending", progress: 0, message: "Aguardando diagnóstico." },
+  { id: "runtime", title: "Runtime", status: "pending", progress: 0, message: "Aguardando runtime." },
+  { id: "bancoLocal", title: "Banco local", status: "pending", progress: 0, message: "Aguardando banco local." },
+  { id: "sistema", title: "Sistema", status: "pending", progress: 0, message: "Aguardando sistema." },
+  { id: "acesso", title: "Acesso", status: "pending", progress: 0, message: "Aguardando sistema." },
 ];
+
+const initialSteps: ProgressStep[] = createInitialSteps();
 
 const FIRST_STEPS_STORAGE_KEY = "mg-pocket-launcher-hide-first-steps";
 
@@ -101,6 +103,10 @@ function appendLogLine(current: string, event: LauncherJobEvent) {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
+}
+
+function createInitialSteps() {
+  return preparationStepTemplates.map((step) => ({ ...step }));
 }
 
 function isFriendlyError(message: string) {
@@ -180,6 +186,22 @@ function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
+function formatTransferDetail(event: LauncherJobEvent): string | null {
+  if (event.transferredBytes !== undefined && event.transferredBytes > 0) {
+    const transferred = (event.transferredBytes / 1_048_576).toFixed(1);
+    const total = event.totalBytes !== undefined ? ` de ${(event.totalBytes / 1_048_576).toFixed(1)} MB` : "";
+    const speed =
+      event.bytesPerSecond && event.bytesPerSecond > 0
+        ? ` — ${(event.bytesPerSecond / 1_048_576).toFixed(1)} MB/s`
+        : "";
+    return `${transferred} MB${total}${speed}`;
+  }
+  if (event.filesProcessed !== undefined && event.totalFiles !== undefined && event.totalFiles > 0) {
+    return `${event.filesProcessed.toLocaleString("pt-BR")} de ${event.totalFiles.toLocaleString("pt-BR")} arquivos`;
+  }
+  return null;
+}
+
 function dependencyInstructions(dependencies: DependencyStatus) {
   if (dependencies.os === "windows") {
     return dependencies.manualInstructions || "Instale as ferramentas indicadas e tente novamente.";
@@ -226,15 +248,25 @@ function hasDependency(dependencies: DependencyStatus, name: string) {
   return dependencies.missing.some((dependency) => dependency.toLocaleLowerCase().includes(needle));
 }
 
-function localJobEvent(action: string, status: Exclude<JobStatus, "idle" | "running">, message: string): LauncherJobEvent {
+function localJobEvent(
+  action: string,
+  status: Exclude<JobStatus, "idle" | "running">,
+  message: string,
+  progress = status === "success" || status === "error" ? 100 : 0,
+): LauncherJobEvent {
   return {
     job_id: `local-${Date.now()}`,
     action,
     step: status === "success" ? "Finalizado" : status === "cancelled" ? "Cancelado" : "Erro",
     message,
-    progress: 100,
+    progress,
     level: status,
+    status,
   };
+}
+
+function isEventCancelled(errorKind?: string) {
+  return errorKind === "cancelled_by_user";
 }
 
 function launcherStatusLabel(status: SystemStatus | null, jobStatus: JobStatus, isBusy: boolean, error: string) {
@@ -251,6 +283,143 @@ function primaryActionLabel(status: SystemStatus | null) {
   return "Preparar M&G Pocket";
 }
 
+const preparationStepOrder = ["diagnostico", "runtime", "bancoLocal", "sistema", "acesso"];
+
+function stepIndex(id: string) {
+  const index = preparationStepOrder.indexOf(id);
+  return index >= 0 ? index : 0;
+}
+
+function stepTemplate(id: string) {
+  return preparationStepTemplates.find((step) => step.id === id) || preparationStepTemplates[0];
+}
+
+function normalizeIncomingSteps(steps: LauncherJobEvent["steps"]): ProgressStep[] {
+  if (!steps?.length) return [];
+  return steps.map((step) => {
+    const template = stepTemplate(step.id);
+    return {
+      ...template,
+      ...step,
+      title: step.title || template.title,
+      status: step.status || "pending",
+      progress: Math.max(0, Math.min(100, step.progress || 0)),
+      message: step.message || template.message,
+    };
+  });
+}
+
+function mergePreparationSteps(current: ProgressStep[], incoming: ProgressStep[]) {
+  if (!incoming.length) return current;
+  return preparationStepTemplates.map((template) => {
+    const currentStep = current.find((step) => step.id === template.id) || template;
+    const incomingStep = incoming.find((step) => step.id === template.id);
+    if (!incomingStep) return currentStep;
+    if (currentStep.status === "success" && incomingStep.status === "pending") return currentStep;
+    if (
+      currentStep.status === "success" &&
+      incomingStep.status === "running" &&
+      incomingStep.id === "diagnostico" &&
+      incomingStep.progress <= 10
+    ) {
+      return currentStep;
+    }
+    return { ...currentStep, ...incomingStep };
+  });
+}
+
+function stepStatusFromEvent(eventName: LauncherJobEventName, payload: LauncherJobEvent): ProgressStep["status"] {
+  if (eventName === "launcher://job-finished") {
+    if (payload.level === "error" || payload.status === "error") return "error";
+    if (payload.level === "cancelled" || payload.status === "cancelled") return "cancelled";
+    return "success";
+  }
+  if (eventName === "launcher://job-error") return "error";
+  return "running";
+}
+
+function stepIdFromLegacyEvent(payload: LauncherJobEvent): ProgressStep["id"] {
+  const text = `${payload.step} ${payload.message}`.toLocaleLowerCase();
+  if (text.includes("diagn")) return "diagnostico";
+  if (
+    text.includes("banco") ||
+    text.includes("postgres") ||
+    text.includes("initdb") ||
+    text.includes("psql") ||
+    text.includes("migration") ||
+    text.includes("seed") ||
+    text.includes("meg_pocket")
+  ) {
+    return "bancoLocal";
+  }
+  if (text.includes("acesso") || text.includes("health") || text.includes("upload")) return "acesso";
+  if (text.includes("sistema") || text.includes("next") || text.includes("nginx") || text.includes("servi")) {
+    return "sistema";
+  }
+  if (text.includes("runtime") || text.includes("baix") || text.includes("download") || text.includes("extra")) {
+    return "runtime";
+  }
+  if (payload.progress <= 10) return "diagnostico";
+  if (payload.progress <= 35) return "runtime";
+  if (payload.progress <= 60) return "bancoLocal";
+  if (payload.progress <= 85) return "sistema";
+  return "acesso";
+}
+
+function legacyStepProgress(id: string, globalProgress: number) {
+  const ranges: Record<string, [number, number]> = {
+    diagnostico: [0, 10],
+    runtime: [10, 35],
+    bancoLocal: [35, 60],
+    sistema: [60, 85],
+    acesso: [85, 100],
+  };
+  const [start, end] = ranges[id] || [0, 100];
+  if (globalProgress <= start) return 0;
+  if (globalProgress >= end) return 100;
+  return Math.round(((globalProgress - start) * 100) / Math.max(1, end - start));
+}
+
+function applyLegacyStepEvent(
+  current: ProgressStep[],
+  payload: LauncherJobEvent,
+  eventName: LauncherJobEventName,
+): ProgressStep[] {
+  const status = stepStatusFromEvent(eventName, payload);
+  const currentStepId = stepIdFromLegacyEvent(payload);
+  const currentIndex = stepIndex(currentStepId);
+  const allSuccess = status === "success" && payload.progress >= 95;
+
+  return preparationStepTemplates.map((template, index) => {
+    const previous = current.find((step) => step.id === template.id) || template;
+    if (allSuccess || index < currentIndex) {
+      return { ...previous, status: "success", progress: 100, message: previous.message || "Concluído." };
+    }
+    if (template.id === currentStepId) {
+      const progress = status === "success" ? 100 : Math.max(previous.progress, legacyStepProgress(template.id, payload.progress));
+      return {
+        ...previous,
+        status,
+        progress,
+        message: status === "cancelled" ? "Cancelado pelo usuário." : payload.message || previous.message,
+        error: status === "error" ? payload.message : undefined,
+      };
+    }
+    if (status === "running" && index > currentIndex) return { ...template };
+    return previous;
+  });
+}
+
+function applyJobEventToSteps(
+  current: ProgressStep[],
+  payload: LauncherJobEvent,
+  eventName: LauncherJobEventName,
+): ProgressStep[] {
+  const incoming = normalizeIncomingSteps(payload.steps);
+  if (incoming.length > 0) return mergePreparationSteps(current, incoming);
+  return applyLegacyStepEvent(current, payload, eventName);
+}
+
 export default function App() {
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [logs, setLogs] = useState("");
@@ -264,6 +433,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [steps, setSteps] = useState<ProgressStep[]>(initialSteps);
+  const lastTerminalEventKindRef = useRef<string | undefined>(undefined);
   const [resetOpen, setResetOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState<"safe" | "complete" | null>(null);
   const [restoreOpen, setRestoreOpen] = useState(false);
@@ -304,8 +474,19 @@ export default function App() {
     [localBuild, localBuildNoCache, sudoDockerThisSession],
   );
 
-  const setStep = (id: string, state: ProgressStep["state"]) => {
-    setSteps((current) => current.map((step) => (step.id === id ? { ...step, state } : step)));
+  const setStep = (id: string, status: ProgressStep["status"], message?: string, progress?: number) => {
+    setSteps((current) =>
+      current.map((step) =>
+        step.id === id
+          ? {
+              ...step,
+              status,
+              progress: progress ?? (status === "success" ? 100 : step.progress),
+              message: message ?? (status === "success" ? "Concluído." : step.message),
+            }
+          : step,
+      ),
+    );
   };
 
   const flushLogBuffer = useCallback(() => {
@@ -344,15 +525,18 @@ export default function App() {
 
     const handleJobEvent = (payload: LauncherJobEvent, eventName: LauncherJobEventName) => {
       if (eventName === "launcher://job-started") {
+        lastTerminalEventKindRef.current = undefined;
         setJobEvent(payload);
         setJobStatus("running");
         setRecentJobLogs([]);
+        setSteps((current) => applyJobEventToSteps(current, payload, eventName));
         return;
       }
 
       if (eventName === "launcher://job-progress") {
         setJobEvent(payload);
         setJobStatus("running");
+        setSteps((current) => applyJobEventToSteps(current, payload, eventName));
         return;
       }
 
@@ -371,6 +555,7 @@ export default function App() {
       if (eventName === "launcher://job-error") {
         setJobEvent(payload);
         setJobStatus("error");
+        setSteps((current) => applyJobEventToSteps(current, payload, eventName));
         setError("Não foi possível concluir. Use Ver detalhes técnicos para investigar o que aconteceu.");
         updateLogBuffer((current) => appendLogLine(current, payload), true);
         return;
@@ -379,9 +564,14 @@ export default function App() {
       if (eventName === "launcher://job-finished") {
         setJobEvent(payload);
         const nextStatus = payload.level === "error" ? "error" : payload.level === "cancelled" ? "cancelled" : "success";
+        lastTerminalEventKindRef.current = payload.errorKind ?? (nextStatus === "cancelled" ? "cancelled_by_user" : nextStatus);
         setJobStatus(nextStatus);
+        setSteps((current) => applyJobEventToSteps(current, payload, eventName));
         if (nextStatus === "error") {
           setError((current) => current || "Não foi possível concluir. Use Ver detalhes técnicos para investigar o que aconteceu.");
+        } else if (nextStatus === "cancelled") {
+          setError("");
+          setNotice("Operação cancelada. Nenhuma instalação existente foi alterada.");
         }
       }
     };
@@ -464,8 +654,15 @@ export default function App() {
     } catch (err) {
       updateLogBuffer((current) => appendOutput(current, `Erro em ${label}`, errorMessage(err)), true);
       const message = friendlyActionError(label, err);
-      if (message.toLocaleLowerCase().includes("cancelada")) {
-        setJobEvent(localJobEvent(label, "cancelled", "Cancelado"));
+      if (isEventCancelled(lastTerminalEventKindRef.current)) {
+        setSteps((current) =>
+          current.map((step) =>
+            step.status === "running"
+              ? { ...step, status: "cancelled", message: "Operação cancelada." }
+              : step,
+          ),
+        );
+        setJobEvent(localJobEvent(label, "cancelled", "Operação cancelada.", jobEvent?.progress ?? 0));
         setJobStatus("cancelled");
       } else {
         setJobEvent(localJobEvent(label, "error", message));
@@ -542,9 +739,15 @@ export default function App() {
         true,
       );
       const message = friendlyActionError("Preparar Ambiente", err);
-      setJobEvent(localJobEvent("Preparar Ambiente", "error", message));
-      setJobStatus("error");
-      setError(message);
+      if (isEventCancelled(lastTerminalEventKindRef.current)) {
+        setJobEvent(localJobEvent("Preparar Ambiente", "cancelled", "Operação cancelada.", jobEvent?.progress ?? 0));
+        setJobStatus("cancelled");
+        setNotice("Operação cancelada. Nenhuma instalação existente foi alterada.");
+      } else {
+        setJobEvent(localJobEvent("Preparar Ambiente", "error", message));
+        setJobStatus("error");
+        setError(message);
+      }
     } finally {
       setBusy(null);
     }
@@ -565,23 +768,18 @@ export default function App() {
     setError("");
     setNotice("");
     replaceLogs("");
-    setSteps(initialSteps.map((step) => ({ ...step, state: "pending" })));
+    setSteps(createInitialSteps());
 
     try {
-      setStep("doctor", "running");
+      setStep("diagnostico", "running", "Verificando este computador.", 5);
       let currentStatus = await doctor();
       setStatus(currentStatus);
-      setStep("doctor", "done");
+      setStep("diagnostico", "success", "Diagnóstico concluído.", 100);
 
       if (!(await checkDependenciesBefore("prepare"))) return;
 
       if (currentStatus.runtimeMode === "portable") {
-        setStep("docker", "done");
-        setStep("permission", "running");
         await runProjectInstall();
-        setStep("permission", "done");
-        setStep("project", "done");
-        setStep("online", "running");
         currentStatus = await doctor();
         setStatus(currentStatus);
         if (!currentStatus.appOnline) {
@@ -589,7 +787,7 @@ export default function App() {
             "O M&G Pocket foi preparado, mas ainda não conseguimos abrir a página. Tente novamente em alguns segundos ou use Reparar instalação.",
           );
         }
-        setStep("online", "done");
+        setSteps((current) => current.map((step) => ({ ...step, status: "success", progress: 100, message: "Concluído." })));
         const readyMessage = "Ambiente pronto. Você já pode abrir o M&G Pocket.";
         setJobEvent(localJobEvent("Preparar Ambiente", "success", readyMessage));
         setJobStatus("success");
@@ -597,7 +795,7 @@ export default function App() {
         return;
       }
 
-      setStep("docker", "running");
+      setStep("runtime", "running", "Validando Docker.", 20);
       if (!currentStatus.dockerInstalled) {
         if (currentStatus.os === "linux" && currentStatus.supported) {
           await installDockerLinux();
@@ -608,23 +806,23 @@ export default function App() {
         }
       }
       await ensureDockerRunning();
-      setStep("docker", "done");
+      setStep("runtime", "running", "Validando permissões do Docker.", 60);
 
-      setStep("permission", "running");
       await ensureDockerPermission();
       currentStatus = await doctor();
       setStatus(currentStatus);
       if (requestDockerPermissionDecision("prepare", currentStatus)) {
-        setStep("permission", "error");
+        setStep("runtime", "error", "Permissão Docker precisa de atenção.");
         return;
       }
-      setStep("permission", "done");
+      setStep("runtime", "success", "Runtime Docker pronto.");
 
-      setStep("project", "running");
+      setStep("bancoLocal", "running", "Preparando banco local.");
       await runProjectInstall();
-      setStep("project", "done");
+      setStep("bancoLocal", "success", "Banco local pronto.");
+      setStep("sistema", "success", "Sistema iniciado.");
 
-      setStep("online", "running");
+      setStep("acesso", "running", "Validando acesso local.");
       currentStatus = await doctor();
       setStatus(currentStatus);
       if (!currentStatus.appOnline) {
@@ -632,18 +830,35 @@ export default function App() {
           "O M&G Pocket foi preparado, mas ainda não conseguimos abrir a página. Tente novamente em alguns segundos ou use Reparar instalação.",
         );
       }
-      setStep("online", "done");
+      setStep("acesso", "success", "Acesso validado.");
       const readyMessage = "Ambiente pronto. Você já pode abrir o M&G Pocket.";
       setJobEvent(localJobEvent("Preparar Ambiente", "success", readyMessage));
       setJobStatus("success");
       setNotice(readyMessage);
     } catch (err) {
-      setSteps((current) => current.map((step) => (step.state === "running" ? { ...step, state: "error" } : step)));
       updateLogBuffer((current) => appendOutput(current, "Erro ao preparar ambiente", errorMessage(err)), true);
       const message = friendlyActionError("Preparar Ambiente", err);
-      setJobEvent(localJobEvent("Preparar Ambiente", "error", message));
-      setJobStatus("error");
-      setError(message);
+      if (isEventCancelled(lastTerminalEventKindRef.current)) {
+        setSteps((current) =>
+          current.map((step) =>
+            step.status === "running"
+              ? { ...step, status: "cancelled", message: "Operação cancelada." }
+              : step,
+          ),
+        );
+        setJobEvent(localJobEvent("Preparar Ambiente", "cancelled", "Operação cancelada.", jobEvent?.progress ?? 0));
+        setJobStatus("cancelled");
+        setNotice("Operação cancelada. Nenhuma instalação existente foi alterada.");
+      } else {
+        setSteps((current) =>
+          current.map((step) =>
+            step.status === "running" ? { ...step, status: "error", message, error: message } : step,
+          ),
+        );
+        setJobEvent(localJobEvent("Preparar Ambiente", "error", message));
+        setJobStatus("error");
+        setError(message);
+      }
     } finally {
       setBusy(null);
     }
@@ -872,8 +1087,17 @@ export default function App() {
     try {
       const cancelled = await cancelCurrentJob();
       if (cancelled) {
-        setJobEvent(localJobEvent(jobEvent?.action || "Operação", "cancelled", "Cancelamento solicitado."));
+        const currentProgress = Math.max(0, Math.min(95, jobEvent?.progress ?? 0));
+        setSteps((current) =>
+          current.map((step) =>
+            step.status === "running"
+              ? { ...step, status: "cancelled", message: "Operação cancelada." }
+              : step,
+          ),
+        );
+        setJobEvent(localJobEvent(jobEvent?.action || "Operação", "cancelled", "Operação cancelada.", currentProgress));
         setJobStatus("cancelled");
+        setNotice("Operação cancelada. Nenhuma instalação existente foi alterada.");
         setBusy(null);
       }
     } catch (err) {
@@ -976,6 +1200,8 @@ export default function App() {
         }
       : progressCopy(busy);
 
+  const transferDetail = jobStatus === "running" && jobEvent ? formatTransferDetail(jobEvent) : null;
+
   const closeHelp = () => {
     if (helpTopic === "firstSteps" && hideFirstSteps) {
       window.localStorage.setItem(FIRST_STEPS_STORAGE_KEY, "true");
@@ -1061,7 +1287,7 @@ export default function App() {
           <div className="launcher-summary" aria-label="Status do launcher">
             <span>{launcherStatusLabel(status, jobStatus, isBusy, error)}</span>
             <span>Modo de execução: {status?.runtimeLabel || (status?.runtimeMode === "portable" ? "Portátil" : "Docker")}</span>
-            <span>{status?.appUrl || "Endereço local ainda não preparado"}</span>
+            <span>Endereço local: {status?.appUrl || "http://localhost:3000"}</span>
           </div>
         </div>
         <ActionButton
@@ -1119,11 +1345,14 @@ export default function App() {
         </div>
       ) : null}
       {activeProgress ? (
-        <section className="operation-progress" role="status" aria-live="polite">
+        <section className={`operation-progress operation-progress--${jobStatus}`} role="status" aria-live="polite">
           <div>
             <strong>{activeProgress.title}</strong>
             <span>{activeProgress.step ? `${activeProgress.step}: ${activeProgress.detail}` : activeProgress.detail}</span>
           </div>
+          {transferDetail ? (
+            <p className="operation-progress__transfer">{transferDetail}</p>
+          ) : null}
           <div
             className="operation-progress__track"
             role="progressbar"
@@ -1149,22 +1378,24 @@ export default function App() {
         </section>
       ) : null}
 
-      <div className="status-grid">
-        <StatusCard title="Ambiente" icon={<ShieldCheck size={20} />} items={statusItems.environment} />
-        <StatusCard title="Docker" icon={<HardDrive size={20} />} items={statusItems.docker} />
-        <StatusCard title="Projeto" icon={<BookOpen size={20} />} items={statusItems.project} />
-        <StatusCard title="Diagnóstico" icon={<Activity size={20} />} items={statusItems.diagnostics} />
-      </div>
+      <StepProgress steps={steps} />
 
       <details className="technical-details">
         <summary>
           <Settings size={18} aria-hidden="true" />
           Detalhes técnicos
         </summary>
-        <StatusCard title="Detalhes técnicos" icon={<Settings size={20} />} items={statusItems.technical} />
+        <div className="status-grid status-grid--technical">
+          <StatusCard title="Ambiente" icon={<ShieldCheck size={20} />} items={statusItems.environment} />
+          {status?.runtimeMode === "portable" ? null : (
+            <StatusCard title="Docker" icon={<HardDrive size={20} />} items={statusItems.docker} />
+          )}
+          <StatusCard title="Projeto" icon={<BookOpen size={20} />} items={statusItems.project} />
+          <StatusCard title="Diagnóstico" icon={<Activity size={20} />} items={statusItems.diagnostics} />
+          <StatusCard title="Detalhes técnicos" icon={<Settings size={20} />} items={statusItems.technical} />
+        </div>
+        <LogPanel logs={logs} onRefresh={loadLogs} loading={busy === "Logs"} />
       </details>
-
-      <StepProgress steps={steps} />
 
       <details
         className="advanced-panel"
@@ -1220,78 +1451,84 @@ export default function App() {
         </div>
       </details>
 
-      <section className="actions-panel" aria-label="Ações principais">
-        {showLinuxInstallDocker ? (
-          <ActionButton
-            icon={<HardDrive size={18} />}
-            disabled={isBusy}
-            loading={busy === "Instalar Docker"}
-            onClick={() =>
-              requestAdminPermission("install-docker", [
-                "Instalar Docker e Docker Compose",
-                "Iniciar o serviço docker",
-                "Adicionar seu usuário ao grupo docker, quando necessário",
-              ])
-            }
-          >
-            Instalar Docker no Linux
+      <details className="advanced-panel maintenance-panel" aria-label="Ações de manutenção">
+        <summary>
+          <Wrench size={18} aria-hidden="true" />
+          Ações de manutenção
+        </summary>
+        <section className="actions-panel" aria-label="Ações de manutenção">
+          {showLinuxInstallDocker ? (
+            <ActionButton
+              icon={<HardDrive size={18} />}
+              disabled={isBusy}
+              loading={busy === "Instalar Docker"}
+              onClick={() =>
+                requestAdminPermission("install-docker", [
+                  "Instalar Docker e Docker Compose",
+                  "Iniciar o serviço docker",
+                  "Adicionar seu usuário ao grupo docker, quando necessário",
+                ])
+              }
+            >
+              Instalar Docker no Linux
+            </ActionButton>
+          ) : null}
+          <ActionButton icon={<RefreshCw size={18} />} disabled={isBusy} loading={busy === "diagnose"} onClick={diagnose}>
+            Diagnosticar
           </ActionButton>
-        ) : null}
-        <ActionButton icon={<RefreshCw size={18} />} disabled={isBusy} loading={busy === "diagnose"} onClick={diagnose}>
-          Diagnosticar
-        </ActionButton>
-        <ActionButton icon={<Wrench size={18} />} disabled={isBusy} onClick={() => setRepairOpen(true)} variant="ghost">
-          Reparar instalação
-        </ActionButton>
-        <ActionButton icon={<Play size={18} />} disabled={isBusy} onClick={startAndOpenPocket}>
-          Iniciar M&G Pocket
-        </ActionButton>
-        <ActionButton icon={<Square size={18} />} disabled={isBusy} onClick={() => runAction("Parar", () => stopApp(dockerOptions))}>
-          Parar
-        </ActionButton>
-        <ActionButton icon={<RotateCcw size={18} />} disabled={isBusy} onClick={() => runAction("Reiniciar", () => restartApp(dockerOptions))}>
-          Reiniciar
-        </ActionButton>
-        <ActionButton icon={<ExternalLink size={18} />} disabled={isBusy} onClick={openPocket} variant={status?.appOnline ? "primary" : "secondary"}>
-          Abrir M&G Pocket
-        </ActionButton>
-        <ActionButton icon={<ExternalLink size={18} />} disabled={isBusy || !status?.adminerOnline} onClick={() => void openAdminer()}>
-          Abrir Adminer
-        </ActionButton>
-        <ActionButton icon={<ScrollText size={18} />} disabled={busy === "Logs"} loading={busy === "Logs"} onClick={loadLogs}>
-          Ver detalhes técnicos
-        </ActionButton>
-        <ActionButton icon={<FolderOpen size={18} />} disabled={isBusy} onClick={() => void openDataFolder()}>
-          Abrir pasta de dados
-        </ActionButton>
-        <ActionButton icon={<FolderOpen size={18} />} disabled={isBusy} onClick={() => void openBackupsFolder()}>
-          Abrir pasta de backups
-        </ActionButton>
-        <ActionButton icon={<FolderOpen size={18} />} disabled={isBusy} onClick={() => void openLogsFolder()}>
-          Abrir logs técnicos
-        </ActionButton>
-        <ActionButton icon={<Archive size={18} />} disabled={isBusy} onClick={() => runAction("Backup", () => backup(dockerOptions))}>
-          Backup
-        </ActionButton>
-        <ActionButton icon={<Archive size={18} />} disabled={isBusy} onClick={restoreData}>
-          Restaurar Backup
-        </ActionButton>
-        <ActionButton icon={<Trash2 size={18} />} disabled={isBusy} variant="danger" onClick={() => setResetOpen(true)}>
-          Resetar Dados Locais
-        </ActionButton>
-        <ActionButton icon={<Trash2 size={18} />} disabled={isBusy} variant="ghost" onClick={() => setRemoveOpen("safe")}>
-          Remover Projeto Local
-        </ActionButton>
-        <ActionButton icon={<Trash2 size={18} />} disabled={isBusy} variant="danger" onClick={() => setRemoveOpen("complete")}>
-          Desinstalar M&G Pocket Local
-        </ActionButton>
-      </section>
+          <ActionButton icon={<Wrench size={18} />} disabled={isBusy} onClick={() => setRepairOpen(true)} variant="ghost">
+            Reparar instalação
+          </ActionButton>
+          <ActionButton icon={<Play size={18} />} disabled={isBusy} onClick={startAndOpenPocket}>
+            Iniciar M&G Pocket
+          </ActionButton>
+          <ActionButton icon={<Square size={18} />} disabled={isBusy} onClick={() => runAction("Parar", () => stopApp(dockerOptions))}>
+            Parar
+          </ActionButton>
+          <ActionButton icon={<RotateCcw size={18} />} disabled={isBusy} onClick={() => runAction("Reiniciar", () => restartApp(dockerOptions))}>
+            Reiniciar
+          </ActionButton>
+          <ActionButton icon={<ExternalLink size={18} />} disabled={isBusy} onClick={openPocket} variant={status?.appOnline ? "primary" : "secondary"}>
+            Abrir M&G Pocket
+          </ActionButton>
+          <ActionButton icon={<ExternalLink size={18} />} disabled={isBusy || !status?.adminerOnline} onClick={() => void openAdminer()}>
+            Abrir Adminer
+          </ActionButton>
+          <ActionButton icon={<ScrollText size={18} />} disabled={busy === "Logs"} loading={busy === "Logs"} onClick={loadLogs}>
+            Ver detalhes técnicos
+          </ActionButton>
+          <ActionButton icon={<FolderOpen size={18} />} disabled={isBusy} onClick={() => void openDataFolder()}>
+            Abrir pasta de dados
+          </ActionButton>
+          <ActionButton icon={<FolderOpen size={18} />} disabled={isBusy} onClick={() => void openBackupsFolder()}>
+            Abrir pasta de backups
+          </ActionButton>
+          <ActionButton icon={<FolderOpen size={18} />} disabled={isBusy} onClick={() => void openLogsFolder()}>
+            Abrir logs técnicos
+          </ActionButton>
+          <ActionButton icon={<Archive size={18} />} disabled={isBusy} onClick={() => runAction("Backup", () => backup(dockerOptions))}>
+            Backup
+          </ActionButton>
+          <ActionButton icon={<Archive size={18} />} disabled={isBusy} onClick={restoreData}>
+            Restaurar Backup
+          </ActionButton>
+          <ActionButton icon={<Trash2 size={18} />} disabled={isBusy} variant="danger" onClick={() => setResetOpen(true)}>
+            Resetar Dados Locais
+          </ActionButton>
+          <ActionButton icon={<Trash2 size={18} />} disabled={isBusy} variant="ghost" onClick={() => setRemoveOpen("safe")}>
+            Remover Projeto Local
+          </ActionButton>
+          <ActionButton icon={<Trash2 size={18} />} disabled={isBusy} variant="danger" onClick={() => setRemoveOpen("complete")}>
+            Desinstalar M&G Pocket Local
+          </ActionButton>
+        </section>
+      </details>
 
-      <section className="help-panel" aria-label="Ajuda">
-        <div className="help-panel__header">
+      <details className="help-panel" aria-label="Ajuda">
+        <summary className="help-panel__header">
           <HelpCircle size={20} aria-hidden="true" />
-          <h2>Ajuda</h2>
-        </div>
+          Ajuda
+        </summary>
         <div className="help-panel__actions">
           <button type="button" onClick={() => setHelpTopic("firstSteps")}>
             Primeiros passos
@@ -1309,9 +1546,7 @@ export default function App() {
             Sobre o M&G Pocket
           </button>
         </div>
-      </section>
-
-      <LogPanel logs={logs} onRefresh={loadLogs} loading={busy === "Logs"} />
+      </details>
 
       <ConfirmDialog
         open={resetOpen}

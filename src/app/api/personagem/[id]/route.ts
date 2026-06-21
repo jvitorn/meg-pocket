@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Elemento } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
-  getSessionUserId,
+  getOptionalSessionUserId,
   validarEdicaoDaFicha,
 } from "@/lib/regras/personagemPermissao";
 import {
@@ -61,7 +61,7 @@ export async function GET(
       );
     }
 
-    const sessionUserId = await getSessionUserId();
+    const sessionUserId = await getOptionalSessionUserId();
     const canEdit =
       !!sessionUserId &&
       !!personagem.userId &&

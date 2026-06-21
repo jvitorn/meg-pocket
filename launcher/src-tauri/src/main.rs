@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 #[cfg(target_os = "linux")]
 fn apply_linux_webkit_workarounds() {
     // Precisa rodar antes do WebView para evitar tela branca em alguns stacks Wayland/EGL.

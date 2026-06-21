@@ -1,14 +1,14 @@
 worker_processes 1;
-error_log ${LOGS_DIR}/nginx-error.log;
-pid ${LOGS_DIR}/nginx.pid;
+error_log "${LOGS_DIR}/nginx-error.log";
+pid "${LOGS_DIR}/nginx.pid";
 
 events {
     worker_connections 256;
 }
 
 http {
-    access_log ${LOGS_DIR}/nginx-access.log;
-    include mime.types;
+    access_log "${LOGS_DIR}/nginx-access.log";
+    include "${MIME_TYPES}";
     default_type application/octet-stream;
     sendfile on;
 
@@ -21,7 +21,7 @@ http {
         }
 
         location ^~ /uploads/ {
-            alias ${UPLOADS_DIR}/;
+            alias "${UPLOADS_DIR}/";
             try_files $uri =404;
         }
 

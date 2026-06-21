@@ -23,6 +23,7 @@ use crate::{
     installers::installers_dir,
     jobs::{self, JobManager},
     paths::launcher_data_dir,
+    process_utils,
 };
 
 #[derive(Debug, Serialize)]
@@ -238,7 +239,7 @@ fn run_platform_script(
     );
 
     let mut command = build_script_command(&script, args);
-    sanitize_child_environment(&mut command);
+    prepare_child_command(&mut command);
     for (key, value) in extra_env {
         command.env(key, value);
     }
@@ -644,6 +645,11 @@ pub fn sanitize_child_environment(command: &mut Command) {
     {
         let _ = command;
     }
+}
+
+pub fn prepare_child_command(command: &mut Command) {
+    sanitize_child_environment(command);
+    process_utils::hide_child_window(command);
 }
 
 #[cfg(target_os = "linux")]

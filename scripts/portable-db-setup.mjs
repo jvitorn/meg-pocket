@@ -29,14 +29,15 @@ async function main() {
 async function runPrismaMigrateDeploy() {
   const prismaCli = resolvePrismaCli();
   if (!prismaCli) {
-    console.log("TODO: Prisma CLI nao encontrado no runtime portatil; migrations serao aplicadas pelo workflow/runtime futuro.");
-    return;
+    throw new Error(
+      "Prisma CLI nao encontrado no runtime portatil. Esperado: scripts/node_modules/prisma/build/index.js"
+    );
   }
 
   const { spawn } = await import("node:child_process");
   await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [prismaCli, "migrate", "deploy", "--schema", "prisma/schema.prisma"], {
-      cwd: rootDir,
+    const child = spawn(process.execPath, [prismaCli, "migrate", "deploy"], {
+      cwd: path.join(rootDir, "prisma"),
       env: process.env,
       stdio: "inherit",
     });
@@ -46,11 +47,15 @@ async function runPrismaMigrateDeploy() {
 }
 
 function resolvePrismaCli() {
-  const candidates = [
-    path.join(rootDir, "app", "node_modules", "prisma", "build", "index.js"),
-    path.join(rootDir, "node_modules", "prisma", "build", "index.js"),
-  ];
-  return candidates.find((candidate) => fs.existsSync(candidate));
+  const candidate = path.join(
+    rootDir,
+    "scripts",
+    "node_modules",
+    "prisma",
+    "build",
+    "index.js"
+  );
+  return fs.existsSync(candidate) ? candidate : null;
 }
 
 async function seedReady() {

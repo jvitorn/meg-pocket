@@ -22,6 +22,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import {
+  getOptionalSessionUserId,
   getSessionUserId,
   validarEdicaoDaFicha,
 } from "@/lib/regras/personagemPermissao";
@@ -38,6 +39,20 @@ describe("validarEdicaoDaFicha", () => {
     });
 
     await expect(getSessionUserId()).resolves.toBe("user-123");
+  });
+
+  it("retorna null e registra erro quando a sessao opcional falha", async () => {
+    const error = new Error("NEXTAUTH_SECRET ausente");
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.getServerSession.mockRejectedValue(error);
+
+    await expect(getOptionalSessionUserId()).resolves.toBeNull();
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Erro ao consultar sessão opcional:",
+      error
+    );
+
+    consoleSpy.mockRestore();
   });
 
   it("bloqueia a edicao quando nao existe usuario autenticado", async () => {

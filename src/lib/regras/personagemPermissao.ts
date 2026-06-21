@@ -11,6 +11,15 @@ export async function getSessionUserId() {
   return session?.user?.id ?? null;
 }
 
+export async function getOptionalSessionUserId() {
+  try {
+    return await getSessionUserId();
+  } catch (error) {
+    console.error("Erro ao consultar sessão opcional:", error);
+    return null;
+  }
+}
+
 export async function validarEdicaoDaFicha(
   personagemId: number
 ): Promise<ValidarEdicaoFichaResult> {

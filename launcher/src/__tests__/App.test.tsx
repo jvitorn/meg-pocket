@@ -239,6 +239,78 @@ describe("M&G Pocket Launcher", () => {
     expect(screen.getAllByText("Detalhes técnicos").length).toBeGreaterThan(0);
   });
 
+  it("renderiza cinco etapas principais e não mostra card Docker no modo portátil", async () => {
+    await renderReady({
+      ...baseStatus,
+      os: "windows",
+      runtimeMode: "portable",
+      runtimeLabel: "Portátil",
+      dockerInstalled: false,
+      dockerRunning: false,
+      dockerComposeInstalled: false,
+      dockerPermissionOk: false,
+      appUrl: "http://localhost:3000",
+    });
+
+    const preparationSteps = within(screen.getByLabelText("Etapas de preparação"));
+    expect(preparationSteps.getByText("Diagnóstico")).toBeInTheDocument();
+    expect(preparationSteps.getByText("Runtime")).toBeInTheDocument();
+    expect(preparationSteps.getByText("Banco local")).toBeInTheDocument();
+    expect(preparationSteps.getByText("Sistema")).toBeInTheDocument();
+    expect(preparationSteps.getByText("Acesso")).toBeInTheDocument();
+    expect(screen.getByText("Modo de execução: Portátil")).toBeInTheDocument();
+    expect(screen.getByText("Endereço local: http://localhost:3000")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Docker")).not.toBeInTheDocument();
+  });
+
+  it("cancelamento mantém progresso real e marca etapa atual como cancelada", async () => {
+    await renderReady();
+
+    const runningSteps = [
+      { id: "diagnostico", title: "Diagnóstico", status: "success", progress: 100, message: "Concluído." },
+      { id: "runtime", title: "Runtime", status: "success", progress: 100, message: "Runtime portátil instalado." },
+      { id: "bancoLocal", title: "Banco local", status: "running", progress: 52, message: "Iniciando banco local." },
+      { id: "sistema", title: "Sistema", status: "pending", progress: 0, message: "Aguardando banco local." },
+      { id: "acesso", title: "Acesso", status: "pending", progress: 0, message: "Aguardando sistema." },
+    ];
+
+    emitLauncherEvent("launcher://job-started", {
+      job_id: "job-cancel",
+      action: "Preparar Ambiente",
+      step: "Banco local",
+      message: "Iniciando banco local.",
+      progress: 48,
+      level: "info",
+      status: "running",
+      currentStepId: "bancoLocal",
+      steps: runningSteps,
+    });
+
+    expect(screen.getByRole("button", { name: /^Cancelar$/i })).toBeInTheDocument();
+
+    emitLauncherEvent("launcher://job-finished", {
+      job_id: "job-cancel",
+      action: "Preparar Ambiente",
+      step: "Banco local",
+      message: "Cancelado pelo usuário.",
+      progress: 48,
+      level: "cancelled",
+      status: "cancelled",
+      currentStepId: "bancoLocal",
+      steps: runningSteps.map((step) =>
+        step.id === "bancoLocal"
+          ? { ...step, status: "cancelled", message: "Cancelado pelo usuário." }
+          : step,
+      ),
+    });
+
+    await waitFor(() => expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "48"));
+    expect(screen.getByRole("status")).toHaveTextContent(/Cancelado pelo usuário/i);
+    expect(within(screen.getByLabelText("Etapas de preparação")).getByText("Cancelado pelo usuário.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Cancelar$/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Abrir M&G Pocket$/i }).some((button) => !button.hasAttribute("disabled"))).toBe(true);
+  });
+
   it("Reparar instalação usa imagem pronta por padrão e build local só no avançado", async () => {
     const user = await renderReady();
 

@@ -222,7 +222,9 @@ pub fn acquire_instance_lock() -> LauncherResult<InstanceLock> {
 fn process_alive(pid: u32) -> bool {
     #[cfg(target_os = "windows")]
     {
-        let output = std::process::Command::new("tasklist")
+        let mut command = std::process::Command::new("tasklist");
+        crate::process_utils::hide_child_window(&mut command);
+        let output = command
             .args(["/FI", &format!("PID eq {pid}"), "/NH"])
             .output();
         return output

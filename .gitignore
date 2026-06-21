@@ -31,6 +31,13 @@
 /build
 /storage/local/
 
+# portable runtime local builds
+/.local-cache/
+/portable-runtime/
+/portable-runtime-dist/
+/meg-pocket-portable-runtime-windows-x64-*.zip
+/portable-manifest.json
+
 # misc
 .DS_Store
 *.pem
