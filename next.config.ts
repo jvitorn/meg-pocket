@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { createMDX } from "fumadocs-mdx/next";
 
 const isReactCompilerEnabled = process.env.NEXT_REACT_COMPILER !== "false";
 
@@ -68,6 +69,25 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/manual",
+        destination: "/manual/essencial",
+        permanent: false,
+      },
+    ];
+  },
 };
 
-export default nextConfig;
+const withMDX = createMDX();
+const configWithMDX = withMDX(nextConfig);
+
+// Next 16/Turbopack rejects query conditions generated for Fumadocs meta
+// files. The JSON meta files still load through Next's native JSON handling.
+if (configWithMDX.turbopack?.rules) {
+  delete configWithMDX.turbopack.rules["*.json"];
+  delete configWithMDX.turbopack.rules["*.yaml"];
+}
+
+export default configWithMDX;

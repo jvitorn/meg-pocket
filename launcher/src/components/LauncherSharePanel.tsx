@@ -35,16 +35,18 @@ export function LauncherSharePanel({
   onCopy,
   onOpenLink,
 }: LauncherSharePanelProps) {
-  const [qrDataUrl, setQrDataUrl] = useState("");
+  const [qrCode, setQrCode] = useState<{
+    publicUrl: string;
+    dataUrl: string;
+  } | null>(null);
   const publicUrl = state.publicUrl || "";
   const active = state.status === "active" && Boolean(publicUrl);
+  const qrDataUrl =
+    active && qrCode?.publicUrl === publicUrl ? qrCode.dataUrl : "";
 
   useEffect(() => {
     let disposed = false;
-    if (!active) {
-      setQrDataUrl("");
-      return;
-    }
+    if (!active) return;
 
     void QRCode.toDataURL(publicUrl, {
       width: 220,
@@ -55,7 +57,7 @@ export function LauncherSharePanel({
       },
       errorCorrectionLevel: "M",
     }).then((nextQr) => {
-      if (!disposed) setQrDataUrl(nextQr);
+      if (!disposed) setQrCode({ publicUrl, dataUrl: nextQr });
     });
 
     return () => {

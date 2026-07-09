@@ -4,6 +4,7 @@ const baseURL =
   process.env.PLAYWRIGHT_BASE_URL ??
   process.env.NEXTAUTH_URL ??
   "http://localhost:3000";
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 const reuseExistingServer =
   process.env.MEG_E2E_REUSE_SERVER === "1" ||
   (!process.env.CI && process.env.MEG_E2E !== "1");
@@ -18,6 +19,11 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
+    launchOptions: chromiumExecutablePath
+      ? {
+          executablePath: chromiumExecutablePath,
+        }
+      : undefined,
   },
   webServer: {
     command: "npm run dev -- --hostname 127.0.0.1 --port 3000",

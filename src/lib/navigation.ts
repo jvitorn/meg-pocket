@@ -10,6 +10,10 @@ export const BASE_NAV_LINKS = [
     href: "/classe",
   },
   {
+    label: "Manual",
+    href: "/manual",
+  },
+  {
     label: "Raças",
     href: "/raca",
   },

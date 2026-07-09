@@ -23,6 +23,7 @@
 # next.js
 /.next/
 /out/
+.source
 /launcher/dist/
 /launcher/src-tauri/gen/
 /launcher/src-tauri/target/

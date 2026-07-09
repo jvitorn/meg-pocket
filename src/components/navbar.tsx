@@ -4,6 +4,7 @@ import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
 import {
   BookOpenText,
+  BookMarked,
   ChevronDown,
   ChevronRight,
   LayoutDashboard,
@@ -47,6 +48,7 @@ const navIconMap = {
   "/classe": Shield,
   "/raca": Sparkles,
   "/ameacas": Skull,
+  "/manual": BookMarked,
   "/login": LogIn,
   "/dashboard": LayoutDashboard,
   "/fichas": Users,
